@@ -381,7 +381,7 @@ export default function Home() {
                   </div>
                 ))}
               </div>
-              <p className="text-center mt-10 md:mt-12 text-cyan-500/60 font-black tracking-widest text-[8px] md:text-[10px] uppercase">
+              <p className="text-center mt-10 md:mt-12 text-cyan-500/60 font-black tracking-widest text-[12px] md:text-[20px] uppercase">
                 Performance-Based Selection Only
               </p>
             </div>
