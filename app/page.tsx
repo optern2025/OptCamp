@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import React, { useState, useEffect } from "react";
 import {
   ShieldAlert,
@@ -14,6 +15,7 @@ import OpternLogo from "./components/OpternLogo";
 import GlowButton from "./components/GlowButton";
 import SectionTitle from "./components/SectionTitle";
 import RegistrationPage from "./components/RegistrationPage";
+import type { Cohort as LandingCohort } from "@/lib/types";
 
 type PageType = "landing" | "register";
 
@@ -27,14 +29,6 @@ interface SelectionStep {
   step: string;
   title: string;
   desc: string;
-}
-
-interface Cohort {
-  type: string;
-  date: string;
-  sprint: string;
-  apply: string;
-  active: boolean;
 }
 
 interface NoItem {
@@ -69,34 +63,50 @@ const selectionSteps: SelectionStep[] = [
   { step: "Step 4", title: "Exposure", desc: "Ranked Top 10%" },
 ];
 
-const cohorts: Cohort[] = [
+const fallbackCohorts: LandingCohort[] = [
   {
+    id: "fallback-backend",
+    slug: "backend-mar-2026",
     type: "Backend",
-    date: "Mar 9–10",
-    sprint: "Mar 11–14",
-    apply: "Mar 10",
-    active: true,
+    apply_window: "Mar 9-10",
+    sprint_window: "Mar 11-14",
+    apply_by: "Mar 10",
+    qualifier_test_url: null,
+    is_active: true,
+    created_at: new Date().toISOString(),
   },
   {
+    id: "fallback-aiml",
+    slug: "aiml-mar-2026",
     type: "AI / ML",
-    date: "Mar 23–24",
-    sprint: "Mar 25–28",
-    apply: "Mar 24",
-    active: false,
+    apply_window: "Mar 23-24",
+    sprint_window: "Mar 25-28",
+    apply_by: "Mar 24",
+    qualifier_test_url: null,
+    is_active: false,
+    created_at: new Date().toISOString(),
   },
   {
+    id: "fallback-fullstack",
+    slug: "fullstack-apr-2026",
     type: "Full Stack",
-    date: "Apr 6–7",
-    sprint: "Apr 8–11",
-    apply: "Apr 7",
-    active: false,
+    apply_window: "Apr 6-7",
+    sprint_window: "Apr 8-11",
+    apply_by: "Apr 7",
+    qualifier_test_url: null,
+    is_active: false,
+    created_at: new Date().toISOString(),
   },
   {
+    id: "fallback-mobile",
+    slug: "mobile-apr-2026",
     type: "Mobile Dev",
-    date: "Apr 20–21",
-    sprint: "Apr 22–25",
-    apply: "Apr 21",
-    active: false,
+    apply_window: "Apr 20-21",
+    sprint_window: "Apr 22-25",
+    apply_by: "Apr 21",
+    qualifier_test_url: null,
+    is_active: false,
+    created_at: new Date().toISOString(),
   },
 ];
 
@@ -110,11 +120,29 @@ const noItems: NoItem[] = [
 export default function Home() {
   const [scrolled, setScrolled] = useState(false);
   const [currentPage, setCurrentPage] = useState<PageType>("landing");
+  const [cohorts, setCohorts] = useState<LandingCohort[]>(fallbackCohorts);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const loadCohorts = async () => {
+      try {
+        const response = await fetch("/api/cohorts");
+        if (!response.ok) return;
+        const payload = (await response.json()) as { cohorts?: LandingCohort[] };
+        if (payload.cohorts && payload.cohorts.length > 0) {
+          setCohorts(payload.cohorts);
+        }
+      } catch (_error) {
+        // Keep fallback cohort cards if API fails.
+      }
+    };
+
+    loadCohorts();
   }, []);
 
   // Reset scroll on page change
@@ -192,6 +220,9 @@ export default function Home() {
             >
               Apply
             </button>
+            <Link href="/cohort-test" className="hover:text-cyan-500 transition-colors">
+              Cohort Test
+            </Link>
           </div>
           <div className="lg:hidden text-[8px] xs:text-[10px] font-black tracking-[0.2em] uppercase text-cyan-500 animate-pulse shrink-0">
             SIMULATION ACTIVE
@@ -396,8 +427,8 @@ export default function Home() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 max-w-7xl mx-auto">
                 {cohorts.map((cohort) => (
                   <div
-                    key={cohort.type}
-                    className={`p-7 md:p-10 border transition-all duration-500 flex flex-col justify-between h-full ${cohort.active
+                    key={cohort.id}
+                    className={`p-7 md:p-10 border transition-all duration-500 flex flex-col justify-between h-full ${cohort.is_active
                         ? "border-cyan-500 bg-cyan-500/5 shadow-[0_0_30px_rgba(0,245,255,0.1)]"
                         : "border-white/10 opacity-40 hover:opacity-100"
                       }`}
@@ -409,28 +440,28 @@ export default function Home() {
                       <div className="space-y-4 md:space-y-6 mb-8 md:mb-10">
                         <div className="flex justify-between text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-white/40">
                           <span>Apps:</span>
-                          <span className="text-white">{cohort.date}</span>
+                          <span className="text-white">{cohort.apply_window}</span>
                         </div>
                         <div className="flex justify-between text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-white/40">
                           <span>Sprint:</span>
-                          <span className="text-white">{cohort.sprint}</span>
+                          <span className="text-white">{cohort.sprint_window}</span>
                         </div>
                         <div className="pt-4 md:pt-6 border-t border-white/10 flex justify-between text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-cyan-500">
                           <span>Apply By:</span>
-                          <span>{cohort.apply}</span>
+                          <span>{cohort.apply_by}</span>
                         </div>
                       </div>
                     </div>
                     <button
                       type="button"
                       onClick={handleApplyClick}
-                      disabled={!cohort.active}
-                      className={`w-full py-3 md:py-4 text-[8px] sm:text-[10px] font-black uppercase tracking-widest border transition-all ${cohort.active
+                      disabled={!cohort.is_active}
+                      className={`w-full py-3 md:py-4 text-[8px] sm:text-[10px] font-black uppercase tracking-widest border transition-all ${cohort.is_active
                           ? "bg-cyan-500 text-black border-cyan-500 hover:bg-cyan-400"
                           : "border-white/20 text-white/20"
                         }`}
                     >
-                      {cohort.active ? "Apply to Batch" : "Waitlist"}
+                      {cohort.is_active ? "Apply to Batch" : "Waitlist"}
                     </button>
                   </div>
                 ))}
@@ -560,6 +591,9 @@ export default function Home() {
                   >
                     Legal
                   </button>
+                  <Link href="/cohort-test" className="hover:text-cyan-500 transition-colors shrink-0">
+                    Cohort Test
+                  </Link>
                 </div>
               </footer>
             </div>
