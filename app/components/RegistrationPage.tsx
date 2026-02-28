@@ -92,11 +92,17 @@ const RegistrationPage = ({ onBack }: RegistrationPageProps) => {
 
     try {
       const supabase = getSupabaseClient();
+      const configuredAppUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+      const redirectBase =
+        configuredAppUrl && configuredAppUrl.length > 0
+          ? configuredAppUrl.replace(/\/$/, "")
+          : window.location.origin;
+
       const { error } = await supabase.auth.signUp({
         email: formData.email.trim(),
         password: formData.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${redirectBase}/auth/callback`,
           data: {
             name: formData.name.trim(),
             university: formData.university.trim(),
