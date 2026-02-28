@@ -1,40 +1,35 @@
-import { NextResponse, type NextRequest } from "next/server";
-import { getBearerToken } from "@/lib/apiAuth";
+import { NextResponse } from "next/server";
+import { getAuthenticatedClerkUser } from "@/lib/clerkServer";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const token = getBearerToken(request);
-    if (!token) {
+    const authUser = await getAuthenticatedClerkUser();
+    if (!authUser) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
 
     const supabase = getSupabaseAdminClient();
-    const { data: authData, error: authError } = await supabase.auth.getUser(token);
 
-    if (authError || !authData.user) {
-      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-    }
-
-    const userId = authData.user.id;
-
-    const [{ data: profile, error: profileError }, { data: cohorts, error: cohortsError }] =
-      await Promise.all([
-        supabase
-          .from("users")
-          .select(
-            "id, email, name, university, stack, github, availability, intent, email_verified, cohort_id, qualifier_email_sent_at, qualifier_email_message_id, created_at, updated_at",
-          )
-          .eq("id", userId)
-          .single(),
-        supabase
-          .from("cohorts")
-          .select(
-            "id, slug, type, apply_window, sprint_window, apply_by, qualifier_test_url, is_active, created_at",
-          )
-          .order("is_active", { ascending: false })
-          .order("created_at", { ascending: true }),
-      ]);
+    const [
+      { data: profile, error: profileError },
+      { data: cohorts, error: cohortsError },
+    ] = await Promise.all([
+      supabase
+        .from("users")
+        .select(
+          "id, email, name, university, stack, github, availability, intent, email_verified, cohort_id, qualifier_email_sent_at, qualifier_email_message_id, created_at, updated_at",
+        )
+        .eq("clerk_user_id", authUser.userId)
+        .single(),
+      supabase
+        .from("cohorts")
+        .select(
+          "id, slug, type, apply_window, sprint_window, apply_by, qualifier_test_url, is_active, created_at",
+        )
+        .order("is_active", { ascending: false })
+        .order("created_at", { ascending: true }),
+    ]);
 
     if (profileError || !profile) {
       return NextResponse.json(
@@ -50,12 +45,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const assignedCohort = (cohorts ?? []).find((cohort) => cohort.id === profile.cohort_id) ?? null;
+    const assignedCohort =
+      (cohorts ?? []).find((cohort) => cohort.id === profile.cohort_id) ?? null;
 
     return NextResponse.json({
       user: {
         ...profile,
-        email_verified: authData.user.email_confirmed_at !== null,
+        email: authUser.email,
+        email_verified: authUser.isEmailVerified,
       },
       assignedCohort,
       cohorts: cohorts ?? [],

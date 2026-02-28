@@ -1,38 +1,30 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { Resend } from "resend";
-import { getBearerToken } from "@/lib/apiAuth";
+import { getAuthenticatedClerkUser } from "@/lib/clerkServer";
 import { getAppUrl, getQualifierFromEmail, getResendApiKey } from "@/lib/env";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
-    const token = getBearerToken(request);
-    if (!token) {
+    const authUser = await getAuthenticatedClerkUser();
+    if (!authUser) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
 
-    const supabase = getSupabaseAdminClient();
-    const { data: authData, error: authError } = await supabase.auth.getUser(token);
-
-    if (authError || !authData.user) {
-      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-    }
-
-    const user = authData.user;
-
-    if (!user.email_confirmed_at) {
+    if (!authUser.isEmailVerified) {
       return NextResponse.json(
         { error: "Email is not verified yet." },
         { status: 409 },
       );
     }
 
+    const supabase = getSupabaseAdminClient();
     const { data: profile, error: profileError } = await supabase
       .from("users")
       .select(
         "id, email, name, cohort_id, qualifier_email_sent_at, qualifier_email_message_id",
       )
-      .eq("id", user.id)
+      .eq("clerk_user_id", authUser.userId)
       .single();
 
     if (profileError || !profile) {
@@ -86,7 +78,7 @@ export async function POST(request: NextRequest) {
 
     const emailResponse = await resend.emails.send({
       from,
-      to: [profile.email],
+      to: [authUser.email],
       subject,
       html: `
         <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111; max-width: 640px; margin: 0 auto;">
@@ -115,7 +107,10 @@ export async function POST(request: NextRequest) {
 
     if (emailResponse.error) {
       return NextResponse.json(
-        { error: emailResponse.error.message || "Failed to send qualifier email." },
+        {
+          error:
+            emailResponse.error.message || "Failed to send qualifier email.",
+        },
         { status: 502 },
       );
     }
@@ -126,10 +121,12 @@ export async function POST(request: NextRequest) {
     const { error: updateError } = await supabase
       .from("users")
       .update({
+        email: authUser.email,
+        email_verified: authUser.isEmailVerified,
         qualifier_email_sent_at: sentAt,
         qualifier_email_message_id: messageId,
       })
-      .eq("id", user.id);
+      .eq("id", profile.id);
 
     if (updateError) {
       return NextResponse.json(
@@ -142,9 +139,9 @@ export async function POST(request: NextRequest) {
     }
 
     await supabase.from("qualifier_email_logs").insert({
-      user_id: user.id,
+      user_id: profile.id,
       cohort_id: cohort.id,
-      recipient_email: profile.email,
+      recipient_email: authUser.email,
       resend_message_id: messageId,
       sent_at: sentAt,
       status: "sent",

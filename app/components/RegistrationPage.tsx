@@ -1,8 +1,14 @@
 "use client";
 
-import { ArrowLeft, CheckCircle2, Github, Mail } from "lucide-react";
+import { useSignUp } from "@clerk/nextjs";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Github,
+  Mail,
+  ShieldCheck,
+} from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
-import { getSupabaseClient } from "@/lib/supabaseClient";
 import type { Cohort } from "@/lib/types";
 import UniversitySearch from "./UniversitySearch";
 
@@ -23,6 +29,8 @@ interface FormData {
 }
 
 const RegistrationPage = ({ onBack }: RegistrationPageProps) => {
+  const { isLoaded, signUp, setActive } = useSignUp();
+
   const [formData, setFormData] = useState<FormData>({
     name: "",
     university: "",
@@ -39,6 +47,9 @@ const RegistrationPage = ({ onBack }: RegistrationPageProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
+
+  const [requiresVerification, setRequiresVerification] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
 
   useEffect(() => {
     const loadCohorts = async () => {
@@ -74,9 +85,53 @@ const RegistrationPage = ({ onBack }: RegistrationPageProps) => {
     loadCohorts();
   }, []);
 
+  const persistProfileAndSendQualifier = async () => {
+    const profileResponse = await fetch("/api/register/profile", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: formData.name,
+        university: formData.university,
+        cohortId: formData.cohortId,
+        stack: formData.stack,
+        github: formData.github,
+        availability: formData.availability,
+        intent: formData.intent,
+      }),
+    });
+
+    const profilePayload = (await profileResponse.json()) as { error?: string };
+
+    if (!profileResponse.ok) {
+      throw new Error(profilePayload.error ?? "Failed to save your profile.");
+    }
+
+    const qualifierResponse = await fetch("/api/qualifier/send", {
+      method: "POST",
+    });
+
+    if (!qualifierResponse.ok) {
+      const qualifierPayload = (await qualifierResponse.json()) as {
+        error?: string;
+      };
+
+      throw new Error(
+        qualifierPayload.error ??
+          "Profile saved, but sending qualifier email failed.",
+      );
+    }
+  };
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMessage(null);
+
+    if (!isLoaded || !signUp) {
+      setErrorMessage("Authentication system is still loading. Please retry.");
+      return;
+    }
 
     if (!formData.availability) {
       setErrorMessage("Please confirm your sprint availability.");
@@ -91,40 +146,60 @@ const RegistrationPage = ({ onBack }: RegistrationPageProps) => {
     setIsSubmitting(true);
 
     try {
-      const supabase = getSupabaseClient();
-      const configuredAppUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
-      const redirectBase =
-        configuredAppUrl && configuredAppUrl.length > 0
-          ? configuredAppUrl.replace(/\/$/, "")
-          : window.location.origin;
-
-      const { error } = await supabase.auth.signUp({
-        email: formData.email.trim(),
+      await signUp.create({
+        emailAddress: formData.email.trim(),
         password: formData.password,
-        options: {
-          emailRedirectTo: `${redirectBase}/auth/callback`,
-          data: {
-            name: formData.name.trim(),
-            university: formData.university.trim(),
-            stack: formData.stack.trim(),
-            github: formData.github.trim(),
-            availability: formData.availability,
-            intent: formData.intent.trim(),
-            cohort_id: formData.cohortId,
-          },
-        },
       });
 
-      if (error) {
-        setErrorMessage(error.message);
+      await signUp.prepareEmailAddressVerification({
+        strategy: "email_code",
+      });
+
+      setRequiresVerification(true);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Registration failed.";
+      setErrorMessage(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleVerify = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setErrorMessage(null);
+
+    if (!isLoaded || !signUp || !setActive) {
+      setErrorMessage("Authentication system is still loading. Please retry.");
+      return;
+    }
+
+    if (!verificationCode.trim()) {
+      setErrorMessage("Enter the verification code from your email.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const result = await signUp.attemptEmailAddressVerification({
+        code: verificationCode.trim(),
+      });
+
+      if (result.status !== "complete") {
+        setErrorMessage("Verification is incomplete. Please retry.");
         return;
       }
 
+      await setActive({ session: result.createdSessionId });
+      await persistProfileAndSendQualifier();
+
       setIsSubmitted(true);
+      setRequiresVerification(false);
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "Registration failed.",
-      );
+      const message =
+        error instanceof Error ? error.message : "Verification failed.";
+      setErrorMessage(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -151,203 +226,275 @@ const RegistrationPage = ({ onBack }: RegistrationPageProps) => {
           Founding Batch - Performance Filter Level 1
         </p>
 
-        <form onSubmit={handleSubmit} className="space-y-8">
-          <div className="space-y-2">
-            <label className="block text-[10px] font-black uppercase tracking-widest text-white/60">
-              Full Name
-            </label>
-            <input
-              required
-              type="text"
-              placeholder="John Doe"
-              className="w-full bg-white/5 border border-white/10 px-4 py-4 focus:outline-none focus:border-cyan-500 transition-colors font-bold text-white uppercase placeholder:text-white/10"
-              value={formData.name}
-              onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
-              }
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="block text-[10px] font-black uppercase tracking-widest text-white/60">
-              University
-            </label>
-            <UniversitySearch
-              value={formData.university}
-              onChange={(value) =>
-                setFormData((prev) => ({ ...prev, university: value }))
-              }
-              inputId="registration-university"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="block text-[10px] font-black uppercase tracking-widest text-white/60">
-              Email Address
-            </label>
-            <div className="relative">
-              <Mail
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20"
-                size={18}
-              />
+        {!requiresVerification && (
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="space-y-2">
+              <label
+                htmlFor="registration-name"
+                className="block text-[10px] font-black uppercase tracking-widest text-white/60"
+              >
+                Full Name
+              </label>
               <input
+                id="registration-name"
                 required
-                type="email"
-                autoComplete="email"
-                placeholder="name@university.edu"
-                className="w-full bg-white/5 border border-white/10 pl-12 pr-4 py-4 focus:outline-none focus:border-cyan-500 transition-colors font-bold text-white placeholder:text-white/10"
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="block text-[10px] font-black uppercase tracking-widest text-white/60">
-              Password
-            </label>
-            <input
-              required
-              type="password"
-              minLength={8}
-              autoComplete="new-password"
-              placeholder="At least 8 characters"
-              className="w-full bg-white/5 border border-white/10 px-4 py-4 focus:outline-none focus:border-cyan-500 transition-colors font-bold text-white placeholder:text-white/10"
-              value={formData.password}
-              onChange={(e) =>
-                setFormData({ ...formData, password: e.target.value })
-              }
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="block text-[10px] font-black uppercase tracking-widest text-white/60">
-              Cohort
-            </label>
-            <select
-              required
-              value={formData.cohortId}
-              disabled={isLoadingCohorts || cohorts.length === 0}
-              className="w-full bg-white/5 border border-white/10 px-4 py-4 focus:outline-none focus:border-cyan-500 transition-colors font-bold text-white"
-              onChange={(e) =>
-                setFormData({ ...formData, cohortId: e.target.value })
-              }
-            >
-              {cohorts.length === 0 && (
-                <option value="">
-                  {isLoadingCohorts ? "Loading cohorts..." : "No cohorts available"}
-                </option>
-              )}
-              {cohorts.map((cohort) => (
-                <option key={cohort.id} value={cohort.id}>
-                  {cohort.type} {cohort.is_active ? "(Active)" : ""}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="block text-[10px] font-black uppercase tracking-widest text-white/60">
-              Primary Tech Stack
-            </label>
-            <input
-              required
-              type="text"
-              placeholder="e.g. Node.js / React / Postgres"
-              className="w-full bg-white/5 border border-white/10 px-4 py-4 focus:outline-none focus:border-cyan-500 transition-colors font-bold text-white uppercase placeholder:text-white/10"
-              value={formData.stack}
-              onChange={(e) =>
-                setFormData({ ...formData, stack: e.target.value })
-              }
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="block text-[10px] font-black uppercase tracking-widest text-white/60">
-              <span className="flex justify-between">
-                <span>GitHub Profile</span>
-                <span>(Optional but Encouraged)</span>
-              </span>
-            </label>
-            <div className="relative">
-              <Github
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20"
-                size={18}
-              />
-              <input
                 type="text"
-                placeholder="github.com/username"
-                className="w-full bg-white/5 border border-white/10 pl-12 pr-4 py-4 focus:outline-none focus:border-cyan-500 transition-colors font-bold text-white placeholder:text-white/10"
-                value={formData.github}
+                placeholder="John Doe"
+                className="w-full bg-white/5 border border-white/10 px-4 py-4 focus:outline-none focus:border-cyan-500 transition-colors font-bold text-white uppercase placeholder:text-white/10"
+                value={formData.name}
                 onChange={(e) =>
-                  setFormData({ ...formData, github: e.target.value })
+                  setFormData({ ...formData, name: e.target.value })
                 }
               />
             </div>
-          </div>
 
-          <div className="space-y-4 pt-4 border-t border-white/5">
-            <label className="flex items-start gap-4 cursor-pointer group">
-              <div className="relative pt-1">
+            <div className="space-y-2">
+              <label
+                htmlFor="registration-university"
+                className="block text-[10px] font-black uppercase tracking-widest text-white/60"
+              >
+                University
+              </label>
+              <UniversitySearch
+                value={formData.university}
+                onChange={(value) =>
+                  setFormData((prev) => ({ ...prev, university: value }))
+                }
+                inputId="registration-university"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label
+                htmlFor="registration-email"
+                className="block text-[10px] font-black uppercase tracking-widest text-white/60"
+              >
+                Email Address
+              </label>
+              <div className="relative">
+                <Mail
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20"
+                  size={18}
+                />
                 <input
+                  id="registration-email"
                   required
-                  type="checkbox"
-                  className="peer hidden"
-                  checked={formData.availability}
+                  type="email"
+                  autoComplete="email"
+                  placeholder="name@university.edu"
+                  className="w-full bg-white/5 border border-white/10 pl-12 pr-4 py-4 focus:outline-none focus:border-cyan-500 transition-colors font-bold text-white placeholder:text-white/10"
+                  value={formData.email}
                   onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      availability: e.target.checked,
-                    })
+                    setFormData({ ...formData, email: e.target.value })
                   }
                 />
-                <div className="w-5 h-5 border-2 border-white/20 peer-checked:bg-cyan-500 peer-checked:border-cyan-500 transition-all" />
-                {formData.availability && (
-                  <CheckCircle2
-                    className="absolute top-1 left-0 text-black"
-                    size={20}
-                  />
-                )}
               </div>
-              <span className="text-[11px] font-black uppercase tracking-widest leading-relaxed text-white/60 group-hover:text-white transition-colors">
-                I confirm my availability for at least 2 hours/day for the 4-day
-                sprint cycle.
-              </span>
-            </label>
-          </div>
+            </div>
 
-          <div className="space-y-2">
-            <label className="block text-[10px] font-black uppercase tracking-widest text-white/60">
-              Short Written Intent (Why should you be selected?)
-            </label>
-            <textarea
-              required
-              rows={4}
-              placeholder="Detail your experience with high-pressure environments..."
-              className="w-full bg-white/5 border border-white/10 px-4 py-4 focus:outline-none focus:border-cyan-500 transition-colors font-bold text-white placeholder:text-white/10 resize-none"
-              value={formData.intent}
-              onChange={(e) =>
-                setFormData({ ...formData, intent: e.target.value })
-              }
-            />
-          </div>
+            <div className="space-y-2">
+              <label
+                htmlFor="registration-password"
+                className="block text-[10px] font-black uppercase tracking-widest text-white/60"
+              >
+                Password
+              </label>
+              <input
+                id="registration-password"
+                required
+                type="password"
+                minLength={8}
+                autoComplete="new-password"
+                placeholder="At least 8 characters"
+                className="w-full bg-white/5 border border-white/10 px-4 py-4 focus:outline-none focus:border-cyan-500 transition-colors font-bold text-white placeholder:text-white/10"
+                value={formData.password}
+                onChange={(e) =>
+                  setFormData({ ...formData, password: e.target.value })
+                }
+              />
+            </div>
 
-          {errorMessage && (
-            <p className="text-red-400 text-xs font-bold uppercase tracking-widest">
-              {errorMessage}
+            <div className="space-y-2">
+              <label
+                htmlFor="registration-cohort"
+                className="block text-[10px] font-black uppercase tracking-widest text-white/60"
+              >
+                Cohort
+              </label>
+              <select
+                id="registration-cohort"
+                required
+                value={formData.cohortId}
+                disabled={isLoadingCohorts || cohorts.length === 0}
+                className="w-full bg-white/5 border border-white/10 px-4 py-4 focus:outline-none focus:border-cyan-500 transition-colors font-bold text-white"
+                onChange={(e) =>
+                  setFormData({ ...formData, cohortId: e.target.value })
+                }
+              >
+                {cohorts.length === 0 && (
+                  <option value="">
+                    {isLoadingCohorts
+                      ? "Loading cohorts..."
+                      : "No cohorts available"}
+                  </option>
+                )}
+                {cohorts.map((cohort) => (
+                  <option key={cohort.id} value={cohort.id}>
+                    {cohort.type} {cohort.is_active ? "(Active)" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label
+                htmlFor="registration-stack"
+                className="block text-[10px] font-black uppercase tracking-widest text-white/60"
+              >
+                Primary Tech Stack
+              </label>
+              <input
+                id="registration-stack"
+                required
+                type="text"
+                placeholder="e.g. Node.js / React / Postgres"
+                className="w-full bg-white/5 border border-white/10 px-4 py-4 focus:outline-none focus:border-cyan-500 transition-colors font-bold text-white uppercase placeholder:text-white/10"
+                value={formData.stack}
+                onChange={(e) =>
+                  setFormData({ ...formData, stack: e.target.value })
+                }
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label
+                htmlFor="registration-github"
+                className="block text-[10px] font-black uppercase tracking-widest text-white/60"
+              >
+                <span className="flex justify-between">
+                  <span>GitHub Profile</span>
+                  <span>(Optional but Encouraged)</span>
+                </span>
+              </label>
+              <div className="relative">
+                <Github
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20"
+                  size={18}
+                />
+                <input
+                  id="registration-github"
+                  type="text"
+                  placeholder="github.com/username"
+                  className="w-full bg-white/5 border border-white/10 pl-12 pr-4 py-4 focus:outline-none focus:border-cyan-500 transition-colors font-bold text-white placeholder:text-white/10"
+                  value={formData.github}
+                  onChange={(e) =>
+                    setFormData({ ...formData, github: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4 pt-4 border-t border-white/5">
+              <label className="flex items-start gap-4 cursor-pointer group">
+                <div className="relative pt-1">
+                  <input
+                    required
+                    type="checkbox"
+                    className="peer hidden"
+                    checked={formData.availability}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        availability: e.target.checked,
+                      })
+                    }
+                  />
+                  <div className="w-5 h-5 border-2 border-white/20 peer-checked:bg-cyan-500 peer-checked:border-cyan-500 transition-all" />
+                  {formData.availability && (
+                    <CheckCircle2
+                      className="absolute top-1 left-0 text-black"
+                      size={20}
+                    />
+                  )}
+                </div>
+                <span className="text-[11px] font-black uppercase tracking-widest leading-relaxed text-white/60 group-hover:text-white transition-colors">
+                  I confirm my availability for at least 2 hours/day for the
+                  4-day sprint cycle.
+                </span>
+              </label>
+            </div>
+
+            <div className="space-y-2">
+              <label
+                htmlFor="registration-intent"
+                className="block text-[10px] font-black uppercase tracking-widest text-white/60"
+              >
+                Short Written Intent (Why should you be selected?)
+              </label>
+              <textarea
+                id="registration-intent"
+                required
+                rows={4}
+                placeholder="Detail your experience with high-pressure environments..."
+                className="w-full bg-white/5 border border-white/10 px-4 py-4 focus:outline-none focus:border-cyan-500 transition-colors font-bold text-white placeholder:text-white/10 resize-none"
+                value={formData.intent}
+                onChange={(e) =>
+                  setFormData({ ...formData, intent: e.target.value })
+                }
+              />
+            </div>
+
+            {errorMessage && (
+              <p className="text-red-400 text-xs font-bold uppercase tracking-widest">
+                {errorMessage}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={isSubmitting || isLoadingCohorts || !isLoaded}
+              className="w-full bg-cyan-500 text-black font-black py-6 uppercase tracking-[0.2em] italic hover:bg-cyan-400 transition-all hover:shadow-[0_0_30px_rgba(0,245,255,0.4)] disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {isSubmitting ? "Submitting..." : "Submit Application"}
+            </button>
+          </form>
+        )}
+
+        {requiresVerification && (
+          <form onSubmit={handleVerify} className="space-y-6">
+            <div className="flex items-center gap-3 text-cyan-400">
+              <ShieldCheck size={22} />
+              <h3 className="text-xl font-black uppercase tracking-widest">
+                Verify your email
+              </h3>
+            </div>
+            <p className="text-white/70 text-xs font-bold uppercase tracking-widest leading-relaxed">
+              Enter the code sent to {formData.email.trim()} to complete signup.
             </p>
-          )}
+            <input
+              required
+              type="text"
+              inputMode="numeric"
+              placeholder="Verification code"
+              className="w-full bg-white/5 border border-white/10 px-4 py-4 focus:outline-none focus:border-cyan-500 transition-colors font-bold text-white placeholder:text-white/10"
+              value={verificationCode}
+              onChange={(event) => setVerificationCode(event.target.value)}
+            />
 
-          <button
-            type="submit"
-            disabled={isSubmitting || isLoadingCohorts}
-            className="w-full bg-cyan-500 text-black font-black py-6 uppercase tracking-[0.2em] italic hover:bg-cyan-400 transition-all hover:shadow-[0_0_30px_rgba(0,245,255,0.4)] disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            {isSubmitting ? "Submitting..." : "Submit Application"}
-          </button>
-        </form>
+            {errorMessage && (
+              <p className="text-red-400 text-xs font-bold uppercase tracking-widest">
+                {errorMessage}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={isSubmitting || !isLoaded}
+              className="w-full bg-cyan-500 text-black font-black py-5 uppercase tracking-[0.2em] hover:bg-cyan-400 transition-all disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {isSubmitting ? "Verifying..." : "Verify and Continue"}
+            </button>
+          </form>
+        )}
       </div>
 
       {isSubmitted && (
@@ -360,13 +507,13 @@ const RegistrationPage = ({ onBack }: RegistrationPageProps) => {
               </div>
             </div>
             <h3 className="text-3xl font-black uppercase tracking-tighter mb-4 italic">
-              Verification Pending
+              Verification Complete
             </h3>
             <p className="text-white/70 font-bold mb-8 leading-relaxed uppercase tracking-widest text-xs">
-              A verification mail has been sent to your primary address.
+              Your profile is active.
               <br />
               <br />
-              The qualifier link will be sent on email verification.
+              The qualifier link has been emailed to your inbox.
               <br />
               <span className="text-cyan-500">All The Best!!!</span>
             </p>
