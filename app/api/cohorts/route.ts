@@ -7,7 +7,7 @@ export async function GET() {
     const { data, error } = await supabase
       .from("cohorts")
       .select(
-        "id, slug, type, apply_window, sprint_window, apply_by, qualifier_test_url, is_active, created_at",
+        "id, slug, type, apply_window, sprint_window, apply_by, is_active, created_at",
       )
       .order("is_active", { ascending: false })
       .order("created_at", { ascending: true });
