@@ -216,6 +216,16 @@ export default function CohortTestPage() {
                 )}
 
                 <div className="mt-6 flex flex-wrap gap-3">
+                  <Link
+                    href="/cohort-test/proctor"
+                    className={`px-6 py-3 font-black uppercase tracking-[0.2em] text-xs transition-colors ${
+                      payload.assignedCohort && payload.user.email_verified
+                        ? "bg-cyan-500 text-black hover:bg-cyan-400"
+                        : "bg-white/10 text-white/30 cursor-not-allowed pointer-events-none"
+                    }`}
+                  >
+                    Start Proctored Qualifier
+                  </Link>
                   <a
                     href={payload.assignedCohort?.qualifier_test_url ?? "#"}
                     target="_blank"
@@ -223,11 +233,11 @@ export default function CohortTestPage() {
                     className={`px-6 py-3 font-black uppercase tracking-[0.2em] text-xs transition-colors ${
                       payload.assignedCohort?.qualifier_test_url &&
                       payload.user.email_verified
-                        ? "bg-cyan-500 text-black hover:bg-cyan-400"
+                        ? "border border-cyan-500 text-cyan-500 hover:bg-cyan-500 hover:text-black"
                         : "bg-white/10 text-white/30 cursor-not-allowed pointer-events-none"
                     }`}
                   >
-                    Start Qualifier Test
+                    Open External Qualifier
                   </a>
                   <button
                     type="button"
