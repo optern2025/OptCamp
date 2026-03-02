@@ -15,6 +15,7 @@ import OpternLogo from "./components/OpternLogo";
 import GlowButton from "./components/GlowButton";
 import SectionTitle from "./components/SectionTitle";
 import RegistrationPage from "./components/RegistrationPage";
+import Leaderboard from "./components/Leaderboard";
 import type { Cohort as LandingCohort } from "@/lib/types";
 
 type PageType = "landing" | "register";
@@ -152,6 +153,25 @@ export default function Home() {
 
   const handleApplyClick = () => {
     setCurrentPage("register");
+  };
+
+  const scrollToLandingSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
+  const handleLandingAnchorClick = (sectionId: string) => {
+    if (currentPage === "landing") {
+      scrollToLandingSection(sectionId);
+      return;
+    }
+
+    setCurrentPage("landing");
+    setTimeout(() => {
+      scrollToLandingSection(sectionId);
+    }, 0);
   };
 
   return (
@@ -541,6 +561,8 @@ export default function Home() {
             </div>
           </section>
 
+          <Leaderboard id="leaderboard" />
+
           {/* SECTION 9: FINAL CTA */}
           <section className="py-24 md:py-60 relative z-10 text-center">
             <div className="container mx-auto px-4 sm:px-6">
@@ -579,7 +601,7 @@ export default function Home() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setCurrentPage("landing")}
+                    onClick={() => handleLandingAnchorClick("leaderboard")}
                     className="hover:text-cyan-500 transition-colors shrink-0"
                   >
                     Leaderboard
