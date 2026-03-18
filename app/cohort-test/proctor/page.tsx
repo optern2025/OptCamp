@@ -3,7 +3,14 @@
 import { SignedIn, SignedOut, SignInButton, SignUpButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { hasClerkPublishableKey } from "@/lib/clerkEnv";
 
 interface ProctorQuestion {
@@ -804,5 +811,9 @@ export default function ProctoredQualifierPage() {
     );
   }
 
-  return <ProctoredQualifierPageWithAuth />;
+  return (
+    <Suspense fallback={null}>
+      <ProctoredQualifierPageWithAuth />
+    </Suspense>
+  );
 }

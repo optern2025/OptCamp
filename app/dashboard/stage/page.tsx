@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
   type FormEvent,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -325,5 +326,9 @@ export default function DashboardStagePage() {
     );
   }
 
-  return <DashboardStagePageWithAuth />;
+  return (
+    <Suspense fallback={null}>
+      <DashboardStagePageWithAuth />
+    </Suspense>
+  );
 }
