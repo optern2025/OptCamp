@@ -323,7 +323,7 @@ function DashboardPageWithAuth() {
                           </div>
                           <p className="mt-3 text-sm font-bold uppercase tracking-[0.16em] text-white/65">
                             {membership.latest_qualifier_attempt?.feedback ??
-                              "Complete the proctored qualifier to unlock cohort stages."}
+                              "Complete the qualifier to unlock cohort stages."}
                           </p>
                           {action && (
                             <Link

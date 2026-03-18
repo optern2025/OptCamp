@@ -14,7 +14,7 @@ It now handles:
 2. Candidate applies from the landing page (`/`) using a shortened application form.
 3. The app upserts the candidate profile in `public.users` and links the application in `public.user_cohorts`.
 4. Candidate opens `/dashboard` to see all applied and joined cohorts.
-5. Candidate launches a cohort-specific proctored qualifier.
+5. Candidate launches a cohort-specific timed qualifier.
 6. If the qualifier score is `70+`, the user is automatically enrolled in that cohort.
 7. Enrolled users unlock cohort stage tests progressively, one stage at a time.
 

@@ -435,7 +435,7 @@ function QualifierPageFallback() {
 }
 
 export default function ProctoredQualifierPage() {
-  if (!hasClerkPublishableKey()) {
+  if (!hasClerkPublishableKey) {
     return (
       <main className="min-h-screen bg-[#050505] px-4 py-8 text-white">
         <section className="mx-auto max-w-2xl border border-white/10 bg-black/40 p-8">
