@@ -4,6 +4,7 @@ import { SignedIn, SignedOut, SignInButton, SignUpButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { hasClerkPublishableKey } from "@/lib/clerkEnv";
 
 interface ProctorQuestion {
   id: number;
@@ -41,7 +42,7 @@ declare global {
   }
 }
 
-export default function ProctoredQualifierPage() {
+function ProctoredQualifierPageWithAuth() {
   const searchParams = useSearchParams();
   const cohortId = searchParams.get("cohortId") ?? "";
   const [portal, setPortal] = useState<PortalState>("loading");
@@ -714,7 +715,9 @@ export default function ProctoredQualifierPage() {
                       result?.passed ? "text-emerald-300" : "text-amber-200"
                     }`}
                   >
-                    {result?.passed ? "Qualifier Passed" : "Qualifier Not Cleared"}
+                    {result?.passed
+                      ? "Qualifier Passed"
+                      : "Qualifier Not Cleared"}
                   </p>
                   <p className="text-sm uppercase tracking-widest font-bold text-white/70 border-y border-white/10 py-5">
                     {result?.feedback}
@@ -782,4 +785,24 @@ export default function ProctoredQualifierPage() {
       `}</style>
     </main>
   );
+}
+
+export default function ProctoredQualifierPage() {
+  if (!hasClerkPublishableKey) {
+    return (
+      <main className="min-h-screen bg-[#071018] px-4 py-10 text-white">
+        <section className="mx-auto max-w-4xl rounded-[24px] border border-amber-400/20 bg-amber-400/10 p-8">
+          <h1 className="text-3xl font-black uppercase tracking-tight">
+            Qualifier auth is not configured
+          </h1>
+          <p className="mt-4 text-sm font-bold uppercase tracking-[0.16em] text-white/65">
+            Add <code>NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY</code> in this
+            environment to enable the proctored qualifier flow.
+          </p>
+        </section>
+      </main>
+    );
+  }
+
+  return <ProctoredQualifierPageWithAuth />;
 }

@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 
 interface OpternLogoProps {
   className?: string;
@@ -23,6 +23,8 @@ const OpternLogo: React.FC<OpternLogoProps> = ({
     <div className="relative flex items-center justify-center shrink-0">
       <svg
         viewBox="0 0 100 100"
+        role="img"
+        aria-label="Optern logo"
         className="w-12 h-12 xs:w-16 xs:h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 transition-all duration-500"
         style={{
           filter:
@@ -31,6 +33,7 @@ const OpternLogo: React.FC<OpternLogoProps> = ({
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
       >
+        <title>Optern logo</title>
         <path
           d="M50 10L15 30L50 50L85 30L50 10Z"
           stroke="#00F5FF"
@@ -43,7 +46,14 @@ const OpternLogo: React.FC<OpternLogoProps> = ({
           strokeWidth="3"
           strokeLinejoin="round"
         />
-        <line x1="22" y1="30" x2="22" y2="40" stroke="#00F5FF" strokeWidth="2" />
+        <line
+          x1="22"
+          y1="30"
+          x2="22"
+          y2="40"
+          stroke="#00F5FF"
+          strokeWidth="2"
+        />
         <circle cx="22" cy="42" r="2" fill="#00F5FF" />
         <path
           d="M18 58C18 58 35 63 48 65V88C35 86 18 80 18 80V58Z"

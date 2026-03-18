@@ -3,7 +3,14 @@
 import { SignedIn, SignedOut, SignInButton, SignUpButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  type FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { hasClerkPublishableKey } from "@/lib/clerkEnv";
 import type { Cohort, CohortStageProgress } from "@/lib/types";
 
 interface StagePayload {
@@ -18,7 +25,7 @@ interface StageGradeResponse {
   passed: boolean;
 }
 
-export default function DashboardStagePage() {
+function DashboardStagePageWithAuth() {
   const searchParams = useSearchParams();
   const cohortId = searchParams.get("cohortId") ?? "";
   const stageId = searchParams.get("stageId") ?? "";
@@ -201,7 +208,9 @@ export default function DashboardStagePage() {
                   {payload.stage.description}
                 </p>
                 <div className="mt-6 flex flex-wrap gap-3 text-[10px] font-black uppercase tracking-[0.24em] text-white/50">
-                  <span>{payload.stage.duration_minutes} minute suggested window</span>
+                  <span>
+                    {payload.stage.duration_minutes} minute suggested window
+                  </span>
                   <span>{payload.stage.questions.length} prompts</span>
                   <span>status {payload.stage.status}</span>
                 </div>
@@ -297,4 +306,24 @@ export default function DashboardStagePage() {
       </div>
     </main>
   );
+}
+
+export default function DashboardStagePage() {
+  if (!hasClerkPublishableKey) {
+    return (
+      <main className="min-h-screen bg-[#071018] px-4 py-10 text-white">
+        <section className="mx-auto max-w-4xl rounded-[24px] border border-amber-400/20 bg-amber-400/10 p-8">
+          <h1 className="text-3xl font-black uppercase tracking-tight">
+            Stage access is unavailable
+          </h1>
+          <p className="mt-4 text-sm font-bold uppercase tracking-[0.16em] text-white/65">
+            Add <code>NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY</code> to render the
+            authenticated stage flow in this deployment.
+          </p>
+        </section>
+      </main>
+    );
+  }
+
+  return <DashboardStagePageWithAuth />;
 }

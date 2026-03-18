@@ -60,7 +60,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const existingProfile = await getProfileByClerkUserId(supabase, authUser.userId);
+    const existingProfile = await getProfileByClerkUserId(
+      supabase,
+      authUser.userId,
+    );
 
     let userId = existingProfile?.id ?? null;
 
@@ -133,9 +136,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const preservedStatus = new Set<UserCohortStatus>(["enrolled", "completed"]);
+    const preservedStatus = new Set<UserCohortStatus>([
+      "enrolled",
+      "completed",
+    ]);
     const nextStatus: UserCohortStatus =
-      existingLink && preservedStatus.has(existingLink.status as UserCohortStatus)
+      existingLink &&
+      preservedStatus.has(existingLink.status as UserCohortStatus)
         ? (existingLink.status as UserCohortStatus)
         : "applied";
 
@@ -145,17 +152,32 @@ export async function POST(request: NextRequest) {
         cohort_id: cohortId,
         status: nextStatus,
         applied_at: new Date().toISOString(),
-        qualifier_score: nextStatus === "applied" ? null : existingLink?.qualifier_score ?? null,
+        qualifier_score:
+          nextStatus === "applied"
+            ? null
+            : (existingLink?.qualifier_score ?? null),
         qualifier_feedback:
-          nextStatus === "applied" ? null : existingLink?.qualifier_feedback ?? null,
+          nextStatus === "applied"
+            ? null
+            : (existingLink?.qualifier_feedback ?? null),
         qualifier_started_at:
-          nextStatus === "applied" ? null : existingLink?.qualifier_started_at ?? null,
+          nextStatus === "applied"
+            ? null
+            : (existingLink?.qualifier_started_at ?? null),
         qualifier_submitted_at:
-          nextStatus === "applied" ? null : existingLink?.qualifier_submitted_at ?? null,
-        qualified_at: nextStatus === "applied" ? null : existingLink?.qualified_at ?? null,
-        enrolled_at: nextStatus === "applied" ? null : existingLink?.enrolled_at ?? null,
+          nextStatus === "applied"
+            ? null
+            : (existingLink?.qualifier_submitted_at ?? null),
+        qualified_at:
+          nextStatus === "applied"
+            ? null
+            : (existingLink?.qualified_at ?? null),
+        enrolled_at:
+          nextStatus === "applied" ? null : (existingLink?.enrolled_at ?? null),
         completed_at:
-          nextStatus === "completed" ? existingLink?.completed_at ?? null : null,
+          nextStatus === "completed"
+            ? (existingLink?.completed_at ?? null)
+            : null,
       },
       { onConflict: "user_id,cohort_id" },
     );

@@ -28,5 +28,7 @@
 }
 
 .animate-in {
-  animation: fade-in 0.7s ease-out, slide-in-from-bottom 0.7s ease-out;
+  animation:
+    fade-in 0.7s ease-out,
+    slide-in-from-bottom 0.7s ease-out;
 }

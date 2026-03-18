@@ -91,7 +91,8 @@ function buildUserProfile(
   return {
     id: profile?.id ?? authUser.userId,
     email: authUser.email,
-    name: profile?.name || authUser.name || fallbackNameFromEmail(authUser.email),
+    name:
+      profile?.name || authUser.name || fallbackNameFromEmail(authUser.email),
     university: profile?.university ?? "",
     stack: profile?.stack ?? "",
     github: profile?.github ?? null,
@@ -139,7 +140,8 @@ function buildStageProgress(
   attemptsByStageId: Map<string, UserCohortStageAttempt>,
   membershipStatus: UserCohortStatus,
 ): CohortStageProgress[] {
-  const hasQualifierAccess = membershipStatus === "enrolled" || membershipStatus === "completed";
+  const hasQualifierAccess =
+    membershipStatus === "enrolled" || membershipStatus === "completed";
   let previousPassed = hasQualifierAccess;
 
   return stages.map((stage) => {
@@ -273,7 +275,10 @@ export async function loadDashboardData(
     stagesByCohort.set(row.cohort_id, current);
   }
 
-  const attemptsByCohort = new Map<string, Map<string, UserCohortStageAttempt>>();
+  const attemptsByCohort = new Map<
+    string,
+    Map<string, UserCohortStageAttempt>
+  >();
   for (const row of (stageAttemptRows ?? []) as DbStageAttemptRow[]) {
     const current = attemptsByCohort.get(row.cohort_id) ?? new Map();
     if (!current.has(row.stage_id)) {
@@ -306,7 +311,8 @@ export async function loadDashboardData(
         qualified_at: row.qualified_at,
         enrolled_at: row.enrolled_at,
         completed_at: row.completed_at,
-        latest_qualifier_attempt: latestQualifierByCohort.get(row.cohort_id) ?? null,
+        latest_qualifier_attempt:
+          latestQualifierByCohort.get(row.cohort_id) ?? null,
         stages,
       };
 

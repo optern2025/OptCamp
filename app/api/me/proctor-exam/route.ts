@@ -144,8 +144,11 @@ export async function GET(request: NextRequest) {
       | CohortRecord[]
       | null
       | undefined;
-    const cohort = Array.isArray(rawCohort) ? (rawCohort[0] ?? null) : rawCohort ?? null;
-    const status = (activeCohortLink?.status as UserCohortStatus | null) ?? null;
+    const cohort = Array.isArray(rawCohort)
+      ? (rawCohort[0] ?? null)
+      : (rawCohort ?? null);
+    const status =
+      (activeCohortLink?.status as UserCohortStatus | null) ?? null;
 
     if (!cohort) {
       return NextResponse.json(

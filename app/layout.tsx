@@ -8,6 +8,7 @@ import {
 } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { hasClerkPublishableKey } from "@/lib/clerkEnv";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -31,12 +32,12 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return (
-    <ClerkProvider>
-      <html lang="en">
-        <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        >
+  const body = (
+    <html lang="en">
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        {hasClerkPublishableKey && (
           <div className="fixed right-4 top-4 z-[200] flex items-center gap-2">
             <SignedOut>
               <SignInButton mode="modal">
@@ -60,9 +61,15 @@ export default function RootLayout({
               <UserButton />
             </SignedIn>
           </div>
-          {children}
-        </body>
-      </html>
-    </ClerkProvider>
+        )}
+        {children}
+      </body>
+    </html>
   );
+
+  if (!hasClerkPublishableKey) {
+    return body;
+  }
+
+  return <ClerkProvider>{body}</ClerkProvider>;
 }

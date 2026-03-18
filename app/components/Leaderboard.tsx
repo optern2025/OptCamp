@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import type { LucideIcon } from "lucide-react";
 import {
   BrainCircuit,
   ChevronDown,
@@ -10,7 +10,7 @@ import {
   Smartphone,
   Star,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import SectionTitle from "./SectionTitle";
 
 type CohortId = "backend" | "ai-ml" | "fullstack" | "mobile";
@@ -70,7 +70,8 @@ const LEADERBOARD_DATA: LeaderboardEntry[] = [
     score: 2420,
     progress: 82,
     lastActive: "14 Oct • 10:23 am",
-    college: "International Institute of Information Technology (IIIT) Hyderabad",
+    college:
+      "International Institute of Information Technology (IIIT) Hyderabad",
     avatar: "PU",
     cohort: "backend",
   },
@@ -110,7 +111,8 @@ const LEADERBOARD_DATA: LeaderboardEntry[] = [
     score: 2750,
     progress: 92,
     lastActive: "15 Oct • 09:23 pm",
-    college: "VNR Vignana Jyothi Institute of Engineering and Technology (VNRVJIET)",
+    college:
+      "VNR Vignana Jyothi Institute of Engineering and Technology (VNRVJIET)",
     avatar: "A",
     cohort: "ai-ml",
   },
@@ -120,7 +122,8 @@ const LEADERBOARD_DATA: LeaderboardEntry[] = [
     score: 2500,
     progress: 88,
     lastActive: "13 Jan • 08:01 pm",
-    college: "Gokaraju Rangaraju Institute of Engineering and Technology (GRIET)",
+    college:
+      "Gokaraju Rangaraju Institute of Engineering and Technology (GRIET)",
     avatar: "K",
     cohort: "ai-ml",
   },
@@ -219,7 +222,10 @@ export default function Leaderboard({ id = "leaderboard" }: LeaderboardProps) {
   ].filter((item) => item !== null);
 
   return (
-    <section id={id} className="py-20 md:py-40 relative z-10 bg-black/60 border-y border-white/10">
+    <section
+      id={id}
+      className="py-20 md:py-40 relative z-10 bg-black/60 border-y border-white/10"
+    >
       <div className="container mx-auto px-4 sm:px-6">
         <div className="max-w-6xl w-full mx-auto">
           <div className="text-center mb-12">
@@ -333,7 +339,9 @@ export default function Leaderboard({ id = "leaderboard" }: LeaderboardProps) {
                 >
                   <div className="flex items-center gap-3">
                     <Filter size={14} className="text-cyan-500" />
-                    <span className="truncate max-w-[180px]">{collegeFilter}</span>
+                    <span className="truncate max-w-[180px]">
+                      {collegeFilter}
+                    </span>
                   </div>
                   <ChevronDown
                     size={14}
@@ -377,7 +385,10 @@ export default function Leaderboard({ id = "leaderboard" }: LeaderboardProps) {
                 </thead>
                 <tbody>
                   {sortedData.map((item, idx) => (
-                    <tr key={item.id} className="group hover:bg-white/[0.04] transition-all bg-white/[0.01]">
+                    <tr
+                      key={item.id}
+                      className="group hover:bg-white/[0.04] transition-all bg-white/[0.01]"
+                    >
                       <td className="px-6 py-6 first:rounded-l-2xl font-mono font-bold text-white/40 group-hover:text-cyan-500">
                         #{idx + 1}
                       </td>

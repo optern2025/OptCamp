@@ -1,9 +1,16 @@
 "use client";
 
-import { SignedIn, SignedOut, SignInButton, SignUpButton, useUser } from "@clerk/nextjs";
+import {
+  SignedIn,
+  SignedOut,
+  SignInButton,
+  SignUpButton,
+  useUser,
+} from "@clerk/nextjs";
 import { ArrowLeft, CheckCircle2, Github, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { hasClerkPublishableKey } from "@/lib/clerkEnv";
 import type { Cohort, DashboardPayload } from "@/lib/types";
 import UniversitySearch from "./UniversitySearch";
 
@@ -30,10 +37,10 @@ const blankForm: FormData = {
   intent: "",
 };
 
-const RegistrationPage = ({
+function RegistrationPageWithAuth({
   onBack,
   initialCohortId,
-}: RegistrationPageProps) => {
+}: RegistrationPageProps) {
   const { user, isLoaded } = useUser();
   const [formData, setFormData] = useState<FormData>(blankForm);
   const [cohorts, setCohorts] = useState<Cohort[]>([]);
@@ -78,8 +85,9 @@ const RegistrationPage = ({
         const active = nextCohorts.find((cohort) => cohort.is_active);
         const preferredCohortId =
           initialCohortId ||
-          payload.memberships.find((membership) => membership.status === "applied")
-            ?.cohort.id ||
+          payload.memberships.find(
+            (membership) => membership.status === "applied",
+          )?.cohort.id ||
           active?.id ||
           nextCohorts[0]?.id ||
           "";
@@ -185,7 +193,8 @@ const RegistrationPage = ({
               Apply to a Cohort
             </h2>
             <p className="max-w-2xl text-xs font-bold uppercase tracking-[0.18em] text-white/50">
-              Identity comes from your signed-in account. Add the sprint details we need and we&apos;ll wire the cohort into your dashboard.
+              Identity comes from your signed-in account. Add the sprint details
+              we need and we&apos;ll wire the cohort into your dashboard.
             </p>
           </div>
 
@@ -195,7 +204,8 @@ const RegistrationPage = ({
                 Sign in first
               </h3>
               <p className="mt-3 text-xs font-bold uppercase tracking-[0.18em] text-white/50">
-                Your name and email come from Clerk, so the application opens only after authentication.
+                Your name and email come from Clerk, so the application opens
+                only after authentication.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <SignInButton mode="modal">
@@ -278,7 +288,9 @@ const RegistrationPage = ({
                 >
                   {cohorts.length === 0 && (
                     <option value="">
-                      {isLoadingCohorts ? "Loading cohorts..." : "No cohorts available"}
+                      {isLoadingCohorts
+                        ? "Loading cohorts..."
+                        : "No cohorts available"}
                     </option>
                   )}
                   {cohorts.map((cohort) => (
@@ -304,7 +316,10 @@ const RegistrationPage = ({
                   className="w-full rounded-[18px] border border-white/10 bg-white/5 px-4 py-4 font-bold text-white uppercase placeholder:text-white/15 focus:border-cyan-500 focus:outline-none"
                   value={formData.stack}
                   onChange={(event) =>
-                    setFormData((prev) => ({ ...prev, stack: event.target.value }))
+                    setFormData((prev) => ({
+                      ...prev,
+                      stack: event.target.value,
+                    }))
                   }
                 />
               </div>
@@ -331,7 +346,10 @@ const RegistrationPage = ({
                     className="w-full rounded-[18px] border border-white/10 bg-white/5 py-4 pl-12 pr-4 font-bold text-white placeholder:text-white/15 focus:border-cyan-500 focus:outline-none"
                     value={formData.github}
                     onChange={(event) =>
-                      setFormData((prev) => ({ ...prev, github: event.target.value }))
+                      setFormData((prev) => ({
+                        ...prev,
+                        github: event.target.value,
+                      }))
                     }
                   />
                 </div>
@@ -361,7 +379,8 @@ const RegistrationPage = ({
                     )}
                   </div>
                   <span className="text-[11px] font-black uppercase tracking-widest leading-relaxed text-white/60">
-                    I can commit at least 2 hours/day during the sprint cycle for {activeCohortLabel}.
+                    I can commit at least 2 hours/day during the sprint cycle
+                    for {activeCohortLabel}.
                   </span>
                 </label>
               </div>
@@ -381,7 +400,10 @@ const RegistrationPage = ({
                   className="w-full resize-none rounded-[18px] border border-white/10 bg-white/5 px-4 py-4 font-bold text-white placeholder:text-white/15 focus:border-cyan-500 focus:outline-none"
                   value={formData.intent}
                   onChange={(event) =>
-                    setFormData((prev) => ({ ...prev, intent: event.target.value }))
+                    setFormData((prev) => ({
+                      ...prev,
+                      intent: event.target.value,
+                    }))
                   }
                 />
               </div>
@@ -417,7 +439,8 @@ const RegistrationPage = ({
               Application Received
             </h3>
             <p className="mt-4 text-xs font-bold uppercase tracking-[0.18em] text-white/65">
-              Your cohort application is now live in the dashboard. From there you can launch the qualifier and track progressive unlocks.
+              Your cohort application is now live in the dashboard. From there
+              you can launch the qualifier and track progressive unlocks.
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
               <Link
@@ -439,6 +462,40 @@ const RegistrationPage = ({
       )}
     </div>
   );
+}
+
+const RegistrationPage = (props: RegistrationPageProps) => {
+  if (!hasClerkPublishableKey) {
+    return (
+      <div className="min-h-screen px-4 pb-20 pt-32">
+        <div className="mx-auto max-w-3xl">
+          <button
+            type="button"
+            onClick={props.onBack}
+            className="mb-8 flex items-center gap-2 text-xs font-black uppercase tracking-[0.24em] text-cyan-400 transition-colors hover:text-white"
+          >
+            <ArrowLeft size={16} /> Back to Simulation Specs
+          </button>
+
+          <div className="rounded-[32px] border border-amber-400/20 bg-amber-400/10 p-8 md:p-12">
+            <p className="text-[11px] font-black uppercase tracking-[0.32em] text-amber-200/75">
+              Authentication Unavailable
+            </p>
+            <h2 className="mt-4 text-3xl font-black uppercase tracking-tight">
+              Add Clerk keys to enable applications
+            </h2>
+            <p className="mt-4 max-w-2xl text-sm font-bold uppercase tracking-[0.16em] text-white/65">
+              This deployment is missing{" "}
+              <code>NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY</code>, so the
+              authenticated application flow is hidden during build and preview.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return <RegistrationPageWithAuth {...props} />;
 };
 
 export default RegistrationPage;

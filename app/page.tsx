@@ -1,23 +1,24 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import React, { useState, useEffect } from "react";
 import {
+  AlertCircle,
+  ChevronRight,
+  Clock,
   ShieldAlert,
+  Target,
   Terminal,
   Zap,
-  Target,
-  ChevronRight,
-  AlertCircle,
-  Clock,
 } from "lucide-react";
-import OpternLogo from "./components/OpternLogo";
-import GlowButton from "./components/GlowButton";
-import SectionTitle from "./components/SectionTitle";
-import RegistrationPage from "./components/RegistrationPage";
-import Leaderboard from "./components/Leaderboard";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import type React from "react";
+import { Suspense, useEffect, useState } from "react";
 import type { Cohort as LandingCohort } from "@/lib/types";
+import GlowButton from "./components/GlowButton";
+import Leaderboard from "./components/Leaderboard";
+import OpternLogo from "./components/OpternLogo";
+import RegistrationPage from "./components/RegistrationPage";
+import SectionTitle from "./components/SectionTitle";
 
 type PageType = "landing" | "register";
 
@@ -119,7 +120,7 @@ const noItems: NoItem[] = [
   { icon: Clock, label: "NO EXTENSIONS" },
 ];
 
-export default function Home() {
+function HomePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [scrolled, setScrolled] = useState(false);
@@ -138,7 +139,9 @@ export default function Home() {
       try {
         const response = await fetch("/api/cohorts");
         if (!response.ok) return;
-        const payload = (await response.json()) as { cohorts?: LandingCohort[] };
+        const payload = (await response.json()) as {
+          cohorts?: LandingCohort[];
+        };
         if (payload.cohorts && payload.cohorts.length > 0) {
           setCohorts(payload.cohorts);
         }
@@ -152,7 +155,9 @@ export default function Home() {
 
   // Reset scroll on page change
   useEffect(() => {
-    window.scrollTo(0, 0);
+    if (currentPage === "landing" || currentPage === "register") {
+      window.scrollTo(0, 0);
+    }
   }, [currentPage]);
 
   useEffect(() => {
@@ -212,20 +217,17 @@ export default function Home() {
 
       {/* NAVIGATION */}
       <nav
-        className={`fixed top-0 w-full z-50 transition-all duration-500 ${scrolled || currentPage === "register"
+        className={`fixed top-0 w-full z-50 transition-all duration-500 ${
+          scrolled || currentPage === "register"
             ? "bg-[#0B0F14]/95 backdrop-blur-xl border-b border-white/5 py-3"
             : "bg-transparent py-4 xs:py-8"
-          }`}
+        }`}
       >
         <div className="container mx-auto px-4 sm:px-6 flex justify-between items-center">
-          <div
+          <button
+            type="button"
             className="flex items-center gap-2 sm:gap-4 group cursor-pointer transition-transform hover:scale-105"
             onClick={() => setCurrentPage("landing")}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") setCurrentPage("landing");
-            }}
-            role="button"
-            tabIndex={0}
           >
             <OpternLogo
               showText={true}
@@ -233,7 +235,7 @@ export default function Home() {
               isScrolled={scrolled || currentPage === "register"}
               className="origin-left"
             />
-          </div>
+          </button>
           <div className="hidden lg:flex gap-6 xl:gap-10 text-[10px] font-black tracking-[0.3em] uppercase text-white/40">
             <button
               type="button"
@@ -256,7 +258,10 @@ export default function Home() {
             >
               Apply
             </button>
-            <Link href="/dashboard" className="hover:text-cyan-500 transition-colors">
+            <Link
+              href="/dashboard"
+              className="hover:text-cyan-500 transition-colors"
+            >
               Dashboard
             </Link>
           </div>
@@ -396,7 +401,10 @@ export default function Home() {
           </section>
 
           {/* SECTION 4: HOW IT WORKS */}
-          <section id="gauntlet" className="py-20 md:py-40 relative z-10 bg-white/5">
+          <section
+            id="gauntlet"
+            className="py-20 md:py-40 relative z-10 bg-white/5"
+          >
             <div className="container mx-auto px-4 sm:px-6">
               <SectionTitle className="text-center italic">
                 The 5-Day Gauntlet
@@ -464,10 +472,11 @@ export default function Home() {
                 {cohorts.map((cohort) => (
                   <div
                     key={cohort.id}
-                    className={`p-7 md:p-10 border transition-all duration-500 flex flex-col justify-between h-full ${cohort.is_active
+                    className={`p-7 md:p-10 border transition-all duration-500 flex flex-col justify-between h-full ${
+                      cohort.is_active
                         ? "border-cyan-500 bg-cyan-500/5 shadow-[0_0_30px_rgba(0,245,255,0.1)]"
                         : "border-white/10 opacity-40 hover:opacity-100"
-                      }`}
+                    }`}
                   >
                     <div>
                       <h3 className="text-xl sm:text-2xl font-black uppercase mb-6 md:mb-10 tracking-tighter leading-none">
@@ -476,11 +485,15 @@ export default function Home() {
                       <div className="space-y-4 md:space-y-6 mb-8 md:mb-10">
                         <div className="flex justify-between text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-white/40">
                           <span>Apps:</span>
-                          <span className="text-white">{cohort.apply_window}</span>
+                          <span className="text-white">
+                            {cohort.apply_window}
+                          </span>
                         </div>
                         <div className="flex justify-between text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-white/40">
                           <span>Sprint:</span>
-                          <span className="text-white">{cohort.sprint_window}</span>
+                          <span className="text-white">
+                            {cohort.sprint_window}
+                          </span>
                         </div>
                         <div className="pt-4 md:pt-6 border-t border-white/10 flex justify-between text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-cyan-500">
                           <span>Apply By:</span>
@@ -492,10 +505,11 @@ export default function Home() {
                       type="button"
                       onClick={() => handleApplyClick(cohort.id)}
                       disabled={!cohort.is_active}
-                      className={`w-full py-3 md:py-4 text-[8px] sm:text-[10px] font-black uppercase tracking-widest border transition-all ${cohort.is_active
+                      className={`w-full py-3 md:py-4 text-[8px] sm:text-[10px] font-black uppercase tracking-widest border transition-all ${
+                        cohort.is_active
                           ? "bg-cyan-500 text-black border-cyan-500 hover:bg-cyan-400"
                           : "border-white/20 text-white/20"
-                        }`}
+                      }`}
                     >
                       {cohort.is_active ? "Apply to Batch" : "Waitlist"}
                     </button>
@@ -629,7 +643,10 @@ export default function Home() {
                   >
                     Legal
                   </button>
-                  <Link href="/dashboard" className="hover:text-cyan-500 transition-colors shrink-0">
+                  <Link
+                    href="/dashboard"
+                    className="hover:text-cyan-500 transition-colors shrink-0"
+                  >
                     Dashboard
                   </Link>
                 </div>
@@ -644,5 +661,13 @@ export default function Home() {
         />
       )}
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={null}>
+      <HomePage />
+    </Suspense>
   );
 }

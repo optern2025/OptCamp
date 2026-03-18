@@ -14,7 +14,9 @@ export async function GET() {
 
     return NextResponse.json({
       user: payload.user,
-      pursuingCohorts: payload.memberships.map((membership) => membership.cohort),
+      pursuingCohorts: payload.memberships.map(
+        (membership) => membership.cohort,
+      ),
       cohorts: payload.cohorts,
       memberships: payload.memberships,
       summary: payload.summary,

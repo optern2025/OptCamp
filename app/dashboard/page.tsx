@@ -1,15 +1,21 @@
 "use client";
 
+import { SignedIn, SignedOut, SignInButton, SignUpButton } from "@clerk/nextjs";
 import {
-  SignedIn,
-  SignedOut,
-  SignInButton,
-  SignUpButton,
-} from "@clerk/nextjs";
+  ArrowRight,
+  CheckCircle2,
+  Clock3,
+  Layers3,
+  ShieldCheck,
+} from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowRight, CheckCircle2, Clock3, Layers3, ShieldCheck } from "lucide-react";
-import type { DashboardPayload, CohortMembership, CohortStageProgress } from "@/lib/types";
+import { hasClerkPublishableKey } from "@/lib/clerkEnv";
+import type {
+  CohortMembership,
+  CohortStageProgress,
+  DashboardPayload,
+} from "@/lib/types";
 
 function getMembershipTone(status: CohortMembership["status"]) {
   switch (status) {
@@ -60,7 +66,7 @@ function nextAction(membership: CohortMembership) {
   return null;
 }
 
-export default function DashboardPage() {
+function DashboardPageWithAuth() {
   const [payload, setPayload] = useState<DashboardPayload | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -71,7 +77,9 @@ export default function DashboardPage() {
 
     try {
       const response = await fetch("/api/me/dashboard");
-      const data = (await response.json()) as DashboardPayload & { error?: string };
+      const data = (await response.json()) as DashboardPayload & {
+        error?: string;
+      };
 
       if (response.status === 401) {
         setPayload(null);
@@ -88,7 +96,9 @@ export default function DashboardPage() {
     } catch (error) {
       setPayload(null);
       setErrorMessage(
-        error instanceof Error ? error.message : "Failed to load your dashboard.",
+        error instanceof Error
+          ? error.message
+          : "Failed to load your dashboard.",
       );
     } finally {
       setIsLoading(false);
@@ -114,7 +124,8 @@ export default function DashboardPage() {
                 Your Cohorts. Your Progress.
               </h1>
               <p className="max-w-2xl text-sm font-bold uppercase tracking-[0.18em] text-white/55">
-                Track applications, clear the qualifier, and unlock the sprint stages one by one.
+                Track applications, clear the qualifier, and unlock the sprint
+                stages one by one.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -140,7 +151,8 @@ export default function DashboardPage() {
               Sign in to open your dashboard
             </h2>
             <p className="mt-2 text-xs font-bold uppercase tracking-[0.2em] text-white/55">
-              Your applications, qualifier state, and cohort stages live behind your account.
+              Your applications, qualifier state, and cohort stages live behind
+              your account.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <SignInButton mode="modal">
@@ -360,11 +372,13 @@ export default function DashboardPage() {
                                 </p>
                                 <div className="mt-4 flex flex-wrap items-center gap-3 text-[10px] font-black uppercase tracking-[0.2em] text-white/45">
                                   <span className="inline-flex items-center gap-2">
-                                    <Clock3 size={12} /> {stage.duration_minutes} min
+                                    <Clock3 size={12} />{" "}
+                                    {stage.duration_minutes} min
                                   </span>
                                   {stage.attempt && (
                                     <span className="inline-flex items-center gap-2">
-                                      <CheckCircle2 size={12} /> {stage.attempt.score}/100
+                                      <CheckCircle2 size={12} />{" "}
+                                      {stage.attempt.score}/100
                                     </span>
                                   )}
                                 </div>
@@ -373,7 +387,9 @@ export default function DashboardPage() {
                                     href={`/dashboard/stage?cohortId=${membership.cohort.id}&stageId=${stage.id}`}
                                     className="mt-4 inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.24em] text-cyan-300 transition-colors hover:text-cyan-200"
                                   >
-                                    {stage.status === "passed" ? "Review Stage" : "Open Stage"}
+                                    {stage.status === "passed"
+                                      ? "Review Stage"
+                                      : "Open Stage"}
                                     <ArrowRight size={14} />
                                   </Link>
                                 )}
@@ -419,4 +435,24 @@ export default function DashboardPage() {
       </div>
     </main>
   );
+}
+
+export default function DashboardPage() {
+  if (!hasClerkPublishableKey) {
+    return (
+      <main className="min-h-screen bg-[#061018] px-4 py-12 text-white">
+        <section className="mx-auto max-w-4xl rounded-[24px] border border-amber-400/20 bg-amber-400/10 p-8">
+          <h1 className="text-3xl font-black uppercase tracking-tight">
+            Dashboard auth is not configured
+          </h1>
+          <p className="mt-4 text-sm font-bold uppercase tracking-[0.16em] text-white/65">
+            Set <code>NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY</code> in the deployment
+            environment to enable the protected dashboard.
+          </p>
+        </section>
+      </main>
+    );
+  }
+
+  return <DashboardPageWithAuth />;
 }
