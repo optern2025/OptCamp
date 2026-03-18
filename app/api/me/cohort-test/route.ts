@@ -11,25 +11,13 @@ export async function GET() {
 
     const supabase = getSupabaseAdminClient();
 
-    const [
-      { data: profile, error: profileError },
-      { data: cohorts, error: cohortsError },
-    ] = await Promise.all([
-      supabase
-        .from("users")
-        .select(
-          "id, email, name, university, stack, github, availability, intent, email_verified, cohort_id, qualifier_email_sent_at, qualifier_email_message_id, created_at, updated_at",
-        )
-        .eq("clerk_user_id", authUser.userId)
-        .single(),
-      supabase
-        .from("cohorts")
-        .select(
-          "id, slug, type, apply_window, sprint_window, apply_by, qualifier_test_url, is_active, created_at",
-        )
-        .order("is_active", { ascending: false })
-        .order("created_at", { ascending: true }),
-    ]);
+    const { data: profile, error: profileError } = await supabase
+      .from("users")
+      .select(
+        "id, email, name, university, stack, github, availability, intent, created_at, updated_at",
+      )
+      .eq("clerk_user_id", authUser.userId)
+      .single();
 
     if (profileError || !profile) {
       return NextResponse.json(
@@ -38,23 +26,44 @@ export async function GET() {
       );
     }
 
-    if (cohortsError) {
+    const [
+      { data: cohorts, error: cohortsError },
+      { data: userCohorts, error: userCohortsError },
+    ] = await Promise.all([
+      supabase
+        .from("cohorts")
+        .select(
+          "id, slug, type, apply_window, sprint_window, apply_by, qualifier_test_url, is_active, created_at",
+        )
+        .order("is_active", { ascending: false })
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("user_cohorts")
+        .select(
+          "status, applied_at, cohorts (id, slug, type, apply_window, sprint_window, apply_by, qualifier_test_url, is_active, created_at)",
+        )
+        .eq("user_id", profile.id)
+        .eq("status", "active")
+        .order("applied_at", { ascending: false }),
+    ]);
+
+    if (cohortsError || userCohortsError) {
       return NextResponse.json(
         { error: "Unable to load cohorts." },
         { status: 500 },
       );
     }
 
-    const assignedCohort =
-      (cohorts ?? []).find((cohort) => cohort.id === profile.cohort_id) ?? null;
+    const pursuingCohorts = (userCohorts ?? [])
+      .map((entry) => entry.cohorts)
+      .filter((cohort): cohort is NonNullable<typeof cohort> => Boolean(cohort));
 
     return NextResponse.json({
       user: {
         ...profile,
         email: authUser.email,
-        email_verified: authUser.isEmailVerified,
       },
-      assignedCohort,
+      pursuingCohorts,
       cohorts: cohorts ?? [],
     });
   } catch (error) {

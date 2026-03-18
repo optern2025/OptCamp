@@ -97,21 +97,11 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
 
-    if (!authUser.isEmailVerified) {
-      return NextResponse.json(
-        {
-          error:
-            "Email verification is required before starting the proctored qualifier.",
-        },
-        { status: 409 },
-      );
-    }
-
     const supabase = getSupabaseAdminClient();
 
     const { data: profile, error: profileError } = await supabase
       .from("users")
-      .select("id, cohort_id")
+      .select("id")
       .eq("clerk_user_id", authUser.userId)
       .single();
 
@@ -122,23 +112,28 @@ export async function GET() {
       );
     }
 
-    if (!profile.cohort_id) {
+    const { data: activeCohortLink, error: activeCohortError } = await supabase
+      .from("user_cohorts")
+      .select("cohorts (id, slug, type, is_active)")
+      .eq("user_id", profile.id)
+      .eq("status", "active")
+      .order("applied_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (activeCohortError) {
       return NextResponse.json(
-        { error: "No cohort is assigned to your profile." },
-        { status: 409 },
+        { error: "Unable to load your active cohort." },
+        { status: 500 },
       );
     }
 
-    const { data: cohort, error: cohortError } = await supabase
-      .from("cohorts")
-      .select("id, slug, type, is_active")
-      .eq("id", profile.cohort_id)
-      .single();
+    const cohort = activeCohortLink?.cohorts ?? null;
 
-    if (cohortError || !cohort) {
+    if (!cohort) {
       return NextResponse.json(
-        { error: "Assigned cohort could not be found." },
-        { status: 500 },
+        { error: "No active cohort is assigned to your profile." },
+        { status: 409 },
       );
     }
 

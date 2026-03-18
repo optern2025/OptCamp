@@ -14,14 +14,6 @@ export function getSupabaseServiceRoleKey(): string {
   return readEnv("SUPABASE_SERVICE_ROLE_KEY");
 }
 
-export function getResendApiKey(): string {
-  return readEnv("RESEND_API_KEY");
-}
-
-export function getQualifierFromEmail(): string {
-  return readEnv("QUALIFIER_FROM_EMAIL");
-}
-
 export function getAppUrl(): string {
   return readEnv("NEXT_PUBLIC_APP_URL");
 }

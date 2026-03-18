@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   Github,
   Mail,
-  ShieldCheck,
 } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
 import type { Cohort } from "@/lib/types";
@@ -48,9 +47,6 @@ const RegistrationPage = ({ onBack }: RegistrationPageProps) => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
-  const [requiresVerification, setRequiresVerification] = useState(false);
-  const [verificationCode, setVerificationCode] = useState("");
-
   useEffect(() => {
     const loadCohorts = async () => {
       setIsLoadingCohorts(true);
@@ -85,7 +81,7 @@ const RegistrationPage = ({ onBack }: RegistrationPageProps) => {
     loadCohorts();
   }, []);
 
-  const persistProfileAndSendQualifier = async () => {
+  const persistProfile = async () => {
     const profileResponse = await fetch("/api/register/profile", {
       method: "POST",
       headers: {
@@ -108,27 +104,13 @@ const RegistrationPage = ({ onBack }: RegistrationPageProps) => {
       throw new Error(profilePayload.error ?? "Failed to save your profile.");
     }
 
-    const qualifierResponse = await fetch("/api/qualifier/send", {
-      method: "POST",
-    });
-
-    if (!qualifierResponse.ok) {
-      const qualifierPayload = (await qualifierResponse.json()) as {
-        error?: string;
-      };
-
-      throw new Error(
-        qualifierPayload.error ??
-          "Profile saved, but sending qualifier email failed.",
-      );
-    }
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMessage(null);
 
-    if (!isLoaded || !signUp) {
+    if (!isLoaded || !signUp || !setActive) {
       setErrorMessage("Authentication system is still loading. Please retry.");
       return;
     }
@@ -146,59 +128,23 @@ const RegistrationPage = ({ onBack }: RegistrationPageProps) => {
     setIsSubmitting(true);
 
     try {
-      await signUp.create({
+      const result = await signUp.create({
         emailAddress: formData.email.trim(),
         password: formData.password,
       });
 
-      await signUp.prepareEmailAddressVerification({
-        strategy: "email_code",
-      });
-
-      setRequiresVerification(true);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Registration failed.";
-      setErrorMessage(message);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleVerify = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setErrorMessage(null);
-
-    if (!isLoaded || !signUp || !setActive) {
-      setErrorMessage("Authentication system is still loading. Please retry.");
-      return;
-    }
-
-    if (!verificationCode.trim()) {
-      setErrorMessage("Enter the verification code from your email.");
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      const result = await signUp.attemptEmailAddressVerification({
-        code: verificationCode.trim(),
-      });
-
-      if (result.status !== "complete") {
-        setErrorMessage("Verification is incomplete. Please retry.");
-        return;
+      if (result.status !== "complete" || !result.createdSessionId) {
+        throw new Error(
+          "Account needs additional verification. Please contact support.",
+        );
       }
 
       await setActive({ session: result.createdSessionId });
-      await persistProfileAndSendQualifier();
-
+      await persistProfile();
       setIsSubmitted(true);
-      setRequiresVerification(false);
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Verification failed.";
+        error instanceof Error ? error.message : "Registration failed.";
       setErrorMessage(message);
     } finally {
       setIsSubmitting(false);
@@ -226,8 +172,7 @@ const RegistrationPage = ({ onBack }: RegistrationPageProps) => {
           Founding Batch - Performance Filter Level 1
         </p>
 
-        {!requiresVerification && (
-          <form onSubmit={handleSubmit} className="space-y-8">
+        <form onSubmit={handleSubmit} className="space-y-8">
             <div className="space-y-2">
               <label
                 htmlFor="registration-name"
@@ -457,44 +402,6 @@ const RegistrationPage = ({ onBack }: RegistrationPageProps) => {
               {isSubmitting ? "Submitting..." : "Submit Application"}
             </button>
           </form>
-        )}
-
-        {requiresVerification && (
-          <form onSubmit={handleVerify} className="space-y-6">
-            <div className="flex items-center gap-3 text-cyan-400">
-              <ShieldCheck size={22} />
-              <h3 className="text-xl font-black uppercase tracking-widest">
-                Verify your email
-              </h3>
-            </div>
-            <p className="text-white/70 text-xs font-bold uppercase tracking-widest leading-relaxed">
-              Enter the code sent to {formData.email.trim()} to complete signup.
-            </p>
-            <input
-              required
-              type="text"
-              inputMode="numeric"
-              placeholder="Verification code"
-              className="w-full bg-white/5 border border-white/10 px-4 py-4 focus:outline-none focus:border-cyan-500 transition-colors font-bold text-white placeholder:text-white/10"
-              value={verificationCode}
-              onChange={(event) => setVerificationCode(event.target.value)}
-            />
-
-            {errorMessage && (
-              <p className="text-red-400 text-xs font-bold uppercase tracking-widest">
-                {errorMessage}
-              </p>
-            )}
-
-            <button
-              type="submit"
-              disabled={isSubmitting || !isLoaded}
-              className="w-full bg-cyan-500 text-black font-black py-5 uppercase tracking-[0.2em] hover:bg-cyan-400 transition-all disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              {isSubmitting ? "Verifying..." : "Verify and Continue"}
-            </button>
-          </form>
-        )}
       </div>
 
       {isSubmitted && (
@@ -503,17 +410,14 @@ const RegistrationPage = ({ onBack }: RegistrationPageProps) => {
             <div className="absolute top-0 left-0 w-full h-1 bg-cyan-500" />
             <div className="flex justify-center mb-8">
               <div className="w-20 h-20 rounded-full border-4 border-cyan-500 flex items-center justify-center animate-pulse">
-                <Mail className="text-cyan-500" size={40} />
+                <CheckCircle2 className="text-cyan-500" size={40} />
               </div>
             </div>
             <h3 className="text-3xl font-black uppercase tracking-tighter mb-4 italic">
-              Verification Complete
+              Application Received
             </h3>
             <p className="text-white/70 font-bold mb-8 leading-relaxed uppercase tracking-widest text-xs">
-              Your profile is active.
-              <br />
-              <br />
-              The qualifier link has been emailed to your inbox.
+              Your profile is active and your sprint application is on file.
               <br />
               <span className="text-cyan-500">All The Best!!!</span>
             </p>

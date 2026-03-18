@@ -54,7 +54,9 @@ export async function POST(request: NextRequest) {
       .eq("clerk_user_id", authUser.userId)
       .maybeSingle();
 
-    if (existingProfile?.id) {
+    let userId = existingProfile?.id ?? null;
+
+    if (userId) {
       const { error: updateError } = await supabase
         .from("users")
         .update({
@@ -65,10 +67,8 @@ export async function POST(request: NextRequest) {
           github: github.length > 0 ? github : null,
           availability: true,
           intent,
-          cohort_id: cohortId,
-          email_verified: authUser.isEmailVerified,
         })
-        .eq("id", existingProfile.id);
+        .eq("id", userId);
 
       if (updateError) {
         return NextResponse.json(
@@ -77,25 +77,53 @@ export async function POST(request: NextRequest) {
         );
       }
     } else {
-      const { error: insertError } = await supabase.from("users").insert({
-        clerk_user_id: authUser.userId,
-        email: authUser.email,
-        name,
-        university,
-        stack,
-        github: github.length > 0 ? github : null,
-        availability: true,
-        intent,
-        cohort_id: cohortId,
-        email_verified: authUser.isEmailVerified,
-      });
+      const { data: insertedProfile, error: insertError } = await supabase
+        .from("users")
+        .insert({
+          clerk_user_id: authUser.userId,
+          email: authUser.email,
+          name,
+          university,
+          stack,
+          github: github.length > 0 ? github : null,
+          availability: true,
+          intent,
+        })
+        .select("id")
+        .single();
 
-      if (insertError) {
+      if (insertError || !insertedProfile) {
         return NextResponse.json(
           { error: "Unable to create your profile." },
           { status: 500 },
         );
       }
+
+      userId = insertedProfile.id;
+    }
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Unable to resolve your profile." },
+        { status: 500 },
+      );
+    }
+
+    const { error: linkError } = await supabase.from("user_cohorts").upsert(
+      {
+        user_id: userId,
+        cohort_id: cohortId,
+        status: "active",
+        applied_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id,cohort_id" },
+    );
+
+    if (linkError) {
+      return NextResponse.json(
+        { error: "Unable to link your cohort application." },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json({ ok: true });

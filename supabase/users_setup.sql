@@ -11,7 +11,6 @@ create table if not exists public.users (
     github text,
     availability boolean not null default false,
     intent text not null default '',
-    email_verified boolean not null default false,
     created_at timestamptz not null default timezone('utc', now()),
     updated_at timestamptz not null default timezone('utc', now())
 );

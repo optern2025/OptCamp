@@ -3,7 +3,6 @@ import { auth, clerkClient } from "@clerk/nextjs/server";
 interface AuthenticatedClerkUser {
   userId: string;
   email: string;
-  isEmailVerified: boolean;
 }
 
 export async function getAuthenticatedClerkUser(): Promise<AuthenticatedClerkUser | null> {
@@ -29,6 +28,5 @@ export async function getAuthenticatedClerkUser(): Promise<AuthenticatedClerkUse
   return {
     userId,
     email,
-    isEmailVerified: primaryEmail.verification?.status === "verified",
   };
 }

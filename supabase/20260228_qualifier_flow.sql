@@ -1,4 +1,4 @@
--- Incremental migration for cohort assignment and qualifier email delivery.
+-- Incremental migration for cohort setup and application tracking.
 
 create table if not exists public.cohorts (
     id uuid primary key default gen_random_uuid(),
@@ -13,18 +13,18 @@ create table if not exists public.cohorts (
 );
 
 alter table public.users
-    add column if not exists cohort_id uuid references public.cohorts(id),
-    add column if not exists qualifier_email_sent_at timestamptz,
-    add column if not exists qualifier_email_message_id text;
+    drop column if exists cohort_id,
+    drop column if exists qualifier_email_sent_at,
+    drop column if exists qualifier_email_message_id;
 
-create table if not exists public.qualifier_email_logs (
-    id bigint generated always as identity primary key,
+drop table if exists public.qualifier_email_logs;
+
+create table if not exists public.user_cohorts (
     user_id uuid not null references public.users(id) on delete cascade,
-    cohort_id uuid references public.cohorts(id) on delete set null,
-    recipient_email text not null,
-    resend_message_id text,
-    status text not null default 'sent',
-    sent_at timestamptz not null default timezone('utc', now())
+    cohort_id uuid not null references public.cohorts(id) on delete cascade,
+    status text not null default 'active',
+    applied_at timestamptz not null default timezone('utc', now()),
+    primary key (user_id, cohort_id)
 );
 
 insert into public.cohorts (slug, type, apply_window, sprint_window, apply_by, qualifier_test_url, is_active)

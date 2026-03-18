@@ -13,7 +13,7 @@ import type { Cohort, UserProfile } from "@/lib/types";
 
 interface CohortTestPayload {
   user: UserProfile;
-  assignedCohort: Cohort | null;
+  pursuingCohorts: Cohort[];
   cohorts: Cohort[];
 }
 
@@ -22,9 +22,11 @@ export default function CohortTestPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [payload, setPayload] = useState<CohortTestPayload | null>(null);
 
-  const [sendMessage, setSendMessage] = useState<string | null>(null);
-  const [sendError, setSendError] = useState<string | null>(null);
-  const [isSendingQualifier, setIsSendingQualifier] = useState(false);
+  const primaryCohort = payload?.pursuingCohorts[0] ?? null;
+  const canStartQualifier = Boolean(primaryCohort);
+  const pursuingIds = new Set(
+    payload?.pursuingCohorts.map((item) => item.id) ?? [],
+  );
 
   const loadDashboard = useCallback(async () => {
     setIsLoading(true);
@@ -67,44 +69,6 @@ export default function CohortTestPage() {
     loadDashboard();
   }, [loadDashboard]);
 
-  const handleSendQualifierEmail = async () => {
-    setSendMessage(null);
-    setSendError(null);
-    setIsSendingQualifier(true);
-
-    try {
-      const response = await fetch("/api/qualifier/send", {
-        method: "POST",
-      });
-
-      const data = (await response.json()) as {
-        error?: string;
-        alreadySent?: boolean;
-      };
-
-      if (!response.ok) {
-        setSendError(data.error ?? "Failed to send qualifier email.");
-        return;
-      }
-
-      setSendMessage(
-        data.alreadySent
-          ? "Qualifier email was already sent to your inbox."
-          : "Qualifier email has been sent successfully.",
-      );
-
-      await loadDashboard();
-    } catch (error) {
-      setSendError(
-        error instanceof Error
-          ? error.message
-          : "Failed to send qualifier email.",
-      );
-    } finally {
-      setIsSendingQualifier(false);
-    }
-  };
-
   return (
     <main className="min-h-screen bg-[#0B0F14] text-white px-4 py-16">
       <div className="max-w-6xl mx-auto">
@@ -114,7 +78,7 @@ export default function CohortTestPage() {
               Cohort Test Dashboard
             </h1>
             <p className="text-white/60 font-bold uppercase tracking-widest text-xs mt-2">
-              Verify cohort assignment and launch qualifier test
+              Track your active cohorts and launch the qualifier
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -180,46 +144,50 @@ export default function CohortTestPage() {
             <div className="space-y-8">
               <section className="border border-white/10 bg-black/30 p-8">
                 <h2 className="text-2xl font-black uppercase tracking-tight mb-4">
-                  Your Assigned Cohort
+                  Your Active Cohorts
                 </h2>
 
-                {!payload.assignedCohort && (
+                {payload.pursuingCohorts.length === 0 && (
                   <p className="text-yellow-300 font-bold uppercase tracking-widest text-xs">
-                    No cohort is assigned yet. Contact support before attempting
-                    the qualifier test.
+                    No active cohorts yet. Apply to a sprint to get started.
                   </p>
                 )}
 
-                {payload.assignedCohort && (
-                  <div className="grid gap-2 text-xs uppercase tracking-widest font-bold text-white/70">
-                    <p>
-                      <span className="text-white/40">Cohort:</span>{" "}
-                      {payload.assignedCohort.type}
-                    </p>
-                    <p>
-                      <span className="text-white/40">Apply Window:</span>{" "}
-                      {payload.assignedCohort.apply_window}
-                    </p>
-                    <p>
-                      <span className="text-white/40">Sprint Window:</span>{" "}
-                      {payload.assignedCohort.sprint_window}
-                    </p>
-                    <p>
-                      <span className="text-white/40">Apply By:</span>{" "}
-                      {payload.assignedCohort.apply_by}
-                    </p>
-                    <p>
-                      <span className="text-white/40">Email Verified:</span>{" "}
-                      {payload.user.email_verified ? "Yes" : "No"}
-                    </p>
+                {payload.pursuingCohorts.length > 0 && (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {payload.pursuingCohorts.map((cohort) => (
+                      <div
+                        key={cohort.id}
+                        className="border border-white/10 p-4"
+                      >
+                        <h3 className="text-lg font-black uppercase tracking-tight mb-3">
+                          {cohort.type}
+                        </h3>
+                        <div className="grid gap-2 text-xs uppercase tracking-widest font-bold text-white/70">
+                          <p>
+                            <span className="text-white/40">Apply Window:</span>{" "}
+                            {cohort.apply_window}
+                          </p>
+                          <p>
+                            <span className="text-white/40">Sprint Window:</span>{" "}
+                            {cohort.sprint_window}
+                          </p>
+                          <p>
+                            <span className="text-white/40">Apply By:</span>{" "}
+                            {cohort.apply_by}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
 
                 <div className="mt-6 flex flex-wrap gap-3">
+                  <>
                   <Link
                     href="/cohort-test/proctor"
                     className={`px-6 py-3 font-black uppercase tracking-[0.2em] text-xs transition-colors ${
-                      payload.assignedCohort && payload.user.email_verified
+                      canStartQualifier
                         ? "bg-cyan-500 text-black hover:bg-cyan-400"
                         : "bg-white/10 text-white/30 cursor-not-allowed pointer-events-none"
                     }`}
@@ -227,38 +195,19 @@ export default function CohortTestPage() {
                     Start Proctored Qualifier
                   </Link>
                   <a
-                    href={payload.assignedCohort?.qualifier_test_url ?? "#"}
+                    href={primaryCohort?.qualifier_test_url ?? "#"}
                     target="_blank"
                     rel="noreferrer"
                     className={`px-6 py-3 font-black uppercase tracking-[0.2em] text-xs transition-colors ${
-                      payload.assignedCohort?.qualifier_test_url &&
-                      payload.user.email_verified
+                      primaryCohort?.qualifier_test_url
                         ? "border border-cyan-500 text-cyan-500 hover:bg-cyan-500 hover:text-black"
                         : "bg-white/10 text-white/30 cursor-not-allowed pointer-events-none"
                     }`}
                   >
                     Open External Qualifier
                   </a>
-                  <button
-                    type="button"
-                    onClick={handleSendQualifierEmail}
-                    disabled={isSendingQualifier}
-                    className="px-6 py-3 border border-cyan-500 text-cyan-500 font-black uppercase tracking-[0.2em] text-xs hover:bg-cyan-500 hover:text-black transition-colors disabled:opacity-70"
-                  >
-                    {isSendingQualifier ? "Sending..." : "Send Qualifier Email"}
-                  </button>
+                  </>
                 </div>
-
-                {sendMessage && (
-                  <p className="mt-4 text-cyan-400 text-xs font-bold uppercase tracking-widest">
-                    {sendMessage}
-                  </p>
-                )}
-                {sendError && (
-                  <p className="mt-4 text-red-400 text-xs font-bold uppercase tracking-widest">
-                    {sendError}
-                  </p>
-                )}
               </section>
 
               <section className="border border-white/10 bg-black/30 p-8">
@@ -267,12 +216,12 @@ export default function CohortTestPage() {
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   {payload.cohorts.map((cohort) => {
-                    const isAssigned = payload.user.cohort_id === cohort.id;
+                    const isPursuing = pursuingIds.has(cohort.id);
                     return (
                       <div
                         key={cohort.id}
                         className={`p-5 border ${
-                          isAssigned
+                          isPursuing
                             ? "border-cyan-500 bg-cyan-500/10"
                             : "border-white/10"
                         }`}
@@ -288,9 +237,9 @@ export default function CohortTestPage() {
                             Status: {cohort.is_active ? "Active" : "Upcoming"}
                           </p>
                         </div>
-                        {isAssigned && (
+                        {isPursuing && (
                           <p className="mt-4 text-cyan-400 text-[10px] uppercase tracking-widest font-black">
-                            Assigned to you
+                            Pursuing
                           </p>
                         )}
                       </div>

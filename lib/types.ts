@@ -19,10 +19,6 @@ export interface UserProfile {
   github: string | null;
   availability: boolean;
   intent: string;
-  email_verified: boolean;
-  cohort_id: string | null;
-  qualifier_email_sent_at: string | null;
-  qualifier_email_message_id: string | null;
   created_at: string;
   updated_at: string;
 }
