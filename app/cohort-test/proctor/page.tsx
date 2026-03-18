@@ -2,6 +2,7 @@
 
 import { SignedIn, SignedOut, SignInButton, SignUpButton } from "@clerk/nextjs";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 interface ProctorQuestion {
@@ -10,6 +11,7 @@ interface ProctorQuestion {
 }
 
 interface ProctorExamPayload {
+  cohortId: string;
   examId: string;
   subject: string;
   cohortType: string;
@@ -20,6 +22,7 @@ interface ProctorExamPayload {
 interface GradeResponse {
   score: number;
   feedback: string;
+  passed: boolean;
 }
 
 type PortalState = "loading" | "ready" | "candidate" | "exam" | "results";
@@ -39,6 +42,8 @@ declare global {
 }
 
 export default function ProctoredQualifierPage() {
+  const searchParams = useSearchParams();
+  const cohortId = searchParams.get("cohortId") ?? "";
   const [portal, setPortal] = useState<PortalState>("loading");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -72,11 +77,20 @@ export default function ProctoredQualifierPage() {
     portal === "exam" && !disqualified && !isScoring && !result;
 
   const loadExam = useCallback(async () => {
+    if (!cohortId) {
+      setErrorMessage("A cohort must be selected to launch the qualifier.");
+      setPortal("ready");
+      return;
+    }
+
     setPortal("loading");
     setErrorMessage(null);
 
     try {
-      const response = await fetch("/api/me/proctor-exam", { method: "GET" });
+      const response = await fetch(
+        `/api/me/proctor-exam?cohortId=${encodeURIComponent(cohortId)}`,
+        { method: "GET" },
+      );
       const data = (await response.json()) as ProctorExamPayload & {
         error?: string;
       };
@@ -97,7 +111,7 @@ export default function ProctoredQualifierPage() {
       );
       setPortal("ready");
     }
-  }, []);
+  }, [cohortId]);
 
   useEffect(() => {
     loadExam();
@@ -237,6 +251,7 @@ export default function ProctoredQualifierPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          cohortId: exam.cohortId,
           examId: exam.examId,
           subject: exam.subject,
           cohortType: exam.cohortType,
@@ -252,7 +267,11 @@ export default function ProctoredQualifierPage() {
         throw new Error(data.error ?? "Unable to grade your submission.");
       }
 
-      setResult({ score: data.score, feedback: data.feedback });
+      setResult({
+        score: data.score,
+        feedback: data.feedback,
+        passed: data.passed,
+      });
       setPortal("results");
       cleanupSession();
     } catch (error) {
@@ -263,6 +282,7 @@ export default function ProctoredQualifierPage() {
         score: 0,
         feedback:
           "Submission captured. Manual review required due to a grading issue.",
+        passed: false,
       });
       setPortal("results");
       cleanupSession();
@@ -519,7 +539,7 @@ export default function ProctoredQualifierPage() {
               )}
             </div>
             <Link
-              href="/cohort-test"
+              href="/dashboard"
               className="px-5 py-3 border border-cyan-500 text-cyan-500 font-black uppercase tracking-widest text-xs hover:bg-cyan-500 hover:text-black transition-colors"
             >
               Back Dashboard
@@ -689,6 +709,13 @@ export default function ProctoredQualifierPage() {
                   <div className="text-8xl font-black leading-none italic">
                     {result?.score ?? 0}
                   </div>
+                  <p
+                    className={`text-xs font-black uppercase tracking-[0.3em] ${
+                      result?.passed ? "text-emerald-300" : "text-amber-200"
+                    }`}
+                  >
+                    {result?.passed ? "Qualifier Passed" : "Qualifier Not Cleared"}
+                  </p>
                   <p className="text-sm uppercase tracking-widest font-bold text-white/70 border-y border-white/10 py-5">
                     {result?.feedback}
                   </p>
@@ -714,7 +741,7 @@ export default function ProctoredQualifierPage() {
                   Retry Setup
                 </button>
                 <Link
-                  href="/cohort-test"
+                  href="/dashboard"
                   className="px-6 py-3 border border-cyan-500 text-cyan-500 font-black uppercase tracking-[0.2em] text-xs hover:bg-cyan-500 hover:text-black transition-colors"
                 >
                   Back Dashboard

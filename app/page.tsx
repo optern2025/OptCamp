@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import React, { useState, useEffect } from "react";
 import {
   ShieldAlert,
@@ -119,8 +120,11 @@ const noItems: NoItem[] = [
 ];
 
 export default function Home() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [scrolled, setScrolled] = useState(false);
   const [currentPage, setCurrentPage] = useState<PageType>("landing");
+  const [selectedCohortId, setSelectedCohortId] = useState<string>("");
   const [cohorts, setCohorts] = useState<LandingCohort[]>(fallbackCohorts);
 
   useEffect(() => {
@@ -151,7 +155,19 @@ export default function Home() {
     window.scrollTo(0, 0);
   }, [currentPage]);
 
-  const handleApplyClick = () => {
+  useEffect(() => {
+    if (searchParams.get("apply") !== "1") {
+      return;
+    }
+
+    const cohortId = searchParams.get("cohortId") ?? "";
+    setSelectedCohortId(cohortId);
+    setCurrentPage("register");
+    router.replace("/");
+  }, [router, searchParams]);
+
+  const handleApplyClick = (cohortId?: string) => {
+    setSelectedCohortId(cohortId ?? "");
     setCurrentPage("register");
   };
 
@@ -240,8 +256,8 @@ export default function Home() {
             >
               Apply
             </button>
-            <Link href="/cohort-test" className="hover:text-cyan-500 transition-colors">
-              Cohort Test
+            <Link href="/dashboard" className="hover:text-cyan-500 transition-colors">
+              Dashboard
             </Link>
           </div>
           <div className="lg:hidden text-[8px] xs:text-[10px] font-black tracking-[0.2em] uppercase text-cyan-500 animate-pulse shrink-0">
@@ -474,7 +490,7 @@ export default function Home() {
                     </div>
                     <button
                       type="button"
-                      onClick={handleApplyClick}
+                      onClick={() => handleApplyClick(cohort.id)}
                       disabled={!cohort.is_active}
                       className={`w-full py-3 md:py-4 text-[8px] sm:text-[10px] font-black uppercase tracking-widest border transition-all ${cohort.is_active
                           ? "bg-cyan-500 text-black border-cyan-500 hover:bg-cyan-400"
@@ -613,8 +629,8 @@ export default function Home() {
                   >
                     Legal
                   </button>
-                  <Link href="/cohort-test" className="hover:text-cyan-500 transition-colors shrink-0">
-                    Cohort Test
+                  <Link href="/dashboard" className="hover:text-cyan-500 transition-colors shrink-0">
+                    Dashboard
                   </Link>
                 </div>
               </footer>
@@ -622,7 +638,10 @@ export default function Home() {
           </section>
         </>
       ) : (
-        <RegistrationPage onBack={() => setCurrentPage("landing")} />
+        <RegistrationPage
+          onBack={() => setCurrentPage("landing")}
+          initialCohortId={selectedCohortId}
+        />
       )}
     </div>
   );

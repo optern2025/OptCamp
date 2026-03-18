@@ -3,6 +3,7 @@ import { auth, clerkClient } from "@clerk/nextjs/server";
 interface AuthenticatedClerkUser {
   userId: string;
   email: string;
+  name: string;
 }
 
 export async function getAuthenticatedClerkUser(): Promise<AuthenticatedClerkUser | null> {
@@ -25,8 +26,15 @@ export async function getAuthenticatedClerkUser(): Promise<AuthenticatedClerkUse
     throw new Error("Authenticated Clerk user does not have an email address.");
   }
 
+  const name =
+    user.fullName?.trim() ||
+    [user.firstName, user.lastName].filter(Boolean).join(" ").trim() ||
+    email.split("@")[0] ||
+    "Candidate";
+
   return {
     userId,
     email,
+    name,
   };
 }

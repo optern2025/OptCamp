@@ -1,9 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedClerkUser } from "@/lib/clerkServer";
+import { getProfileByClerkUserId } from "@/lib/dashboard";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import type { UserCohortStatus } from "@/lib/types";
 
 interface RegisterProfileBody {
-  name?: string;
   university?: string;
   cohortId?: string;
   stack?: string;
@@ -31,7 +32,6 @@ export async function POST(request: NextRequest) {
 
     const body = (await request.json()) as RegisterProfileBody;
 
-    const name = requireNonEmptyString(body.name, "Name");
     const university = requireNonEmptyString(body.university, "University");
     const stack = requireNonEmptyString(body.stack, "Stack");
     const intent = requireNonEmptyString(body.intent, "Intent");
@@ -47,12 +47,20 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = getSupabaseAdminClient();
-
-    const { data: existingProfile } = await supabase
-      .from("users")
+    const { data: cohort, error: cohortError } = await supabase
+      .from("cohorts")
       .select("id")
-      .eq("clerk_user_id", authUser.userId)
+      .eq("id", cohortId)
       .maybeSingle();
+
+    if (cohortError || !cohort) {
+      return NextResponse.json(
+        { error: "Selected cohort could not be found." },
+        { status: 400 },
+      );
+    }
+
+    const existingProfile = await getProfileByClerkUserId(supabase, authUser.userId);
 
     let userId = existingProfile?.id ?? null;
 
@@ -61,7 +69,7 @@ export async function POST(request: NextRequest) {
         .from("users")
         .update({
           email: authUser.email,
-          name,
+          name: authUser.name,
           university,
           stack,
           github: github.length > 0 ? github : null,
@@ -82,7 +90,7 @@ export async function POST(request: NextRequest) {
         .insert({
           clerk_user_id: authUser.userId,
           email: authUser.email,
-          name,
+          name: authUser.name,
           university,
           stack,
           github: github.length > 0 ? github : null,
@@ -109,12 +117,45 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const { data: existingLink, error: existingLinkError } = await supabase
+      .from("user_cohorts")
+      .select(
+        "status, qualified_at, enrolled_at, completed_at, qualifier_score, qualifier_feedback, qualifier_started_at, qualifier_submitted_at",
+      )
+      .eq("user_id", userId)
+      .eq("cohort_id", cohortId)
+      .maybeSingle();
+
+    if (existingLinkError) {
+      return NextResponse.json(
+        { error: "Unable to check your cohort application." },
+        { status: 500 },
+      );
+    }
+
+    const preservedStatus = new Set<UserCohortStatus>(["enrolled", "completed"]);
+    const nextStatus: UserCohortStatus =
+      existingLink && preservedStatus.has(existingLink.status as UserCohortStatus)
+        ? (existingLink.status as UserCohortStatus)
+        : "applied";
+
     const { error: linkError } = await supabase.from("user_cohorts").upsert(
       {
         user_id: userId,
         cohort_id: cohortId,
-        status: "active",
+        status: nextStatus,
         applied_at: new Date().toISOString(),
+        qualifier_score: nextStatus === "applied" ? null : existingLink?.qualifier_score ?? null,
+        qualifier_feedback:
+          nextStatus === "applied" ? null : existingLink?.qualifier_feedback ?? null,
+        qualifier_started_at:
+          nextStatus === "applied" ? null : existingLink?.qualifier_started_at ?? null,
+        qualifier_submitted_at:
+          nextStatus === "applied" ? null : existingLink?.qualifier_submitted_at ?? null,
+        qualified_at: nextStatus === "applied" ? null : existingLink?.qualified_at ?? null,
+        enrolled_at: nextStatus === "applied" ? null : existingLink?.enrolled_at ?? null,
+        completed_at:
+          nextStatus === "completed" ? existingLink?.completed_at ?? null : null,
       },
       { onConflict: "user_id,cohort_id" },
     );

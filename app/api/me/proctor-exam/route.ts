@@ -1,6 +1,15 @@
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedClerkUser } from "@/lib/clerkServer";
+import { getProfileByClerkUserId } from "@/lib/dashboard";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import type { UserCohortStatus } from "@/lib/types";
+
+interface CohortRecord {
+  id: string;
+  slug: string;
+  type: string;
+  is_active: boolean;
+}
 
 interface ProctorQuestion {
   id: number;
@@ -90,7 +99,7 @@ function getQuestionsByCohortType(cohortType: string): ProctorQuestion[] {
   return QUESTION_BANK.GENERAL;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const authUser = await getAuthenticatedClerkUser();
     if (!authUser) {
@@ -98,14 +107,18 @@ export async function GET() {
     }
 
     const supabase = getSupabaseAdminClient();
+    const cohortId = request.nextUrl.searchParams.get("cohortId")?.trim();
 
-    const { data: profile, error: profileError } = await supabase
-      .from("users")
-      .select("id")
-      .eq("clerk_user_id", authUser.userId)
-      .single();
+    if (!cohortId) {
+      return NextResponse.json(
+        { error: "A cohortId query parameter is required." },
+        { status: 400 },
+      );
+    }
 
-    if (profileError || !profile) {
+    const profile = await getProfileByClerkUserId(supabase, authUser.userId);
+
+    if (!profile) {
       return NextResponse.json(
         { error: "Unable to load your profile." },
         { status: 500 },
@@ -114,11 +127,9 @@ export async function GET() {
 
     const { data: activeCohortLink, error: activeCohortError } = await supabase
       .from("user_cohorts")
-      .select("cohorts (id, slug, type, is_active)")
+      .select("status, cohorts (id, slug, type, is_active)")
       .eq("user_id", profile.id)
-      .eq("status", "active")
-      .order("applied_at", { ascending: false })
-      .limit(1)
+      .eq("cohort_id", cohortId)
       .maybeSingle();
 
     if (activeCohortError) {
@@ -128,18 +139,49 @@ export async function GET() {
       );
     }
 
-    const cohort = activeCohortLink?.cohorts ?? null;
+    const rawCohort = activeCohortLink?.cohorts as
+      | CohortRecord
+      | CohortRecord[]
+      | null
+      | undefined;
+    const cohort = Array.isArray(rawCohort) ? (rawCohort[0] ?? null) : rawCohort ?? null;
+    const status = (activeCohortLink?.status as UserCohortStatus | null) ?? null;
 
     if (!cohort) {
       return NextResponse.json(
-        { error: "No active cohort is assigned to your profile." },
+        { error: "No application exists for this cohort yet." },
         { status: 409 },
+      );
+    }
+
+    if (status === "enrolled" || status === "completed") {
+      return NextResponse.json(
+        { error: "Qualifier already passed for this cohort." },
+        { status: 409 },
+      );
+    }
+
+    const now = new Date().toISOString();
+    const { error: updateError } = await supabase
+      .from("user_cohorts")
+      .update({
+        status: "qualifier_in_progress",
+        qualifier_started_at: now,
+      })
+      .eq("user_id", profile.id)
+      .eq("cohort_id", cohortId);
+
+    if (updateError) {
+      return NextResponse.json(
+        { error: "Unable to initialize the qualifier attempt." },
+        { status: 500 },
       );
     }
 
     const questions = getQuestionsByCohortType(cohort.type);
 
     return NextResponse.json({
+      cohortId: cohort.id,
       examId: `QLF-${cohort.slug.toUpperCase()}`,
       subject: `${cohort.type} Qualifier`,
       cohortType: cohort.type,

@@ -1,123 +1,21 @@
 import { NextResponse } from "next/server";
 import { getAuthenticatedClerkUser } from "@/lib/clerkServer";
-
-interface SubmissionAnswer {
-  questionId: number;
-  question: string;
-  answer: string;
-}
+import { getProfileByClerkUserId } from "@/lib/dashboard";
+import {
+  buildFallbackGrade,
+  gradeWithGemini,
+  type GradeResult,
+  type SubmissionAnswer,
+} from "@/lib/grading";
+import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import type { UserCohortStatus } from "@/lib/types";
 
 interface GradeRequestBody {
+  cohortId?: string;
   examId?: string;
   subject?: string;
   cohortType?: string;
   answers?: SubmissionAnswer[];
-}
-
-interface GradeResult {
-  score: number;
-  feedback: string;
-}
-
-function clampScore(value: number): number {
-  return Math.max(0, Math.min(100, Math.round(value)));
-}
-
-function buildFallbackGrade(answers: SubmissionAnswer[]): GradeResult {
-  const answered = answers.filter((item) => item.answer.trim().length > 0);
-  const answerRatio =
-    answers.length === 0 ? 0 : answered.length / answers.length;
-  const averageLength =
-    answered.length === 0
-      ? 0
-      : answered.reduce((sum, item) => sum + item.answer.trim().length, 0) /
-        answered.length;
-
-  const completenessScore = answerRatio * 70;
-  const depthScore = Math.min(30, averageLength / 18);
-  const score = clampScore(completenessScore + depthScore);
-
-  let feedback = "Good attempt with room to improve depth and structure.";
-
-  if (score >= 85) {
-    feedback =
-      "Strong execution under pressure with clear and actionable responses.";
-  } else if (score >= 70) {
-    feedback =
-      "Solid performance. Add sharper prioritization and more explicit tradeoff analysis.";
-  } else if (score >= 50) {
-    feedback =
-      "Baseline competency shown, but answers need clearer structure and stronger detail.";
-  } else {
-    feedback =
-      "Incomplete or shallow responses. Improve coverage and concrete execution detail.";
-  }
-
-  return { score, feedback };
-}
-
-async function gradeWithGemini(
-  apiKey: string,
-  payload: { subject: string; cohortType: string; answers: SubmissionAnswer[] },
-): Promise<GradeResult> {
-  const answerBlock = payload.answers
-    .map(
-      (item, index) =>
-        `Q${index + 1}: ${item.question}\nA${index + 1}: ${item.answer.trim() || "[NO ANSWER]"}`,
-    )
-    .join("\n\n");
-
-  const prompt = [
-    "You are grading a proctored qualifier exam.",
-    `Subject: ${payload.subject}`,
-    `Cohort Type: ${payload.cohortType}`,
-    "Evaluate for clarity, execution quality, prioritization, and practical decision-making.",
-    'Return strict JSON: {"score": number, "feedback": string}.',
-    "Score must be between 0 and 100.",
-    "Answers:",
-    answerBlock,
-  ].join("\n");
-
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          responseMimeType: "application/json",
-        },
-      }),
-    },
-  );
-
-  if (!response.ok) {
-    throw new Error("Gemini grading request failed.");
-  }
-
-  const data = (await response.json()) as {
-    candidates?: Array<{
-      content?: {
-        parts?: Array<{ text?: string }>;
-      };
-    }>;
-  };
-
-  const text =
-    data.candidates?.[0]?.content?.parts?.[0]?.text ??
-    '{"score":0,"feedback":"Manual review required."}';
-
-  const parsed = JSON.parse(text) as GradeResult;
-  return {
-    score: clampScore(Number(parsed.score) || 0),
-    feedback:
-      typeof parsed.feedback === "string" && parsed.feedback.trim().length > 0
-        ? parsed.feedback.trim()
-        : "Manual review required.",
-  };
 }
 
 export async function POST(request: Request) {
@@ -129,6 +27,15 @@ export async function POST(request: Request) {
 
     const body = (await request.json()) as GradeRequestBody;
     const answers = Array.isArray(body.answers) ? body.answers : [];
+    const cohortId =
+      typeof body.cohortId === "string" ? body.cohortId.trim() : "";
+
+    if (!cohortId) {
+      return NextResponse.json(
+        { error: "A cohortId is required for grading." },
+        { status: 400 },
+      );
+    }
 
     if (answers.length === 0) {
       return NextResponse.json(
@@ -148,25 +55,108 @@ export async function POST(request: Request) {
     const cohortType =
       typeof body.cohortType === "string" ? body.cohortType : "General";
 
+    const supabase = getSupabaseAdminClient();
+    const profile = await getProfileByClerkUserId(supabase, authUser.userId);
+
+    if (!profile) {
+      return NextResponse.json(
+        { error: "Unable to load your profile." },
+        { status: 500 },
+      );
+    }
+
+    const { data: membership, error: membershipError } = await supabase
+      .from("user_cohorts")
+      .select("status, qualifier_started_at")
+      .eq("user_id", profile.id)
+      .eq("cohort_id", cohortId)
+      .maybeSingle();
+
+    if (membershipError || !membership) {
+      return NextResponse.json(
+        { error: "No qualifying cohort application was found." },
+        { status: 409 },
+      );
+    }
+
+    const currentStatus = membership.status as UserCohortStatus;
+    if (currentStatus === "enrolled" || currentStatus === "completed") {
+      return NextResponse.json(
+        { error: "Qualifier already completed for this cohort." },
+        { status: 409 },
+      );
+    }
+
     const geminiApiKey = process.env.GEMINI_API_KEY?.trim();
+    let grade: GradeResult;
 
     if (geminiApiKey) {
       try {
-        const grade = await gradeWithGemini(geminiApiKey, {
+        grade = await gradeWithGemini(geminiApiKey, {
           subject,
           cohortType,
           answers: normalizedAnswers,
         });
-
-        return NextResponse.json(grade);
       } catch {
-        const fallback = buildFallbackGrade(normalizedAnswers);
-        return NextResponse.json(fallback);
+        grade = buildFallbackGrade(normalizedAnswers);
       }
+    } else {
+      grade = buildFallbackGrade(normalizedAnswers);
     }
 
-    const fallback = buildFallbackGrade(normalizedAnswers);
-    return NextResponse.json(fallback);
+    const submittedAt = new Date().toISOString();
+    const startedAt =
+      typeof membership.qualifier_started_at === "string"
+        ? membership.qualifier_started_at
+        : submittedAt;
+
+    const { error: insertAttemptError } = await supabase
+      .from("qualifier_attempts")
+      .insert({
+        user_id: profile.id,
+        cohort_id: cohortId,
+        exam_id:
+          typeof body.examId === "string" && body.examId.trim().length > 0
+            ? body.examId.trim()
+            : `QLF-${cohortId}`,
+        subject,
+        cohort_type: cohortType,
+        answers: normalizedAnswers,
+        score: grade.score,
+        feedback: grade.feedback,
+        passed: grade.passed,
+        started_at: startedAt,
+        submitted_at: submittedAt,
+      });
+
+    if (insertAttemptError) {
+      return NextResponse.json(
+        { error: "Unable to save the qualifier attempt." },
+        { status: 500 },
+      );
+    }
+
+    const { error: updateMembershipError } = await supabase
+      .from("user_cohorts")
+      .update({
+        status: grade.passed ? "enrolled" : "qualifier_failed",
+        qualifier_score: grade.score,
+        qualifier_feedback: grade.feedback,
+        qualifier_submitted_at: submittedAt,
+        qualified_at: grade.passed ? submittedAt : null,
+        enrolled_at: grade.passed ? submittedAt : null,
+      })
+      .eq("user_id", profile.id)
+      .eq("cohort_id", cohortId);
+
+    if (updateMembershipError) {
+      return NextResponse.json(
+        { error: "Unable to update your cohort progress." },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json(grade);
   } catch (error) {
     return NextResponse.json(
       {

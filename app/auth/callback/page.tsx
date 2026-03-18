@@ -14,10 +14,10 @@ export default function AuthCallbackPage() {
         </p>
         <div className="flex flex-wrap gap-3 mt-8">
           <Link
-            href="/cohort-test"
+            href="/dashboard"
             className="inline-block px-6 py-3 bg-cyan-500 text-black font-black uppercase tracking-[0.2em] text-xs hover:bg-cyan-400 transition-colors"
           >
-            Go to Cohort Test
+            Go to Dashboard
           </Link>
           <Link
             href="/"

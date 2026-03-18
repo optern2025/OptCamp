@@ -11,14 +11,7 @@ export async function GET() {
     }
 
     const payload = await loadDashboardData(getSupabaseAdminClient(), authUser);
-
-    return NextResponse.json({
-      user: payload.user,
-      pursuingCohorts: payload.memberships.map((membership) => membership.cohort),
-      cohorts: payload.cohorts,
-      memberships: payload.memberships,
-      summary: payload.summary,
-    });
+    return NextResponse.json(payload);
   } catch (error) {
     return NextResponse.json(
       {
