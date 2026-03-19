@@ -285,7 +285,7 @@ function HomePage() {
               </div>
 
               <h1 className="text-4xl xs:text-5xl sm:text-7xl md:text-[7rem] lg:text-[8.5rem] xl:text-[9.5rem] font-black leading-[1] sm:leading-[0.85] tracking-tighter mb-6 md:mb-8 uppercase break-words">
-                OPTERN <br className="xs:hidden md:block" />
+                OPTCAMP <br className="xs:hidden md:block" />
                 <span
                   className="text-transparent inline-block my-2"
                   style={{
@@ -610,6 +610,9 @@ function HomePage() {
               </GlowButton>
 
               <footer className="mt-24 md:mt-60 pt-8 md:pt-12 border-t border-white/5 flex flex-col md:flex-row justify-between items-center text-[7px] xs:text-[8px] md:text-[10px] font-black tracking-[0.1em] md:tracking-[0.4em] text-white/20 uppercase gap-6 md:gap-8">
+                <p className="text-white/40 font-bold text-[9px] xs:text-[10px] sm:text-sm tracking-[0.1em] xs:tracking-[0.2em] uppercase px-2 leading-relaxed">
+                   An Initiative of OPTERN.
+                </p>
                 <div className="flex items-center gap-2 md:gap-4 shrink-0">
                   <OpternLogo
                     showText={false}
