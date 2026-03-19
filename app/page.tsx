@@ -657,9 +657,11 @@ function HomePage() {
                   </Link>
                 </div>
                 <div className="max-w-3xl mx-auto mb-8 md:mb-16">
-                  <p className="text-white/40 font-bold text-[9px] xs:text-[10px] sm:text-sm tracking-[0.1em] xs:tracking-[0.2em] uppercase px-2 leading-relaxed">
-                     An Initiative of Optern.
-                  </p>
+                  <br>
+                    <p className="text-white/40 font-bold text-[9px] xs:text-[10px] sm:text-sm tracking-[0.1em] xs:tracking-[0.2em] uppercase px-2 leading-relaxed">
+                       An Initiative of Optern.
+                    </p>
+                  </br>
                </div>
               </footer>
             </div>
