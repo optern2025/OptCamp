@@ -331,9 +331,6 @@ function HomePage() {
           <section className="py-20 md:py-40 relative z-10 bg-black/40 border-y border-white/5">
             <div className="container mx-auto px-4 sm:px-6 text-center">
               <div className="max-w-4xl mx-auto">
-                <h3 className="text-cyan-500 text-[9px] xs:text-[10px] md:text-xs font-black tracking-[0.3em] md:tracking-[0.5em] uppercase mb-6 md:mb-10 italic">
-                  Context
-                </h3>
                 <SectionTitle>
                   Resumes Don&apos;t <br />
                   Prove Execution.
