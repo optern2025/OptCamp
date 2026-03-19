@@ -618,7 +618,7 @@ function HomePage() {
                     className="origin-center"
                   />
                   <span className="tracking-widest">
-                    ©2026 OPTERN PERFORMANCE SYSTEMS. An Initiative by OPTERN
+                    ©2026 OPTERN PERFORMANCE SYSTEMS. <i>An Initiative by OPTERN</i>
                   </span>
                 </div>
                 <div className="flex flex-wrap justify-center gap-4 md:gap-10">
@@ -651,11 +651,6 @@ function HomePage() {
                   </Link>
                 </div>
               </footer>
-              <div className="max-w-3xl mx-auto mb-8 md:mb-16">
-                  <p className="text-white/40 font-bold text-[9px] xs:text-[10px] sm:text-sm tracking-[0.1em] xs:tracking-[0.2em] uppercase px-2 leading-relaxed">
-                       An Initiative of Optern.
-                  </p>
-               </div>
             </div>
           </section>
         </>
