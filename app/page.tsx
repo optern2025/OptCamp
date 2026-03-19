@@ -612,7 +612,7 @@ function HomePage() {
               <footer className="mt-24 md:mt-60 pt-8 md:pt-12 border-t border-white/5 flex flex-col md:flex-row justify-between items-center text-[7px] xs:text-[8px] md:text-[10px] font-black tracking-[0.1em] md:tracking-[0.4em] text-white/20 uppercase gap-6 md:gap-8">
                 <p className="text-white/40 font-bold text-[9px] xs:text-[10px] sm:text-sm tracking-[0.1em] xs:tracking-[0.2em] uppercase px-2 leading-relaxed">
                    An Initiative of OPTERN.
-                </p><br>
+                </p><br></br>
                 <div className="flex items-center gap-2 md:gap-4 shrink-0">
                   <OpternLogo
                     showText={false}
