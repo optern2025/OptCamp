@@ -45,9 +45,22 @@ export async function POST(request: Request) {
     }
 
     const normalizedAnswers = answers.map((item) => ({
-      questionId: Number(item.questionId) || 0,
+      questionId:
+        typeof item.questionId === "string" ||
+        typeof item.questionId === "number"
+          ? item.questionId
+          : 0,
       question: typeof item.question === "string" ? item.question : "",
       answer: typeof item.answer === "string" ? item.answer : "",
+      questionType:
+        typeof item.questionType === "string" ? item.questionType : undefined,
+      guidance: typeof item.guidance === "string" ? item.guidance : undefined,
+      rubric: typeof item.rubric === "string" ? item.rubric : undefined,
+      correctOptionIds: Array.isArray(item.correctOptionIds)
+        ? item.correctOptionIds.filter(
+            (value): value is string => typeof value === "string",
+          )
+        : undefined,
     }));
 
     const subject =

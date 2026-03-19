@@ -1,10 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { normalizeAssessmentQuestions } from "@/lib/assessment";
 import type {
   Cohort,
   CohortMembership,
   CohortStage,
   CohortStageProgress,
-  CohortStageQuestion,
   DashboardPayload,
   QualifierAttempt,
   UserCohortStageAttempt,
@@ -101,38 +101,6 @@ function buildUserProfile(
     created_at: profile?.created_at ?? now,
     updated_at: profile?.updated_at ?? now,
   };
-}
-
-function normalizeQuestions(raw: unknown): CohortStageQuestion[] {
-  if (!Array.isArray(raw)) {
-    return [];
-  }
-
-  return raw
-    .map((item, index) => {
-      if (!item || typeof item !== "object") {
-        return null;
-      }
-
-      const question = item as Record<string, unknown>;
-      const prompt =
-        typeof question.prompt === "string" ? question.prompt.trim() : "";
-
-      if (!prompt) {
-        return null;
-      }
-
-      return {
-        id:
-          typeof question.id === "string" && question.id.trim().length > 0
-            ? question.id.trim()
-            : `q${index + 1}`,
-        prompt,
-        guidance:
-          typeof question.guidance === "string" ? question.guidance.trim() : "",
-      };
-    })
-    .filter((item): item is CohortStageQuestion => Boolean(item));
 }
 
 function buildStageProgress(
@@ -269,7 +237,7 @@ export async function loadDashboardData(
       title: row.title,
       description: row.description,
       duration_minutes: row.duration_minutes,
-      questions: normalizeQuestions(row.questions),
+      questions: normalizeAssessmentQuestions(row.questions),
       created_at: row.created_at,
     });
     stagesByCohort.set(row.cohort_id, current);

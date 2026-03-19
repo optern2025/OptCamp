@@ -1,7 +1,11 @@
 export interface SubmissionAnswer {
-  questionId: number;
+  questionId: number | string;
   question: string;
   answer: string;
+  questionType?: string;
+  guidance?: string;
+  rubric?: string;
+  correctOptionIds?: string[];
 }
 
 export interface GradeResult {
@@ -26,9 +30,31 @@ export function buildFallbackGrade(answers: SubmissionAnswer[]): GradeResult {
       : answered.reduce((sum, item) => sum + item.answer.trim().length, 0) /
         answered.length;
 
-  const completenessScore = answerRatio * 70;
-  const depthScore = Math.min(30, averageLength / 18);
-  const score = clampScore(completenessScore + depthScore);
+  const scorableMcqs = answers.filter(
+    (item) =>
+      Array.isArray(item.correctOptionIds) && item.correctOptionIds.length > 0,
+  );
+  const correctMcqs = scorableMcqs.filter((item) => {
+    const provided = item.answer
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean)
+      .sort();
+    const expected = [...(item.correctOptionIds ?? [])].sort();
+
+    return (
+      provided.length === expected.length &&
+      provided.every((value, index) => value === expected[index])
+    );
+  });
+
+  const objectiveScore =
+    scorableMcqs.length === 0
+      ? 0
+      : (correctMcqs.length / scorableMcqs.length) * 35;
+  const completenessScore = answerRatio * 45;
+  const depthScore = Math.min(20, averageLength / 24);
+  const score = clampScore(objectiveScore + completenessScore + depthScore);
 
   let feedback = "Good attempt with room to improve depth and structure.";
 
@@ -58,9 +84,18 @@ export async function gradeWithGemini(
   payload: { subject: string; cohortType: string; answers: SubmissionAnswer[] },
 ): Promise<GradeResult> {
   const answerBlock = payload.answers
-    .map(
-      (item, index) =>
-        `Q${index + 1}: ${item.question}\nA${index + 1}: ${item.answer.trim() || "[NO ANSWER]"}`,
+    .map((item, index) =>
+      [
+        `Q${index + 1} (${item.questionType ?? "response"}): ${item.question}`,
+        item.guidance ? `Guidance: ${item.guidance}` : null,
+        item.rubric ? `Rubric: ${item.rubric}` : null,
+        item.correctOptionIds?.length
+          ? `Correct option ids: ${item.correctOptionIds.join(", ")}`
+          : null,
+        `A${index + 1}: ${item.answer.trim() || "[NO ANSWER]"}`,
+      ]
+        .filter(Boolean)
+        .join("\n"),
     )
     .join("\n\n");
 

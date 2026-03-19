@@ -1,8 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server";
+import {
+  buildDefaultQualifierTemplate,
+  normalizeAssessmentQuestions,
+} from "@/lib/assessment";
 import { getAuthenticatedClerkUser } from "@/lib/clerkServer";
 import { getProfileByClerkUserId } from "@/lib/dashboard";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
-import type { UserCohortStatus } from "@/lib/types";
+import type { AssessmentQuestion, UserCohortStatus } from "@/lib/types";
 
 interface CohortRecord {
   id: string;
@@ -11,92 +15,39 @@ interface CohortRecord {
   is_active: boolean;
 }
 
-interface ProctorQuestion {
-  id: number;
-  text: string;
+interface QualifierTemplateRow {
+  id: string;
+  cohort_id: string;
+  duration_seconds: number;
+  questions: unknown;
+  updated_at: string;
 }
 
-const QUESTION_BANK: Record<string, ProctorQuestion[]> = {
-  ENGINEERING: [
-    {
-      id: 1,
-      text: "Design a fault-tolerant service rollout plan for a production API used by 1M daily users.",
-    },
-    {
-      id: 2,
-      text: "Given intermittent latency spikes, explain your debugging sequence, tooling, and escalation criteria.",
-    },
-    {
-      id: 3,
-      text: "Describe how you would decompose a 4-day sprint into milestones, owners, and measurable acceptance criteria.",
-    },
-    {
-      id: 4,
-      text: "A candidate PR improves performance but reduces readability. Explain your review decision and rationale.",
-    },
-    {
-      id: 5,
-      text: "Outline an incident communication template for engineers, founders, and external stakeholders.",
-    },
-  ],
-  MARKETING: [
-    {
-      id: 1,
-      text: "Create a launch strategy for a new product with a $5,000 budget and a 2-week timeline.",
-    },
-    {
-      id: 2,
-      text: "How would you diagnose underperforming ad campaigns and decide between creative, audience, or channel changes?",
-    },
-    {
-      id: 3,
-      text: "Define a metric framework for top-of-funnel to conversion for a high-intent B2B offering.",
-    },
-    {
-      id: 4,
-      text: "Write a concise messaging narrative for skeptical users comparing your product against incumbents.",
-    },
-    {
-      id: 5,
-      text: "Explain your approach to balancing short-term performance growth with long-term brand trust.",
-    },
-  ],
-  GENERAL: [
-    {
-      id: 1,
-      text: "Describe a high-pressure project where scope, deadline, and quality were all constrained. What did you prioritize?",
-    },
-    {
-      id: 2,
-      text: "How do you translate ambiguous goals from leadership into executable work within 24 hours?",
-    },
-    {
-      id: 3,
-      text: "Explain your strategy for handling blockers when dependencies are owned by other teams.",
-    },
-    {
-      id: 4,
-      text: "What makes written updates effective for stakeholders who are not involved day-to-day?",
-    },
-    {
-      id: 5,
-      text: "Define your personal quality bar for shipping work under strict time pressure.",
-    },
-  ],
-};
+function resolveQualifierQuestions(
+  row: QualifierTemplateRow | null,
+  cohort: CohortRecord,
+): { durationSeconds: number; questions: AssessmentQuestion[] } {
+  if (row) {
+    const questions = normalizeAssessmentQuestions(row.questions);
 
-function getQuestionsByCohortType(cohortType: string): ProctorQuestion[] {
-  const normalized = cohortType.trim().toUpperCase();
-
-  if (normalized.includes("ENGINEER")) {
-    return QUESTION_BANK.ENGINEERING;
+    if (questions.length > 0) {
+      return {
+        durationSeconds: Math.max(300, row.duration_seconds),
+        questions,
+      };
+    }
   }
 
-  if (normalized.includes("MARKET")) {
-    return QUESTION_BANK.MARKETING;
-  }
+  const fallback = buildDefaultQualifierTemplate(
+    cohort.id,
+    cohort.slug,
+    cohort.type,
+  );
 
-  return QUESTION_BANK.GENERAL;
+  return {
+    durationSeconds: fallback.duration_seconds,
+    questions: fallback.questions,
+  };
 }
 
 export async function GET(request: NextRequest) {
@@ -181,15 +132,32 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const questions = getQuestionsByCohortType(cohort.type);
+    const { data: qualifierTemplateRow, error: qualifierTemplateError } =
+      await supabase
+        .from("cohort_qualifier_templates")
+        .select("id, cohort_id, duration_seconds, questions, updated_at")
+        .eq("cohort_id", cohort.id)
+        .maybeSingle();
+
+    if (qualifierTemplateError) {
+      return NextResponse.json(
+        { error: "Unable to load the qualifier template." },
+        { status: 500 },
+      );
+    }
+
+    const qualifier = resolveQualifierQuestions(
+      (qualifierTemplateRow as QualifierTemplateRow | null) ?? null,
+      cohort,
+    );
 
     return NextResponse.json({
       cohortId: cohort.id,
       examId: `QLF-${cohort.slug.toUpperCase()}`,
       subject: `${cohort.type} Qualifier`,
       cohortType: cohort.type,
-      durationSeconds: 15 * 60,
-      questions,
+      durationSeconds: qualifier.durationSeconds,
+      questions: qualifier.questions,
       cohortActive: cohort.is_active,
     });
   } catch (error) {

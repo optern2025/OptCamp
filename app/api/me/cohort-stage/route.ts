@@ -129,9 +129,25 @@ export async function POST(request: NextRequest) {
     }
 
     const normalizedAnswers = answers.map((answer) => ({
-      questionId: Number(answer.questionId) || 0,
+      questionId:
+        typeof answer.questionId === "string" ||
+        typeof answer.questionId === "number"
+          ? answer.questionId
+          : 0,
       question: typeof answer.question === "string" ? answer.question : "",
       answer: typeof answer.answer === "string" ? answer.answer : "",
+      questionType:
+        typeof answer.questionType === "string"
+          ? answer.questionType
+          : undefined,
+      guidance:
+        typeof answer.guidance === "string" ? answer.guidance : undefined,
+      rubric: typeof answer.rubric === "string" ? answer.rubric : undefined,
+      correctOptionIds: Array.isArray(answer.correctOptionIds)
+        ? answer.correctOptionIds.filter(
+            (value): value is string => typeof value === "string",
+          )
+        : undefined,
     }));
 
     const geminiApiKey = process.env.GEMINI_API_KEY?.trim();

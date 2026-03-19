@@ -6,8 +6,10 @@ It now handles:
 - Signed-in cohort applications with Clerk Auth
 - Profile persistence in Supabase
 - Cohort dashboarding at `/dashboard`
+- Admin content management at `/admin`
 - Proctored qualifier attempts with persisted scores
 - Progressive cohort stage tests that unlock one by one
+- Rich assessment content with MCQs, debugging prompts, and sprint scenarios
 
 ## Product Flow
 1. Candidate signs in with Clerk.
@@ -26,6 +28,8 @@ flowchart LR
   C --> D["Supabase (users + cohorts + user_cohorts)"]
   E["/dashboard"] --> F["GET /api/me/dashboard"]
   F --> D
+  L["/admin"] --> M["GET/PUT /api/admin/content"]
+  M --> D
   E --> G["/cohort-test/proctor?cohortId=..."]
   G --> H["GET /api/me/proctor-exam"]
   H --> D
@@ -97,6 +101,20 @@ Important columns:
 - `passed boolean`
 - `started_at timestamptz`
 - `submitted_at timestamptz`
+
+### `public.cohort_qualifier_templates`
+- `id uuid`
+- `cohort_id uuid`
+- `duration_seconds integer`
+- `questions jsonb`
+- `updated_at timestamptz`
+
+Question payloads now support:
+- `type`: `mcq`, `debug`, `scenario`
+- shared fields: `id`, `prompt`, `guidance`, `rubric`
+- MCQ fields: `options[]`, `correctOptionIds[]`, `allowMultiple`
+- Debug fields: `language`, `starterCode`, `expectedOutcome`
+- Scenario fields: `deliverable`, `constraints[]`
 
 ### `public.cohort_stages`
 - `id uuid`
@@ -191,6 +209,33 @@ Auth:
 Purpose:
 - Fetch a stage test only if it is unlocked for the current user.
 
+### `GET /api/admin/content`
+Auth:
+- Clerk session cookie
+
+Purpose:
+- Load all cohorts plus editable qualifier and stage content bundles for the admin dashboard.
+
+Response:
+- `200 { cohorts, contentByCohort }`
+- `401 { error: "Unauthorized." }`
+- `403 { error: string }`
+
+### `PUT /api/admin/content`
+Auth:
+- Clerk session cookie
+
+Purpose:
+- Upsert qualifier templates and cohort stages for a selected cohort.
+- Deletes removed stages and preserves stage order based on the submitted array.
+
+Response:
+- `200 { cohorts, contentByCohort }`
+- `400 { error: string }`
+- `401 { error: "Unauthorized." }`
+- `403 { error: string }`
+- `500 { error: string }`
+
 ### `POST /api/me/cohort-stage`
 Auth:
 - Clerk session cookie
@@ -215,6 +260,8 @@ Copy `.env.example` to `.env.local` and fill values:
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
 - `CLERK_SECRET_KEY`
 - `NEXT_PUBLIC_APP_URL`
+- `OPTERN_ADMIN_EMAILS`
+  Optional comma-separated allowlist. If omitted, any signed-in user can open `/admin`, which is convenient for local development but not recommended for production.
 
 ## Local Setup
 1. Install dependencies:
@@ -232,6 +279,7 @@ cp .env.example .env.local
 - `supabase/20260228_qualifier_flow.sql`
 - `supabase/20260228_clerk_auth_migration.sql`
 - `supabase/20260318_dashboard_progression.sql`
+- `supabase/20260319_admin_content_studio.sql`
 
 4. Start dev server:
 ```bash
@@ -241,20 +289,26 @@ npm run dev
 5. Open the app:
 - Landing and apply: `http://localhost:3000`
 - Dashboard: `http://localhost:3000/dashboard`
+- Admin content studio: `http://localhost:3000/admin`
 - Legacy cohort route: `http://localhost:3000/cohort-test` (redirects to dashboard)
 
 ## Core File Map
 - `app/page.tsx`: Landing page and apply entry state.
 - `app/components/RegistrationPage.tsx`: Signed-in application form.
 - `app/dashboard/page.tsx`: Main cohort dashboard.
+- `app/admin/page.tsx`: Admin dashboard for qualifier and stage content authoring.
 - `app/dashboard/stage/page.tsx`: Progressive stage test screen.
 - `app/cohort-test/proctor/page.tsx`: Proctored qualifier screen.
 - `app/cohort-test/page.tsx`: Redirects legacy traffic to `/dashboard`.
+- `app/components/AssessmentRunner.tsx`: Shared question runner with palette navigation, next/previous actions, and review markers.
+- `app/api/admin/content/route.ts`: Admin content load/save endpoint.
 - `app/api/me/dashboard/route.ts`: Dashboard payload endpoint.
 - `app/api/register/profile/route.ts`: Signed-in application/profile sync endpoint.
 - `app/api/me/proctor-exam/route.ts`: Cohort-specific qualifier initializer.
 - `app/api/proctor/grade/route.ts`: Qualifier grading and persistence endpoint.
 - `app/api/me/cohort-stage/route.ts`: Stage fetch/submit endpoint with unlock enforcement.
+- `lib/assessment.ts`: Rich question normalization, defaults, and content helpers.
+- `lib/admin.ts`: Admin allowlist helper for `/admin` and admin APIs.
 - `lib/dashboard.ts`: Shared dashboard/progression loader.
 - `lib/grading.ts`: Shared grading helpers and passing threshold.
 - `lib/types.ts`: Shared app types for cohorts, memberships, attempts, and stages.
@@ -262,7 +316,8 @@ npm run dev
 ## Operational Notes
 - Clerk is the source of truth for signed-in user identity.
 - The qualifier passing threshold is `70`.
-- Cohort stages are seeded in SQL for the current cohorts and unlock progressively.
+- Admin-authored qualifier templates are stored in `public.cohort_qualifier_templates`.
+- Cohort stages can now mix MCQs, debugging prompts, and implementation scenarios, and they still unlock progressively.
 - `/cohort-test` remains as a compatibility route, but `/dashboard` is the canonical user workspace.
 
 ## Verification Notes

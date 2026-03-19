@@ -1,16 +1,23 @@
 "use client";
 
 import { SignedIn, SignedOut, SignInButton, SignUpButton } from "@clerk/nextjs";
+import { FileText, ShieldCheck, TimerReset } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FileText, ShieldCheck, TimerReset } from "lucide-react";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  type AssessmentAnswerValue,
+  AssessmentRunner,
+} from "@/app/components/AssessmentRunner";
 import { hasClerkPublishableKey } from "@/lib/clerkEnv";
-
-interface ProctorQuestion {
-  id: number;
-  text: string;
-}
+import type { AssessmentQuestion } from "@/lib/types";
 
 interface ProctorExamPayload {
   cohortId: string;
@@ -18,7 +25,7 @@ interface ProctorExamPayload {
   subject: string;
   cohortType: string;
   durationSeconds: number;
-  questions: ProctorQuestion[];
+  questions: AssessmentQuestion[];
 }
 
 interface GradeResponse {
@@ -28,6 +35,14 @@ interface GradeResponse {
 }
 
 type PortalState = "loading" | "ready" | "exam" | "results";
+
+function normalizeAnswer(value: AssessmentAnswerValue | undefined): string {
+  if (Array.isArray(value)) {
+    return value.join(", ");
+  }
+
+  return typeof value === "string" ? value : "";
+}
 
 function QualifierPageWithAuth() {
   const searchParams = useSearchParams();
@@ -39,8 +54,12 @@ function QualifierPageWithAuth() {
   const [isScoring, setIsScoring] = useState(false);
   const [result, setResult] = useState<GradeResponse | null>(null);
   const [hasStarted, setHasStarted] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, AssessmentAnswerValue>>(
+    {},
+  );
+  const [reviewFlags, setReviewFlags] = useState<Record<string, boolean>>({});
 
-  const answersRef = useRef<Record<number, string>>({});
   const timerRef = useRef<number | null>(null);
 
   const loadExam = useCallback(async () => {
@@ -68,8 +87,22 @@ function QualifierPageWithAuth() {
         return;
       }
 
+      const initialAnswers = Object.fromEntries(
+        data.questions.map((question) => [
+          question.id,
+          question.type === "mcq" && question.allowMultiple ? [] : "",
+        ]),
+      ) as Record<string, AssessmentAnswerValue>;
+
       setExam(data);
+      setAnswers(initialAnswers);
+      setReviewFlags(
+        Object.fromEntries(
+          data.questions.map((question) => [question.id, false]),
+        ),
+      );
       setTimeLeft(data.durationSeconds);
+      setCurrentIndex(0);
       setPortal("ready");
     } catch (error) {
       setErrorMessage(
@@ -130,12 +163,6 @@ function QualifierPageWithAuth() {
     setIsScoring(true);
 
     try {
-      const answers = exam.questions.map((question, index) => ({
-        questionId: question.id,
-        question: question.text,
-        answer: answersRef.current[index] ?? "",
-      }));
-
       const response = await fetch("/api/proctor/grade", {
         method: "POST",
         headers: {
@@ -146,11 +173,22 @@ function QualifierPageWithAuth() {
           examId: exam.examId,
           subject: exam.subject,
           cohortType: exam.cohortType,
-          answers,
+          answers: exam.questions.map((question) => ({
+            questionId: question.id,
+            question: question.prompt,
+            answer: normalizeAnswer(answers[question.id]),
+            questionType: question.type,
+            guidance: question.guidance,
+            rubric: question.rubric,
+            correctOptionIds:
+              question.type === "mcq" ? question.correctOptionIds : undefined,
+          })),
         }),
       });
 
-      const data = (await response.json()) as GradeResponse & { error?: string };
+      const data = (await response.json()) as GradeResponse & {
+        error?: string;
+      };
 
       if (!response.ok) {
         throw new Error(data.error ?? "Unable to grade your submission.");
@@ -172,7 +210,7 @@ function QualifierPageWithAuth() {
     } finally {
       setIsScoring(false);
     }
-  }, [exam, isScoring, result]);
+  }, [answers, exam, isScoring, result]);
 
   useEffect(() => {
     if (portal === "exam" && timeLeft === 0 && !isScoring && !result) {
@@ -192,11 +230,26 @@ function QualifierPageWithAuth() {
       timerRef.current = null;
     }
 
-    answersRef.current = {};
     setResult(null);
     setErrorMessage(null);
     setHasStarted(false);
+    setCurrentIndex(0);
     setTimeLeft(exam?.durationSeconds ?? 0);
+    if (exam) {
+      setAnswers(
+        Object.fromEntries(
+          exam.questions.map((question) => [
+            question.id,
+            question.type === "mcq" && question.allowMultiple ? [] : "",
+          ]),
+        ) as Record<string, AssessmentAnswerValue>,
+      );
+      setReviewFlags(
+        Object.fromEntries(
+          exam.questions.map((question) => [question.id, false]),
+        ),
+      );
+    }
     setPortal("ready");
   };
 
@@ -214,7 +267,7 @@ function QualifierPageWithAuth() {
           <h1 className="text-3xl font-black uppercase tracking-tight">
             Sign in to continue
           </h1>
-          <p className="mt-2 mb-8 text-xs font-bold uppercase tracking-widest text-white/60">
+          <p className="mb-8 mt-2 text-xs font-bold uppercase tracking-widest text-white/60">
             Qualifier access requires an authenticated session.
           </p>
           <div className="flex flex-wrap gap-3">
@@ -239,7 +292,7 @@ function QualifierPageWithAuth() {
       </SignedOut>
 
       <SignedIn>
-        <div className="mx-auto max-w-5xl">
+        <div className="mx-auto max-w-7xl">
           <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
             <div>
               <h1 className="text-4xl font-black uppercase italic tracking-tight text-cyan-400">
@@ -279,7 +332,9 @@ function QualifierPageWithAuth() {
                 Ready to begin
               </h2>
               <p className="max-w-3xl text-sm font-bold uppercase tracking-[0.14em] text-white/60">
-                Face and microphone tracking are currently disabled. This is a straightforward timed qualifier, so you can start immediately and focus on your answers.
+                Your qualifier now supports MCQs, debugging prompts, and sprint
+                scenarios. Use the in-test navigator to jump between questions,
+                mark items for review, and submit when you are satisfied.
               </p>
 
               <div className="grid gap-4 md:grid-cols-3">
@@ -290,7 +345,9 @@ function QualifierPageWithAuth() {
                       Questions
                     </span>
                   </div>
-                  <p className="mt-4 text-3xl font-black">{exam.questions.length}</p>
+                  <p className="mt-4 text-3xl font-black">
+                    {exam.questions.length}
+                  </p>
                 </div>
                 <div className="border border-white/10 bg-white/5 p-5">
                   <div className="flex items-center gap-3 text-cyan-400">
@@ -325,57 +382,38 @@ function QualifierPageWithAuth() {
           )}
 
           {portal === "exam" && exam && (
-            <section className="space-y-10 border border-white/10 bg-black/40 p-8">
-              <div className="flex flex-col gap-6 border-b-4 border-cyan-400 pb-6 md:flex-row md:items-end md:justify-between">
-                <div>
-                  <h4 className="mb-2 text-xs font-black uppercase tracking-widest opacity-40">
-                    Unit: {exam.cohortType} / {exam.examId}
-                  </h4>
-                  <h2 className="text-4xl font-black uppercase italic tracking-tight leading-none md:text-6xl">
-                    {exam.subject}
-                  </h2>
+            <AssessmentRunner
+              eyebrow={`${exam.cohortType} / ${exam.examId}`}
+              title={exam.subject}
+              subtitle="Move through the test with the question palette, mark uncertain items for review, and submit when your final pass is complete."
+              questions={exam.questions}
+              answers={answers}
+              reviewFlags={reviewFlags}
+              currentIndex={currentIndex}
+              onNavigate={setCurrentIndex}
+              onAnswerChange={(questionId, value) =>
+                setAnswers((current) => ({
+                  ...current,
+                  [questionId]: value,
+                }))
+              }
+              onToggleReview={(questionId) =>
+                setReviewFlags((current) => ({
+                  ...current,
+                  [questionId]: !current[questionId],
+                }))
+              }
+              onSubmit={handleFinish}
+              submitLabel="Submit Qualifier"
+              isSubmitting={isScoring}
+              timeDisplay={formatTime(timeLeft)}
+              meta={
+                <div className="rounded-[18px] border border-cyan-300/20 bg-cyan-300/10 p-4 text-xs uppercase tracking-[0.18em] text-cyan-50/85">
+                  Timer is live. When the clock reaches zero, your submission is
+                  sent automatically.
                 </div>
-                <div className="text-right">
-                  <h4 className="text-xs font-bold uppercase opacity-40">
-                    Time Remaining
-                  </h4>
-                  <div className="text-5xl font-black tracking-tighter text-cyan-400 tabular-nums">
-                    {formatTime(timeLeft)}
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-14">
-                {exam.questions.map((question, index) => (
-                  <article key={question.id} className="flex gap-6">
-                    <div className="text-3xl font-black italic text-cyan-400 opacity-50 md:text-4xl">
-                      {String(index + 1).padStart(2, "0")}
-                    </div>
-                    <div className="flex-1 space-y-5">
-                      <p className="text-xl font-black uppercase tracking-tight text-white/90 md:text-2xl">
-                        {question.text}
-                      </p>
-                      <textarea
-                        onChange={(event) => {
-                          answersRef.current[index] = event.target.value;
-                        }}
-                        className="min-h-[170px] w-full border-l-4 border-white/10 bg-white/5 p-6 font-mono text-base text-gray-300 outline-none transition-colors focus:border-cyan-400 focus:bg-white/[0.08]"
-                        placeholder="Type your response here..."
-                      />
-                    </div>
-                  </article>
-                ))}
-              </div>
-
-              <button
-                type="button"
-                onClick={handleFinish}
-                disabled={isScoring}
-                className="w-full bg-cyan-400 py-5 text-black font-black uppercase tracking-[0.3em] transition-colors hover:bg-cyan-300 disabled:opacity-60"
-              >
-                {isScoring ? "Analyzing Submission" : "Submit Qualifier"}
-              </button>
-            </section>
+              }
+            />
           )}
 
           {portal === "results" && result && (
@@ -443,7 +481,8 @@ export default function ProctoredQualifierPage() {
             Missing Clerk Configuration
           </h1>
           <p className="mt-2 text-xs font-bold uppercase tracking-widest text-white/60">
-            Add `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` to access the qualifier flow.
+            Add `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` to access the qualifier
+            flow.
           </p>
         </section>
       </main>

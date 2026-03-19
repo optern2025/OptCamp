@@ -141,6 +141,12 @@ function DashboardPageWithAuth() {
               >
                 Back Home
               </Link>
+              <Link
+                href="/admin"
+                className="inline-flex items-center gap-2 border border-white/10 px-5 py-3 text-xs font-black uppercase tracking-[0.24em] text-white/70 transition-colors hover:border-white/30 hover:text-white"
+              >
+                Content Admin
+              </Link>
             </div>
           </div>
         </header>

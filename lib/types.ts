@@ -31,11 +31,46 @@ export interface UserProfile {
   updated_at: string;
 }
 
-export interface CohortStageQuestion {
+export type AssessmentQuestionType = "mcq" | "debug" | "scenario";
+
+export interface AssessmentChoice {
   id: string;
+  label: string;
+  detail?: string;
+}
+
+interface AssessmentQuestionBase {
+  id: string;
+  type: AssessmentQuestionType;
   prompt: string;
   guidance: string;
+  rubric?: string;
 }
+
+export interface MultipleChoiceQuestion extends AssessmentQuestionBase {
+  type: "mcq";
+  options: AssessmentChoice[];
+  correctOptionIds?: string[];
+  allowMultiple?: boolean;
+}
+
+export interface DebugQuestion extends AssessmentQuestionBase {
+  type: "debug";
+  language?: string;
+  starterCode?: string;
+  expectedOutcome?: string;
+}
+
+export interface ScenarioQuestion extends AssessmentQuestionBase {
+  type: "scenario";
+  deliverable?: string;
+  constraints?: string[];
+}
+
+export type AssessmentQuestion =
+  | MultipleChoiceQuestion
+  | DebugQuestion
+  | ScenarioQuestion;
 
 export interface CohortStage {
   id: string;
@@ -44,7 +79,7 @@ export interface CohortStage {
   title: string;
   description: string;
   duration_minutes: number;
-  questions: CohortStageQuestion[];
+  questions: AssessmentQuestion[];
   created_at: string;
 }
 
@@ -75,6 +110,19 @@ export interface CohortStageProgress extends CohortStage {
   attempt: UserCohortStageAttempt | null;
 }
 
+export interface QualifierTemplate {
+  id: string;
+  cohort_id: string;
+  duration_seconds: number;
+  questions: AssessmentQuestion[];
+  updated_at: string;
+}
+
+export interface CohortContentBundle {
+  qualifier: QualifierTemplate | null;
+  stages: CohortStage[];
+}
+
 export interface CohortMembership {
   cohort: Cohort;
   status: UserCohortStatus;
@@ -102,6 +150,11 @@ export interface DashboardPayload {
   memberships: CohortMembership[];
   cohorts: Cohort[];
   summary: DashboardSummary;
+}
+
+export interface AdminContentPayload {
+  cohorts: Cohort[];
+  contentByCohort: Record<string, CohortContentBundle>;
 }
 
 export interface ApiError {

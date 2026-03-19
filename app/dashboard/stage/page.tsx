@@ -3,14 +3,11 @@
 import { SignedIn, SignedOut, SignInButton, SignUpButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import {
-  type FormEvent,
-  Suspense,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+  type AssessmentAnswerValue,
+  AssessmentRunner,
+} from "@/app/components/AssessmentRunner";
 import { hasClerkPublishableKey } from "@/lib/clerkEnv";
 import type { Cohort, CohortStageProgress } from "@/lib/types";
 
@@ -26,13 +23,25 @@ interface StageGradeResponse {
   passed: boolean;
 }
 
+function normalizeAnswer(value: AssessmentAnswerValue | undefined): string {
+  if (Array.isArray(value)) {
+    return value.join(", ");
+  }
+
+  return typeof value === "string" ? value : "";
+}
+
 function DashboardStagePageWithAuth() {
   const searchParams = useSearchParams();
   const cohortId = searchParams.get("cohortId") ?? "";
   const stageId = searchParams.get("stageId") ?? "";
 
   const [payload, setPayload] = useState<StagePayload | null>(null);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [answers, setAnswers] = useState<Record<string, AssessmentAnswerValue>>(
+    {},
+  );
+  const [reviewFlags, setReviewFlags] = useState<Record<string, boolean>>({});
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [result, setResult] = useState<StageGradeResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -65,9 +74,18 @@ function DashboardStagePageWithAuth() {
       setPayload(data);
       setAnswers(
         Object.fromEntries(
-          data.stage.questions.map((question) => [question.id, ""]),
+          data.stage.questions.map((question) => [
+            question.id,
+            question.type === "mcq" && question.allowMultiple ? [] : "",
+          ]),
+        ) as Record<string, AssessmentAnswerValue>,
+      );
+      setReviewFlags(
+        Object.fromEntries(
+          data.stage.questions.map((question) => [question.id, false]),
         ),
       );
+      setCurrentIndex(0);
     } catch (error) {
       setPayload(null);
       setErrorMessage(
@@ -87,8 +105,7 @@ function DashboardStagePageWithAuth() {
     [payload],
   );
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleSubmit = async () => {
     if (!payload) {
       return;
     }
@@ -107,9 +124,14 @@ function DashboardStagePageWithAuth() {
           cohortId,
           stageId,
           answers: payload.stage.questions.map((question, index) => ({
-            questionId: index + 1,
+            questionId: question.id || index + 1,
             question: question.prompt,
-            answer: answers[question.id] ?? "",
+            answer: normalizeAnswer(answers[question.id]),
+            questionType: question.type,
+            guidance: question.guidance,
+            rubric: question.rubric,
+            correctOptionIds:
+              question.type === "mcq" ? question.correctOptionIds : undefined,
           })),
         }),
       });
@@ -135,7 +157,7 @@ function DashboardStagePageWithAuth() {
 
   return (
     <main className="min-h-screen bg-[#071018] px-4 py-10 text-white">
-      <div className="mx-auto max-w-5xl space-y-6">
+      <div className="mx-auto max-w-7xl space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-[11px] font-black uppercase tracking-[0.35em] text-cyan-300/75">
@@ -231,76 +253,57 @@ function DashboardStagePageWithAuth() {
                 </section>
               )}
 
-              <form
+              <AssessmentRunner
+                eyebrow={`Stage ${payload.stage.stage_number}`}
+                title={payload.stage.title}
+                subtitle="Use the navigator to move between prompts, mark items for review, and submit another attempt when you’re ready."
+                questions={payload.stage.questions}
+                answers={answers}
+                reviewFlags={reviewFlags}
+                currentIndex={currentIndex}
+                onNavigate={setCurrentIndex}
+                onAnswerChange={(questionId, value) =>
+                  setAnswers((current) => ({
+                    ...current,
+                    [questionId]: value,
+                  }))
+                }
+                onToggleReview={(questionId) =>
+                  setReviewFlags((current) => ({
+                    ...current,
+                    [questionId]: !current[questionId],
+                  }))
+                }
                 onSubmit={handleSubmit}
-                className="space-y-6 rounded-[28px] border border-white/10 bg-black/20 p-8"
-              >
-                {payload.stage.questions.map((question, index) => (
-                  <article key={question.id} className="space-y-3">
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300/80">
-                      Prompt {index + 1}
-                    </p>
-                    <h3 className="text-2xl font-black uppercase tracking-tight">
-                      {question.prompt}
-                    </h3>
-                    {question.guidance && (
-                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/45">
-                        {question.guidance}
-                      </p>
-                    )}
-                    <textarea
-                      required
-                      rows={7}
-                      value={answers[question.id] ?? ""}
-                      onChange={(event) =>
-                        setAnswers((current) => ({
-                          ...current,
-                          [question.id]: event.target.value,
-                        }))
-                      }
-                      className="w-full rounded-[20px] border border-white/10 bg-white/[0.04] px-5 py-4 text-sm text-white outline-none transition-colors focus:border-cyan-400"
-                      placeholder="Write your response here..."
-                    />
-                  </article>
-                ))}
-
-                {result && (
-                  <div
-                    className={`rounded-[20px] border p-5 ${
-                      result.passed
-                        ? "border-emerald-400/30 bg-emerald-400/10"
-                        : "border-amber-400/30 bg-amber-400/10"
-                    }`}
-                  >
-                    <p className="text-3xl font-black tracking-tight">
-                      {result.score}/100
-                    </p>
-                    <p className="mt-3 text-xs font-bold uppercase tracking-[0.16em] text-white/75">
-                      {result.feedback}
-                    </p>
+                submitLabel={
+                  hasSubmittedAttempt ? "Submit New Attempt" : "Submit Stage"
+                }
+                isSubmitting={isSubmitting}
+                timeDisplay={`${payload.stage.duration_minutes} min`}
+                meta={
+                  <div className="rounded-[18px] border border-white/10 bg-white/[0.03] p-4 text-xs uppercase tracking-[0.18em] text-white/65">
+                    Progressive stages can mix MCQs, debugging snippets, and
+                    sprint implementation scenarios.
                   </div>
-                )}
+                }
+              />
 
-                <div className="flex flex-wrap items-center gap-3">
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="bg-cyan-400 px-6 py-3 text-xs font-black uppercase tracking-[0.24em] text-black transition-colors hover:bg-cyan-300 disabled:opacity-70"
-                  >
-                    {isSubmitting
-                      ? "Submitting Stage"
-                      : hasSubmittedAttempt
-                        ? "Submit New Attempt"
-                        : "Submit Stage"}
-                  </button>
-                  <Link
-                    href="/dashboard"
-                    className="border border-white/10 px-6 py-3 text-xs font-black uppercase tracking-[0.24em] text-white/70 transition-colors hover:border-white/25 hover:text-white"
-                  >
-                    Return to Dashboard
-                  </Link>
+              {result && (
+                <div
+                  className={`rounded-[20px] border p-5 ${
+                    result.passed
+                      ? "border-emerald-400/30 bg-emerald-400/10"
+                      : "border-amber-400/30 bg-amber-400/10"
+                  }`}
+                >
+                  <p className="text-3xl font-black tracking-tight">
+                    {result.score}/100
+                  </p>
+                  <p className="mt-3 text-xs font-bold uppercase tracking-[0.16em] text-white/75">
+                    {result.feedback}
+                  </p>
                 </div>
-              </form>
+              )}
             </>
           )}
         </SignedIn>
