@@ -86,6 +86,7 @@ export function normalizeAssessmentQuestions(
       prompt,
       guidance: normalizeText(item.guidance),
       rubric: normalizeText(item.rubric) || undefined,
+      solution: normalizeText(item.solution) || undefined,
     };
 
     if (type === "mcq") {

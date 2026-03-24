@@ -615,7 +615,8 @@ function HomePage() {
                     className="origin-center"
                   />
                   <span className="tracking-widest">
-                    ©2026 OPTERN PERFORMANCE SYSTEMS. <i>An Initiative by OPTERN</i>
+                    ©2026 OPTERN PERFORMANCE SYSTEMS.{" "}
+                    <i>An Initiative by OPTERN</i>
                   </span>
                 </div>
                 <div className="flex flex-wrap justify-center gap-4 md:gap-10">

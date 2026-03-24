@@ -111,7 +111,7 @@ Important columns:
 
 Question payloads now support:
 - `type`: `mcq`, `debug`, `scenario`
-- shared fields: `id`, `prompt`, `guidance`, `rubric`
+- shared fields: `id`, `prompt`, `guidance`, `rubric`, `solution`
 - MCQ fields: `options[]`, `correctOptionIds[]`, `allowMultiple`
 - Debug fields: `language`, `starterCode`, `expectedOutcome`
 - Scenario fields: `deliverable`, `constraints[]`
@@ -218,6 +218,107 @@ Purpose:
 
 Response:
 - `200 { cohorts, contentByCohort }`
+
+### `POST /api/admin/content/import-pdf`
+Auth:
+- Clerk session cookie
+
+Purpose:
+- Parse a structured PDF upload into the same `AssessmentQuestion[]` format used by the admin dashboard.
+- Intended for the import panels shown alongside the qualifier and stage question editors in `/admin`.
+
+Response:
+- `200 { questions, extractedTextLength }`
+- `400 { error: string }`
+- `401 { error: "Unauthorized." }`
+
+## PDF Import Format
+The admin dashboard can import questions from a PDF, but the PDF should contain plain, copyable text and follow a strict block structure so the parser can map each question into the app schema reliably.
+
+Rules:
+- Start each question block with `QUESTION` or `QUESTION 1`, `QUESTION 2`, etc.
+- End each block with `END QUESTION`.
+- Use `Field Name: value` for one-line fields.
+- For multi-line fields, put the label on its own line with a trailing colon, then place the content underneath it.
+- MCQ options must be bullet lines under `Options:` and mark correct answers with `[x]`, `[X]`, `[correct]`, or `[✓]`.
+- Incorrect MCQ options should use `[ ]`.
+- Scenario constraints should be bullet lines under `Constraints:`.
+- `Solution:` is optional, but recommended so the imported question retains an answer key or reference approach in admin.
+- The parser ignores styling, so avoid relying on visual layout alone to convey meaning.
+
+Supported fields by type:
+- Shared: `Type`, `Prompt`, `Guidance`, `Rubric`, `Solution`
+- MCQ: `Allow Multiple`, `Options`
+- Debug: `Language`, `Starter Code`, `Expected Outcome`
+- Scenario: `Deliverable`, `Constraints`
+
+Example PDF text:
+
+````text
+QUESTION 1
+Type: mcq
+Prompt:
+Which deployment strategy is best for validating a risky release with a small
+slice of production traffic first?
+Guidance:
+Pick the safest progressive delivery method.
+Rubric:
+Strong answers should minimize blast radius before global rollout.
+Solution:
+Use a canary release because it validates real traffic gradually.
+Allow Multiple: false
+Options:
+- [ ] Big-bang deploy during off-hours
+- [x] Canary release with staged rollout
+- [ ] Full blue-green cutover to every user
+- [ ] Shadow deploy with no user-facing reads
+END QUESTION
+
+QUESTION 2
+Type: debug
+Prompt:
+An API started timing out after a dependency upgrade. Walk through how you
+would debug it.
+Guidance:
+Cover telemetry, reproduction, rollback criteria, and how you isolate the
+change.
+Rubric:
+Strong answers identify baselines, traces, and mitigation steps.
+Solution:
+Compare pre/post-upgrade latency, inspect traces, isolate the slow dependency,
+and define rollback plus instrumentation.
+Language: typescript
+Starter Code:
+```ts
+export async function fetchAccount(id: string) {
+  const profile = await profileClient.get(id);
+  const invoices = await billingClient.listInvoices(id);
+  return { profile, invoices };
+}
+```
+Expected Outcome:
+Candidate explains where to instrument, what changed, and how to restore
+stability safely.
+END QUESTION
+
+QUESTION 3
+Type: scenario
+Prompt:
+Design the first 48 hours of an engineering sprint for a reliability fix.
+Guidance:
+Show milestones, owners, and risk controls.
+Rubric:
+Look for sequencing, execution realism, and communication.
+Solution:
+An ideal answer includes triage, implementation, observability, validation, and
+stakeholder updates.
+Deliverable: Execution plan
+Constraints:
+- One backend engineer and one frontend engineer
+- Fix must be observable in production metrics
+- Stakeholder update due by end of day two
+END QUESTION
+````
 - `401 { error: "Unauthorized." }`
 - `403 { error: string }`
 

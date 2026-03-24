@@ -45,6 +45,7 @@ interface AssessmentQuestionBase {
   prompt: string;
   guidance: string;
   rubric?: string;
+  solution?: string;
 }
 
 export interface MultipleChoiceQuestion extends AssessmentQuestionBase {

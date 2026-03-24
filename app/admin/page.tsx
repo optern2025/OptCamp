@@ -1,7 +1,7 @@
 "use client";
 
 import { SignedIn, SignedOut, SignInButton, SignUpButton } from "@clerk/nextjs";
-import { Plus, Save, Trash2 } from "lucide-react";
+import { FileUp, Plus, Save, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { hasClerkPublishableKey } from "@/lib/clerkEnv";
 import type {
@@ -22,6 +22,7 @@ function createQuestion(type: AssessmentQuestionType): AssessmentQuestion {
     prompt: "",
     guidance: "",
     rubric: "",
+    solution: "",
   };
 
   if (type === "mcq") {
@@ -156,6 +157,19 @@ function QuestionEditor({
             value={question.rubric ?? ""}
             onChange={(event) =>
               onChange({ ...question, rubric: event.target.value })
+            }
+            className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"
+          />
+        </Field>
+      </div>
+
+      <div className="mt-4">
+        <Field label="Solution">
+          <textarea
+            rows={3}
+            value={question.solution ?? ""}
+            onChange={(event) =>
+              onChange({ ...question, solution: event.target.value })
             }
             className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"
           />
@@ -333,6 +347,123 @@ function QuestionEditor({
             />
           </Field>
         </div>
+      )}
+    </div>
+  );
+}
+
+function QuestionImportPanel({
+  onImported,
+}: {
+  onImported: (
+    questions: AssessmentQuestion[],
+    replaceExisting: boolean,
+  ) => void;
+}) {
+  const [file, setFile] = useState<File | null>(null);
+  const [replaceExisting, setReplaceExisting] = useState(true);
+  const [isImporting, setIsImporting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const importPdf = async () => {
+    if (!file) {
+      setErrorMessage("Choose a PDF before importing.");
+      return;
+    }
+
+    setIsImporting(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/admin/content/import-pdf", {
+        method: "POST",
+        body: formData,
+      });
+      const data = (await response.json()) as {
+        questions?: AssessmentQuestion[];
+        error?: string;
+      };
+
+      if (!response.ok || !data.questions) {
+        throw new Error(data.error ?? "Unable to import questions from PDF.");
+      }
+
+      onImported(data.questions, replaceExisting);
+      setSuccessMessage(
+        `Imported ${data.questions.length} question${
+          data.questions.length === 1 ? "" : "s"
+        }.`,
+      );
+      setFile(null);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Unable to import questions from PDF.",
+      );
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  return (
+    <div className="rounded-[22px] border border-white/10 bg-[#07121b] p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.26em] text-cyan-300/70">
+            PDF import
+          </p>
+          <p className="mt-2 max-w-2xl text-xs uppercase tracking-[0.14em] text-white/50">
+            Upload a structured PDF to generate questions, then keep refining
+            them in the editor below.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={importPdf}
+          disabled={!file || isImporting}
+          className="inline-flex items-center gap-2 rounded-full border border-cyan-300/30 px-4 py-2 text-[10px] font-black uppercase tracking-[0.24em] text-cyan-100 transition-colors hover:bg-cyan-300/10 disabled:opacity-50"
+        >
+          <FileUp size={14} />
+          {isImporting ? "Importing..." : "Import PDF"}
+        </button>
+      </div>
+
+      <div className="mt-4 grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
+        <Field label="PDF file">
+          <input
+            type="file"
+            accept="application/pdf"
+            onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+            className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white file:mr-4 file:rounded-full file:border-0 file:bg-cyan-300 file:px-4 file:py-2 file:text-xs file:font-black file:uppercase file:tracking-[0.18em] file:text-black"
+          />
+        </Field>
+        <label className="inline-flex items-center gap-3 rounded-[18px] border border-white/10 px-4 py-3 text-xs uppercase tracking-[0.16em] text-white/65">
+          <input
+            type="checkbox"
+            checked={replaceExisting}
+            onChange={(event) => setReplaceExisting(event.target.checked)}
+            className="h-4 w-4 accent-cyan-300"
+          />
+          Replace existing questions
+        </label>
+      </div>
+
+      {errorMessage && (
+        <p className="mt-4 text-xs font-black uppercase tracking-[0.2em] text-red-200">
+          {errorMessage}
+        </p>
+      )}
+
+      {successMessage && (
+        <p className="mt-4 text-xs font-black uppercase tracking-[0.2em] text-emerald-100">
+          {successMessage}
+        </p>
       )}
     </div>
   );
@@ -681,6 +812,29 @@ export default function AdminPage() {
                     </Field>
                   </div>
 
+                  <div className="mt-6">
+                    <QuestionImportPanel
+                      onImported={(questions, replaceExisting) =>
+                        updateSelectedBundle((bundle) => {
+                          const qualifier = ensureQualifier(
+                            bundle,
+                            selectedCohortId,
+                          );
+
+                          return {
+                            ...bundle,
+                            qualifier: {
+                              ...qualifier,
+                              questions: replaceExisting
+                                ? questions
+                                : [...qualifier.questions, ...questions],
+                            },
+                          };
+                        })
+                      }
+                    />
+                  </div>
+
                   <div className="mt-6 space-y-5">
                     {selectedQualifier.questions.map((question, index) => (
                       <QuestionEditor
@@ -856,6 +1010,26 @@ export default function AdminPage() {
                               />
                             </Field>
                           </div>
+                        </div>
+
+                        <div className="mt-6">
+                          <QuestionImportPanel
+                            onImported={(questions, replaceExisting) =>
+                              updateSelectedBundle((bundle) => ({
+                                ...bundle,
+                                stages: bundle.stages.map((item, itemIndex) =>
+                                  itemIndex === stageIndex
+                                    ? {
+                                        ...item,
+                                        questions: replaceExisting
+                                          ? questions
+                                          : [...item.questions, ...questions],
+                                      }
+                                    : item,
+                                ),
+                              }))
+                            }
+                          />
                         </div>
 
                         <div className="mt-6 flex flex-wrap gap-2">
