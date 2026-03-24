@@ -81,6 +81,8 @@ function normalizeBlockText(value: string): string {
     .replace(/\r/g, "")
     .replace(/\u00a0/g, " ")
     .split("\n")
+    .filter((line) => !/^--\s*\d+\s+of\s+\d+\s*--$/i.test(line.trim()))
+    .filter((line) => !/^page\s+\d+\s+of\s+\d+$/i.test(line.trim()))
     .map((line) => line.trimEnd())
     .join("\n")
     .trim();

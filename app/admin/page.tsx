@@ -84,6 +84,23 @@ function ensureQualifier(
   return bundle.qualifier ?? createEmptyQualifier(cohortId);
 }
 
+async function readJsonResponse<T>(response: Response): Promise<T> {
+  const contentType = response.headers.get("content-type") ?? "";
+
+  if (contentType.toLowerCase().includes("application/json")) {
+    return (await response.json()) as T;
+  }
+
+  const text = (await response.text()).trim();
+  const compact = text.replace(/\s+/g, " ").slice(0, 240);
+
+  throw new Error(
+    compact
+      ? `Expected JSON but received: ${compact}`
+      : "Expected JSON but received an empty response.",
+  );
+}
+
 function Field({
   label,
   children,
@@ -384,10 +401,10 @@ function QuestionImportPanel({
         method: "POST",
         body: formData,
       });
-      const data = (await response.json()) as {
+      const data = await readJsonResponse<{
         questions?: AssessmentQuestion[];
         error?: string;
-      };
+      }>(response);
 
       if (!response.ok || !data.questions) {
         throw new Error(data.error ?? "Unable to import questions from PDF.");
@@ -484,9 +501,11 @@ export default function AdminPage() {
 
     try {
       const response = await fetch("/api/admin/content");
-      const data = (await response.json()) as AdminContentPayload & {
-        error?: string;
-      };
+      const data = await readJsonResponse<
+        AdminContentPayload & {
+          error?: string;
+        }
+      >(response);
 
       if (!response.ok) {
         throw new Error(data.error ?? "Unable to load admin content.");
@@ -579,9 +598,11 @@ export default function AdminPage() {
           stages: selectedBundle.stages,
         }),
       });
-      const data = (await response.json()) as AdminContentPayload & {
-        error?: string;
-      };
+      const data = await readJsonResponse<
+        AdminContentPayload & {
+          error?: string;
+        }
+      >(response);
 
       if (!response.ok) {
         throw new Error(data.error ?? "Unable to save admin content.");
