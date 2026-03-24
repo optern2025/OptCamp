@@ -22,7 +22,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "OPTERN – Performance Sprint",
+  title: "OPTCAMP – Performance Sprint",
   description:
     "4-Day Real Startup Simulation built to identify the top 10%. Prove your execution under pressure.",
 };

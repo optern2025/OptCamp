@@ -61,6 +61,7 @@ function QualifierPageWithAuth() {
   const [reviewFlags, setReviewFlags] = useState<Record<string, boolean>>({});
 
   const timerRef = useRef<number | null>(null);
+  const securityStopRef = useRef(false);
 
   const loadExam = useCallback(async () => {
     if (!cohortId) {
@@ -134,6 +135,8 @@ function QualifierPageWithAuth() {
     setHasStarted(true);
     setPortal("exam");
     setTimeLeft(exam.durationSeconds);
+    setErrorMessage(null);
+    securityStopRef.current = false;
 
     timerRef.current = window.setInterval(() => {
       setTimeLeft((previous) => {
@@ -212,11 +215,81 @@ function QualifierPageWithAuth() {
     }
   }, [answers, exam, isScoring, result]);
 
+  const stopExamForSecurityReason = useCallback(
+    (message: string) => {
+      if (portal !== "exam" || isScoring || result || securityStopRef.current) {
+        return;
+      }
+
+      securityStopRef.current = true;
+      setErrorMessage(message);
+      void handleFinish();
+    },
+    [handleFinish, isScoring, portal, result],
+  );
+
   useEffect(() => {
     if (portal === "exam" && timeLeft === 0 && !isScoring && !result) {
       handleFinish();
     }
   }, [handleFinish, isScoring, portal, result, timeLeft]);
+
+  useEffect(() => {
+    if (portal !== "exam") {
+      return;
+    }
+
+    const preventClipboardAction = (event: ClipboardEvent) => {
+      event.preventDefault();
+    };
+
+    const preventContextMenu = (event: MouseEvent) => {
+      event.preventDefault();
+    };
+
+    const preventRestrictedShortcut = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+      const blockedCombo =
+        (event.ctrlKey || event.metaKey) &&
+        ["a", "c", "p", "s", "u", "v", "x"].includes(key);
+
+      if (blockedCombo || (event.shiftKey && key === "insert")) {
+        event.preventDefault();
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopExamForSecurityReason(
+          "Attempt ended because leaving the active test tab is disabled.",
+        );
+      }
+    };
+
+    const handleWindowBlur = () => {
+      stopExamForSecurityReason(
+        "Attempt ended because switching tabs or windows is disabled.",
+      );
+    };
+
+    document.addEventListener("copy", preventClipboardAction);
+    document.addEventListener("cut", preventClipboardAction);
+    document.addEventListener("paste", preventClipboardAction);
+    document.addEventListener("contextmenu", preventContextMenu);
+    document.addEventListener("keydown", preventRestrictedShortcut);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("blur", handleWindowBlur);
+
+    return () => {
+      document.removeEventListener("copy", preventClipboardAction);
+      document.removeEventListener("cut", preventClipboardAction);
+      document.removeEventListener("paste", preventClipboardAction);
+      document.removeEventListener("contextmenu", preventContextMenu);
+      document.removeEventListener("keydown", preventRestrictedShortcut);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("blur", handleWindowBlur);
+    };
+  }, [portal, stopExamForSecurityReason]);
 
   const formatTime = useMemo(
     () => (seconds: number) =>
@@ -233,6 +306,7 @@ function QualifierPageWithAuth() {
     setResult(null);
     setErrorMessage(null);
     setHasStarted(false);
+    securityStopRef.current = false;
     setCurrentIndex(0);
     setTimeLeft(exam?.durationSeconds ?? 0);
     if (exam) {
@@ -409,8 +483,9 @@ function QualifierPageWithAuth() {
               timeDisplay={formatTime(timeLeft)}
               meta={
                 <div className="rounded-[18px] border border-cyan-300/20 bg-cyan-300/10 p-4 text-xs uppercase tracking-[0.18em] text-cyan-50/85">
-                  Timer is live. When the clock reaches zero, your submission is
-                  sent automatically.
+                  Timer is live. Copy, paste, and tab switching are disabled.
+                  When the clock reaches zero, your submission is sent
+                  automatically.
                 </div>
               }
             />

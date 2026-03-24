@@ -66,7 +66,75 @@ const selectionSteps: SelectionStep[] = [
   { step: "Step 4", title: "Exposure", desc: "Ranked Top 10%" },
 ];
 
+interface CohortDisplayCopy {
+  applicationLabel?: string;
+  qualifierLabel?: string;
+  sprintLabel?: string;
+  qualifierWindow?: string;
+}
+
+const cohortDisplayOverrides: Record<
+  string,
+  Partial<LandingCohort> & CohortDisplayCopy
+> = {
+  "full stack": {
+    apply_window: "26th - 29th March",
+    qualifierWindow: "30 & 31st March",
+    sprint_window: "1st - 4th April",
+    apply_by: "29th March",
+    applicationLabel: "Application Starts",
+    qualifierLabel: "Qualifier Round",
+    sprintLabel: "Cohort Sprint",
+  },
+};
+
+function normalizeCohortType(type: string) {
+  return type.trim().toLowerCase();
+}
+
+function sortCohorts(items: LandingCohort[]) {
+  return [...items].sort((left, right) => {
+    const leftRank = normalizeCohortType(left.type) === "full stack" ? 0 : 1;
+    const rightRank = normalizeCohortType(right.type) === "full stack" ? 0 : 1;
+
+    if (leftRank !== rightRank) {
+      return leftRank - rightRank;
+    }
+
+    if (left.is_active !== right.is_active) {
+      return Number(right.is_active) - Number(left.is_active);
+    }
+
+    return left.created_at.localeCompare(right.created_at);
+  });
+}
+
+function getCohortDisplay(cohort: LandingCohort) {
+  const override =
+    cohortDisplayOverrides[normalizeCohortType(cohort.type)] ?? {};
+
+  return {
+    ...cohort,
+    ...override,
+    applicationLabel: override.applicationLabel ?? "Applications",
+    qualifierLabel: override.qualifierLabel ?? "Qualifier",
+    sprintLabel: override.sprintLabel ?? "Sprint",
+    qualifierWindow: override.qualifierWindow,
+  };
+}
+
 const fallbackCohorts: LandingCohort[] = [
+  {
+    id: "fallback-fullstack",
+    slug: "fullstack-apr-2026",
+    type: "Full Stack",
+    apply_window: "26th - 29th March",
+    sprint_window: "1st - 4th April",
+    apply_by: "29th March",
+    qualifier_test_url: null,
+    is_active: true,
+    created_at: new Date().toISOString(),
+  },
   {
     id: "fallback-aiml",
     slug: "aiml-mar-2026",
@@ -74,17 +142,6 @@ const fallbackCohorts: LandingCohort[] = [
     apply_window: "Mar 23-24",
     sprint_window: "Mar 25-28",
     apply_by: "Mar 24",
-    qualifier_test_url: null,
-    is_active: false,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "fallback-fullstack",
-    slug: "fullstack-apr-2026",
-    type: "Full Stack",
-    apply_window: "Apr 6-7",
-    sprint_window: "Apr 8-11",
-    apply_by: "Apr 7",
     qualifier_test_url: null,
     is_active: false,
     created_at: new Date().toISOString(),
@@ -115,7 +172,9 @@ function HomePage() {
   const [scrolled, setScrolled] = useState(false);
   const [currentPage, setCurrentPage] = useState<PageType>("landing");
   const [selectedCohortId, setSelectedCohortId] = useState<string>("");
-  const [cohorts, setCohorts] = useState<LandingCohort[]>(fallbackCohorts);
+  const [cohorts, setCohorts] = useState<LandingCohort[]>(
+    sortCohorts(fallbackCohorts),
+  );
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -132,7 +191,7 @@ function HomePage() {
           cohorts?: LandingCohort[];
         };
         if (payload.cohorts && payload.cohorts.length > 0) {
-          setCohorts(payload.cohorts);
+          setCohorts(sortCohorts(payload.cohorts));
         }
       } catch (_error) {
         // Keep fallback cohort cards if API fails.
@@ -332,7 +391,7 @@ function HomePage() {
                     Real startups demand execution under ambiguity and pressure.
                   </p>
                   <p className="text-cyan-500 italic">
-                    Optern measures real performance.
+                    Optcamp measures real performance.
                   </p>
                 </div>
               </div>
@@ -455,52 +514,66 @@ function HomePage() {
                 Active Cycles
               </SectionTitle>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 max-w-7xl mx-auto">
-                {cohorts.map((cohort) => (
-                  <div
-                    key={cohort.id}
-                    className={`p-7 md:p-10 border transition-all duration-500 flex flex-col justify-between h-full ${
-                      cohort.is_active
-                        ? "border-cyan-500 bg-cyan-500/5 shadow-[0_0_30px_rgba(0,245,255,0.1)]"
-                        : "border-white/10 opacity-40 hover:opacity-100"
-                    }`}
-                  >
-                    <div>
-                      <h3 className="text-xl sm:text-2xl font-black uppercase mb-6 md:mb-10 tracking-tighter leading-none">
-                        {cohort.type}
-                      </h3>
-                      <div className="space-y-4 md:space-y-6 mb-8 md:mb-10">
-                        <div className="flex justify-between text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-white/40">
-                          <span>Apps:</span>
-                          <span className="text-white">
-                            {cohort.apply_window}
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-white/40">
-                          <span>Sprint:</span>
-                          <span className="text-white">
-                            {cohort.sprint_window}
-                          </span>
-                        </div>
-                        <div className="pt-4 md:pt-6 border-t border-white/10 flex justify-between text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-cyan-500">
-                          <span>Apply By:</span>
-                          <span>{cohort.apply_by}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleApplyClick(cohort.id)}
-                      disabled={!cohort.is_active}
-                      className={`w-full py-3 md:py-4 text-[8px] sm:text-[10px] font-black uppercase tracking-widest border transition-all ${
-                        cohort.is_active
-                          ? "bg-cyan-500 text-black border-cyan-500 hover:bg-cyan-400"
-                          : "border-white/20 text-white/20"
+                {cohorts.map((cohort) => {
+                  const displayCohort = getCohortDisplay(cohort);
+
+                  return (
+                    <div
+                      key={displayCohort.id}
+                      className={`p-7 md:p-10 border transition-all duration-500 flex flex-col justify-between h-full ${
+                        displayCohort.is_active
+                          ? "border-cyan-500 bg-cyan-500/5 shadow-[0_0_30px_rgba(0,245,255,0.1)]"
+                          : "border-white/10 opacity-40 hover:opacity-100"
                       }`}
                     >
-                      {cohort.is_active ? "Apply to Batch" : "Waitlist"}
-                    </button>
-                  </div>
-                ))}
+                      <div>
+                        <h3 className="text-xl sm:text-2xl font-black uppercase mb-6 md:mb-10 tracking-tighter leading-none">
+                          {displayCohort.type}
+                        </h3>
+                        <div className="space-y-4 md:space-y-6 mb-8 md:mb-10">
+                          <div className="flex justify-between text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-white/40">
+                            <span>{displayCohort.applicationLabel}:</span>
+                            <span className="text-white">
+                              {displayCohort.apply_window}
+                            </span>
+                          </div>
+                          {displayCohort.qualifierWindow && (
+                            <div className="flex justify-between text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-white/40">
+                              <span>{displayCohort.qualifierLabel}:</span>
+                              <span className="text-white">
+                                {displayCohort.qualifierWindow}
+                              </span>
+                            </div>
+                          )}
+                          <div className="flex justify-between text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-white/40">
+                            <span>{displayCohort.sprintLabel}:</span>
+                            <span className="text-white">
+                              {displayCohort.sprint_window}
+                            </span>
+                          </div>
+                          <div className="pt-4 md:pt-6 border-t border-white/10 flex justify-between text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-cyan-500">
+                            <span>Apply By:</span>
+                            <span>{displayCohort.apply_by}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyClick(displayCohort.id)}
+                        disabled={!displayCohort.is_active}
+                        className={`w-full py-3 md:py-4 text-[8px] sm:text-[10px] font-black uppercase tracking-widest border transition-all ${
+                          displayCohort.is_active
+                            ? "bg-cyan-500 text-black border-cyan-500 hover:bg-cyan-400"
+                            : "border-white/20 text-white/20"
+                        }`}
+                      >
+                        {displayCohort.is_active
+                          ? "Apply to Batch"
+                          : "Waitlist"}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </section>
@@ -604,8 +677,8 @@ function HomePage() {
                     className="origin-center"
                   />
                   <span className="tracking-widest">
-                    ©2026 OPTERN PERFORMANCE SYSTEMS.{" "}
-                    <i>An Initiative by OPTERN</i>
+                    ©2026 OPTCAMP PERFORMANCE SYSTEMS.{" "}
+                    <i>An Initiative by OPTCAMP</i>
                   </span>
                 </div>
                 <div className="flex flex-wrap justify-center gap-4 md:gap-10">

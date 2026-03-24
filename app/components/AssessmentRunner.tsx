@@ -135,7 +135,7 @@ function QuestionInput({
       rows={question.type === "debug" ? 12 : 8}
       value={Array.isArray(value) ? value.join(", ") : (value ?? "")}
       onChange={(event) => onChange(event.target.value)}
-      className="w-full rounded-[22px] border border-white/10 bg-[#091521] px-5 py-4 text-sm text-white outline-none transition-colors focus:border-cyan-300"
+      className="w-full select-text rounded-[22px] border border-white/10 bg-[#091521] px-5 py-4 text-sm text-white outline-none transition-colors focus:border-cyan-300"
       placeholder={
         question.type === "debug"
           ? "Explain the issue, diagnosis path, and fix..."
@@ -172,7 +172,7 @@ export function AssessmentRunner({
   }
 
   return (
-    <section className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
+    <section className="grid gap-6 select-none lg:grid-cols-[300px_minmax(0,1fr)]">
       <aside className="rounded-[28px] border border-white/10 bg-[#07131e]/90 p-5">
         <p className="text-[10px] font-black uppercase tracking-[0.35em] text-cyan-300/75">
           {eyebrow}
