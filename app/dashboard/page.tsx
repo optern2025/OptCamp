@@ -455,8 +455,8 @@ function DashboardPageWithAuth() {
               </section>
             </div>
           )}
+        </div>
         </SignedIn>
-      </div>
     </main>
   );
 }
