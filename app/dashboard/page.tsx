@@ -177,14 +177,16 @@ function DashboardPageWithAuth() {
 
       <SignedIn>
         <div className="mx-auto max-w-7xl space-y-8 px-4 py-12">
-          <header className="relative overflow-hidden rounded-[28px] border border-cyan-500/20 bg-[radial-gradient(circle_at_top_right,_rgba(34,211,238,0.24),_transparent_28%),linear-gradient(135deg,#08131d_0%,#05080c_100%)] p-8 pt-16 md:p-10 md:pt-16">
-            <Link
-              href="/"
-              aria-label="Back to home"
-              className="absolute left-6 top-6 inline-flex h-11 w-11 items-center justify-center border border-white/10 bg-black/30 text-white/70 transition-colors hover:border-white/30 hover:bg-black/50 hover:text-white"
-            >
-              <ArrowLeft size={16} />
-            </Link>
+          <header className="overflow-hidden rounded-[28px] border border-cyan-500/20 bg-[radial-gradient(circle_at_top_right,_rgba(34,211,238,0.24),_transparent_28%),linear-gradient(135deg,#08131d_0%,#05080c_100%)] p-8 md:p-10">
+            <div className="mb-8 flex items-center">
+              <Link
+                href="/"
+                aria-label="Back to home"
+                className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] text-white/70 transition-colors hover:border-white/30 hover:bg-white/[0.08] hover:text-white"
+              >
+                <ArrowLeft size={18} />
+              </Link>
+            </div>
             <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
               <div className="space-y-4">
                 <p className="text-[11px] font-black uppercase tracking-[0.35em] text-cyan-300/80">
