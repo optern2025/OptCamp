@@ -1,8 +1,15 @@
 "use client";
 
-import { SignedIn, SignedOut, SignInButton, SignUpButton } from "@clerk/nextjs";
+import {
+  SignedIn,
+  SignedOut,
+  SignInButton,
+  SignUpButton,
+  useUser,
+} from "@clerk/nextjs";
 import { FileUp, Plus, Save, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { canAccessAdmin } from "@/lib/adminAccess";
 import { hasClerkPublishableKey } from "@/lib/clerkEnv";
 import type {
   AdminContentPayload,
@@ -489,6 +496,7 @@ function QuestionImportPanel({
 }
 
 export default function AdminPage() {
+  const { isLoaded, user } = useUser();
   const [payload, setPayload] = useState<AdminContentPayload | null>(null);
   const [selectedCohortId, setSelectedCohortId] = useState("");
   const [drafts, setDrafts] = useState<Record<string, CohortContentBundle>>({});
@@ -496,6 +504,9 @@ export default function AdminPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const canManageContent = canAccessAdmin(
+    user?.primaryEmailAddress?.emailAddress ?? "",
+  );
 
   const loadAdminContent = useCallback(async () => {
     setIsLoading(true);
@@ -535,8 +546,17 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
+    if (!isLoaded) {
+      return;
+    }
+
+    if (!canManageContent) {
+      setIsLoading(false);
+      return;
+    }
+
     loadAdminContent();
-  }, [loadAdminContent]);
+  }, [canManageContent, isLoaded, loadAdminContent]);
 
   const selectedCohort = useMemo(
     () =>
@@ -690,6 +710,18 @@ export default function AdminPage() {
         </SignedOut>
 
         <SignedIn>
+          {isLoaded && !canManageContent && (
+            <section className="rounded-[24px] border border-amber-400/20 bg-amber-400/10 p-8">
+              <h2 className="text-2xl font-black uppercase tracking-tight">
+                Admin access is restricted
+              </h2>
+              <p className="mt-4 text-sm font-bold uppercase tracking-[0.16em] text-white/65">
+                Only <code>ztoa777111@gmail.com</code> can manage cohort
+                content.
+              </p>
+            </section>
+          )}
+
           {isLoading && (
             <section className="rounded-[24px] border border-white/10 bg-black/30 p-8">
               <p className="text-sm font-bold uppercase tracking-[0.22em] text-white/55">
@@ -698,7 +730,7 @@ export default function AdminPage() {
             </section>
           )}
 
-          {errorMessage && (
+          {canManageContent && errorMessage && (
             <section className="rounded-[24px] border border-red-500/30 bg-red-500/10 p-6">
               <p className="text-xs font-black uppercase tracking-[0.22em] text-red-200">
                 {errorMessage}
@@ -706,7 +738,7 @@ export default function AdminPage() {
             </section>
           )}
 
-          {successMessage && (
+          {canManageContent && successMessage && (
             <section className="rounded-[24px] border border-emerald-400/30 bg-emerald-400/10 p-6">
               <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-100">
                 {successMessage}
@@ -714,307 +746,268 @@ export default function AdminPage() {
             </section>
           )}
 
-          {payload && selectedBundle && selectedQualifier && (
-            <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
-              <aside className="rounded-[28px] border border-white/10 bg-black/20 p-5">
-                <p className="text-[10px] font-black uppercase tracking-[0.28em] text-white/45">
-                  Cohorts
-                </p>
-                <div className="mt-4 space-y-3">
-                  {payload.cohorts.map((cohort) => (
-                    <button
-                      key={cohort.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedCohortId(cohort.id);
-                        setSuccessMessage(null);
-                      }}
-                      className={`w-full rounded-[20px] border px-4 py-4 text-left transition-colors ${
-                        cohort.id === selectedCohortId
-                          ? "border-cyan-300/40 bg-cyan-300/10"
-                          : "border-white/10 bg-white/[0.03] hover:border-white/20"
-                      }`}
-                    >
-                      <p className="text-sm font-black uppercase tracking-[0.16em] text-white">
-                        {cohort.type}
-                      </p>
-                      <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-white/45">
-                        {cohort.slug}
-                      </p>
-                    </button>
-                  ))}
-                </div>
-              </aside>
-
-              <div className="space-y-6">
-                <section className="rounded-[28px] border border-white/10 bg-black/20 p-6">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300/80">
-                        Selected Cohort
-                      </p>
-                      <h2 className="mt-2 text-3xl font-black uppercase tracking-tight">
-                        {selectedCohort?.type}
-                      </h2>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={saveContent}
-                      disabled={isSaving}
-                      className="inline-flex items-center gap-2 rounded-full bg-cyan-300 px-5 py-3 text-xs font-black uppercase tracking-[0.24em] text-black transition-colors hover:bg-cyan-200 disabled:opacity-60"
-                    >
-                      <Save size={16} />
-                      {isSaving ? "Saving..." : "Save Content"}
-                    </button>
-                  </div>
-                </section>
-
-                <section className="rounded-[28px] border border-white/10 bg-black/20 p-6">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300/80">
-                        Qualifier
-                      </p>
-                      <h3 className="mt-2 text-2xl font-black uppercase tracking-tight">
-                        Timed entry assessment
-                      </h3>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        updateSelectedBundle((bundle) => {
-                          const qualifier = ensureQualifier(
-                            bundle,
-                            selectedCohortId,
-                          );
-
-                          return {
-                            ...bundle,
-                            qualifier: {
-                              ...qualifier,
-                              questions: [
-                                ...qualifier.questions,
-                                createQuestion("scenario"),
-                              ],
-                            },
-                          };
-                        })
-                      }
-                      className="inline-flex items-center gap-2 rounded-full border border-cyan-300/30 px-4 py-2 text-[10px] font-black uppercase tracking-[0.24em] text-cyan-100 transition-colors hover:bg-cyan-300/10"
-                    >
-                      <Plus size={14} />
-                      Add qualifier question
-                    </button>
-                  </div>
-
-                  <div className="mt-5">
-                    <Field label="Duration (seconds)">
-                      <input
-                        type="number"
-                        min={300}
-                        value={selectedQualifier.duration_seconds}
-                        onChange={(event) =>
-                          updateSelectedBundle((bundle) => {
-                            const qualifier = ensureQualifier(
-                              bundle,
-                              selectedCohortId,
-                            );
-
-                            return {
-                              ...bundle,
-                              qualifier: {
-                                ...qualifier,
-                                duration_seconds:
-                                  Number(event.target.value) || 300,
-                              },
-                            };
-                          })
-                        }
-                        className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"
-                      />
-                    </Field>
-                  </div>
-
-                  <div className="mt-6">
-                    <QuestionImportPanel
-                      onImported={(questions, replaceExisting) =>
-                        updateSelectedBundle((bundle) => {
-                          const qualifier = ensureQualifier(
-                            bundle,
-                            selectedCohortId,
-                          );
-
-                          return {
-                            ...bundle,
-                            qualifier: {
-                              ...qualifier,
-                              questions: replaceExisting
-                                ? questions
-                                : [...qualifier.questions, ...questions],
-                            },
-                          };
-                        })
-                      }
-                    />
-                  </div>
-
-                  <div className="mt-6 space-y-5">
-                    {selectedQualifier.questions.map((question, index) => (
-                      <QuestionEditor
-                        key={question.id}
-                        question={question}
-                        onChange={(nextQuestion) =>
-                          updateSelectedBundle((bundle) => {
-                            const qualifier = ensureQualifier(
-                              bundle,
-                              selectedCohortId,
-                            );
-
-                            return {
-                              ...bundle,
-                              qualifier: {
-                                ...qualifier,
-                                questions: qualifier.questions.map(
-                                  (item, itemIndex) =>
-                                    itemIndex === index ? nextQuestion : item,
-                                ),
-                              },
-                            };
-                          })
-                        }
-                        onRemove={() =>
-                          updateSelectedBundle((bundle) => {
-                            const qualifier = ensureQualifier(
-                              bundle,
-                              selectedCohortId,
-                            );
-
-                            return {
-                              ...bundle,
-                              qualifier: {
-                                ...qualifier,
-                                questions: qualifier.questions.filter(
-                                  (_, itemIndex) => itemIndex !== index,
-                                ),
-                              },
-                            };
-                          })
-                        }
-                      />
+          {canManageContent &&
+            payload &&
+            selectedBundle &&
+            selectedQualifier && (
+              <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
+                <aside className="rounded-[28px] border border-white/10 bg-black/20 p-5">
+                  <p className="text-[10px] font-black uppercase tracking-[0.28em] text-white/45">
+                    Cohorts
+                  </p>
+                  <div className="mt-4 space-y-3">
+                    {payload.cohorts.map((cohort) => (
+                      <button
+                        key={cohort.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedCohortId(cohort.id);
+                          setSuccessMessage(null);
+                        }}
+                        className={`w-full rounded-[20px] border px-4 py-4 text-left transition-colors ${
+                          cohort.id === selectedCohortId
+                            ? "border-cyan-300/40 bg-cyan-300/10"
+                            : "border-white/10 bg-white/[0.03] hover:border-white/20"
+                        }`}
+                      >
+                        <p className="text-sm font-black uppercase tracking-[0.16em] text-white">
+                          {cohort.type}
+                        </p>
+                        <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-white/45">
+                          {cohort.slug}
+                        </p>
+                      </button>
                     ))}
                   </div>
-                </section>
+                </aside>
 
-                <section className="rounded-[28px] border border-white/10 bg-black/20 p-6">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300/80">
-                        Sprint Stages
-                      </p>
-                      <h3 className="mt-2 text-2xl font-black uppercase tracking-tight">
-                        Progressive assessments
-                      </h3>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        updateSelectedBundle((bundle) => ({
-                          ...bundle,
-                          stages: [
-                            ...bundle.stages,
-                            {
-                              id: "",
-                              cohort_id: selectedCohortId,
-                              stage_number: bundle.stages.length + 1,
-                              title: "",
-                              description: "",
-                              duration_minutes: 45,
-                              questions: [],
-                              created_at: "",
-                            },
-                          ],
-                        }))
-                      }
-                      className="inline-flex items-center gap-2 rounded-full border border-cyan-300/30 px-4 py-2 text-[10px] font-black uppercase tracking-[0.24em] text-cyan-100 transition-colors hover:bg-cyan-300/10"
-                    >
-                      <Plus size={14} />
-                      Add stage
-                    </button>
-                  </div>
-
-                  <div className="mt-6 space-y-6">
-                    {selectedBundle.stages.map((stage, stageIndex) => (
-                      <div
-                        key={`${stage.id || "new"}-${stageIndex}`}
-                        className="rounded-[24px] border border-white/10 bg-[#08111a] p-5"
+                <div className="space-y-6">
+                  <section className="rounded-[28px] border border-white/10 bg-black/20 p-6">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300/80">
+                          Selected Cohort
+                        </p>
+                        <h2 className="mt-2 text-3xl font-black uppercase tracking-tight">
+                          {selectedCohort?.type}
+                        </h2>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={saveContent}
+                        disabled={isSaving}
+                        className="inline-flex items-center gap-2 rounded-full bg-cyan-300 px-5 py-3 text-xs font-black uppercase tracking-[0.24em] text-black transition-colors hover:bg-cyan-200 disabled:opacity-60"
                       >
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <p className="text-sm font-black uppercase tracking-[0.18em] text-white">
-                            Stage {stageIndex + 1}
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              updateSelectedBundle((bundle) => ({
-                                ...bundle,
-                                stages: bundle.stages.filter(
-                                  (_, itemIndex) => itemIndex !== stageIndex,
-                                ),
-                              }))
-                            }
-                            className="inline-flex items-center gap-2 rounded-full border border-red-400/30 px-3 py-2 text-[10px] font-black uppercase tracking-[0.22em] text-red-200 transition-colors hover:bg-red-400/10"
-                          >
-                            <Trash2 size={14} />
-                            Remove stage
-                          </button>
-                        </div>
+                        <Save size={16} />
+                        {isSaving ? "Saving..." : "Save Content"}
+                      </button>
+                    </div>
+                  </section>
 
-                        <div className="mt-5 grid gap-4 md:grid-cols-2">
-                          <Field label="Title">
-                            <input
-                              value={stage.title}
-                              onChange={(event) =>
+                  <section className="rounded-[28px] border border-white/10 bg-black/20 p-6">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300/80">
+                          Qualifier
+                        </p>
+                        <h3 className="mt-2 text-2xl font-black uppercase tracking-tight">
+                          Timed entry assessment
+                        </h3>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateSelectedBundle((bundle) => {
+                            const qualifier = ensureQualifier(
+                              bundle,
+                              selectedCohortId,
+                            );
+
+                            return {
+                              ...bundle,
+                              qualifier: {
+                                ...qualifier,
+                                questions: [
+                                  ...qualifier.questions,
+                                  createQuestion("scenario"),
+                                ],
+                              },
+                            };
+                          })
+                        }
+                        className="inline-flex items-center gap-2 rounded-full border border-cyan-300/30 px-4 py-2 text-[10px] font-black uppercase tracking-[0.24em] text-cyan-100 transition-colors hover:bg-cyan-300/10"
+                      >
+                        <Plus size={14} />
+                        Add qualifier question
+                      </button>
+                    </div>
+
+                    <div className="mt-5">
+                      <Field label="Duration (seconds)">
+                        <input
+                          type="number"
+                          min={300}
+                          value={selectedQualifier.duration_seconds}
+                          onChange={(event) =>
+                            updateSelectedBundle((bundle) => {
+                              const qualifier = ensureQualifier(
+                                bundle,
+                                selectedCohortId,
+                              );
+
+                              return {
+                                ...bundle,
+                                qualifier: {
+                                  ...qualifier,
+                                  duration_seconds:
+                                    Number(event.target.value) || 300,
+                                },
+                              };
+                            })
+                          }
+                          className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"
+                        />
+                      </Field>
+                    </div>
+
+                    <div className="mt-6">
+                      <QuestionImportPanel
+                        onImported={(questions, replaceExisting) =>
+                          updateSelectedBundle((bundle) => {
+                            const qualifier = ensureQualifier(
+                              bundle,
+                              selectedCohortId,
+                            );
+
+                            return {
+                              ...bundle,
+                              qualifier: {
+                                ...qualifier,
+                                questions: replaceExisting
+                                  ? questions
+                                  : [...qualifier.questions, ...questions],
+                              },
+                            };
+                          })
+                        }
+                      />
+                    </div>
+
+                    <div className="mt-6 space-y-5">
+                      {selectedQualifier.questions.map((question, index) => (
+                        <QuestionEditor
+                          key={question.id}
+                          question={question}
+                          onChange={(nextQuestion) =>
+                            updateSelectedBundle((bundle) => {
+                              const qualifier = ensureQualifier(
+                                bundle,
+                                selectedCohortId,
+                              );
+
+                              return {
+                                ...bundle,
+                                qualifier: {
+                                  ...qualifier,
+                                  questions: qualifier.questions.map(
+                                    (item, itemIndex) =>
+                                      itemIndex === index ? nextQuestion : item,
+                                  ),
+                                },
+                              };
+                            })
+                          }
+                          onRemove={() =>
+                            updateSelectedBundle((bundle) => {
+                              const qualifier = ensureQualifier(
+                                bundle,
+                                selectedCohortId,
+                              );
+
+                              return {
+                                ...bundle,
+                                qualifier: {
+                                  ...qualifier,
+                                  questions: qualifier.questions.filter(
+                                    (_, itemIndex) => itemIndex !== index,
+                                  ),
+                                },
+                              };
+                            })
+                          }
+                        />
+                      ))}
+                    </div>
+                  </section>
+
+                  <section className="rounded-[28px] border border-white/10 bg-black/20 p-6">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300/80">
+                          Sprint Stages
+                        </p>
+                        <h3 className="mt-2 text-2xl font-black uppercase tracking-tight">
+                          Progressive assessments
+                        </h3>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateSelectedBundle((bundle) => ({
+                            ...bundle,
+                            stages: [
+                              ...bundle.stages,
+                              {
+                                id: "",
+                                cohort_id: selectedCohortId,
+                                stage_number: bundle.stages.length + 1,
+                                title: "",
+                                description: "",
+                                duration_minutes: 45,
+                                questions: [],
+                                created_at: "",
+                              },
+                            ],
+                          }))
+                        }
+                        className="inline-flex items-center gap-2 rounded-full border border-cyan-300/30 px-4 py-2 text-[10px] font-black uppercase tracking-[0.24em] text-cyan-100 transition-colors hover:bg-cyan-300/10"
+                      >
+                        <Plus size={14} />
+                        Add stage
+                      </button>
+                    </div>
+
+                    <div className="mt-6 space-y-6">
+                      {selectedBundle.stages.map((stage, stageIndex) => (
+                        <div
+                          key={`${stage.id || "new"}-${stageIndex}`}
+                          className="rounded-[24px] border border-white/10 bg-[#08111a] p-5"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <p className="text-sm font-black uppercase tracking-[0.18em] text-white">
+                              Stage {stageIndex + 1}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() =>
                                 updateSelectedBundle((bundle) => ({
                                   ...bundle,
-                                  stages: bundle.stages.map(
-                                    (item, itemIndex) =>
-                                      itemIndex === stageIndex
-                                        ? { ...item, title: event.target.value }
-                                        : item,
+                                  stages: bundle.stages.filter(
+                                    (_, itemIndex) => itemIndex !== stageIndex,
                                   ),
                                 }))
                               }
-                              className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"
-                            />
-                          </Field>
-                          <Field label="Duration (minutes)">
-                            <input
-                              type="number"
-                              min={5}
-                              value={stage.duration_minutes}
-                              onChange={(event) =>
-                                updateSelectedBundle((bundle) => ({
-                                  ...bundle,
-                                  stages: bundle.stages.map(
-                                    (item, itemIndex) =>
-                                      itemIndex === stageIndex
-                                        ? {
-                                            ...item,
-                                            duration_minutes:
-                                              Number(event.target.value) || 5,
-                                          }
-                                        : item,
-                                  ),
-                                }))
-                              }
-                              className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"
-                            />
-                          </Field>
-                          <div className="md:col-span-2">
-                            <Field label="Description">
-                              <textarea
-                                rows={4}
-                                value={stage.description}
+                              className="inline-flex items-center gap-2 rounded-full border border-red-400/30 px-3 py-2 text-[10px] font-black uppercase tracking-[0.22em] text-red-200 transition-colors hover:bg-red-400/10"
+                            >
+                              <Trash2 size={14} />
+                              Remove stage
+                            </button>
+                          </div>
+
+                          <div className="mt-5 grid gap-4 md:grid-cols-2">
+                            <Field label="Title">
+                              <input
+                                value={stage.title}
                                 onChange={(event) =>
                                   updateSelectedBundle((bundle) => ({
                                     ...bundle,
@@ -1023,7 +1016,7 @@ export default function AdminPage() {
                                         itemIndex === stageIndex
                                           ? {
                                               ...item,
-                                              description: event.target.value,
+                                              title: event.target.value,
                                             }
                                           : item,
                                     ),
@@ -1032,41 +1025,57 @@ export default function AdminPage() {
                                 className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"
                               />
                             </Field>
+                            <Field label="Duration (minutes)">
+                              <input
+                                type="number"
+                                min={5}
+                                value={stage.duration_minutes}
+                                onChange={(event) =>
+                                  updateSelectedBundle((bundle) => ({
+                                    ...bundle,
+                                    stages: bundle.stages.map(
+                                      (item, itemIndex) =>
+                                        itemIndex === stageIndex
+                                          ? {
+                                              ...item,
+                                              duration_minutes:
+                                                Number(event.target.value) || 5,
+                                            }
+                                          : item,
+                                    ),
+                                  }))
+                                }
+                                className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"
+                              />
+                            </Field>
+                            <div className="md:col-span-2">
+                              <Field label="Description">
+                                <textarea
+                                  rows={4}
+                                  value={stage.description}
+                                  onChange={(event) =>
+                                    updateSelectedBundle((bundle) => ({
+                                      ...bundle,
+                                      stages: bundle.stages.map(
+                                        (item, itemIndex) =>
+                                          itemIndex === stageIndex
+                                            ? {
+                                                ...item,
+                                                description: event.target.value,
+                                              }
+                                            : item,
+                                      ),
+                                    }))
+                                  }
+                                  className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"
+                                />
+                              </Field>
+                            </div>
                           </div>
-                        </div>
 
-                        <div className="mt-6">
-                          <QuestionImportPanel
-                            onImported={(questions, replaceExisting) =>
-                              updateSelectedBundle((bundle) => ({
-                                ...bundle,
-                                stages: bundle.stages.map((item, itemIndex) =>
-                                  itemIndex === stageIndex
-                                    ? {
-                                        ...item,
-                                        questions: replaceExisting
-                                          ? questions
-                                          : [...item.questions, ...questions],
-                                      }
-                                    : item,
-                                ),
-                              }))
-                            }
-                          />
-                        </div>
-
-                        <div className="mt-6 flex flex-wrap gap-2">
-                          {(
-                            [
-                              "mcq",
-                              "debug",
-                              "scenario",
-                            ] as AssessmentQuestionType[]
-                          ).map((type) => (
-                            <button
-                              key={type}
-                              type="button"
-                              onClick={() =>
+                          <div className="mt-6">
+                            <QuestionImportPanel
+                              onImported={(questions, replaceExisting) =>
                                 updateSelectedBundle((bundle) => ({
                                   ...bundle,
                                   stages: bundle.stages.map(
@@ -1074,74 +1083,107 @@ export default function AdminPage() {
                                       itemIndex === stageIndex
                                         ? {
                                             ...item,
-                                            questions: [
-                                              ...item.questions,
-                                              createQuestion(type),
-                                            ],
-                                          }
-                                        : item,
-                                  ),
-                                }))
-                              }
-                              className="rounded-full border border-cyan-300/25 px-4 py-2 text-[10px] font-black uppercase tracking-[0.22em] text-cyan-100 transition-colors hover:bg-cyan-300/10"
-                            >
-                              <Plus size={12} className="mr-1 inline" />
-                              Add {type}
-                            </button>
-                          ))}
-                        </div>
-
-                        <div className="mt-6 space-y-5">
-                          {stage.questions.map((question, questionIndex) => (
-                            <QuestionEditor
-                              key={question.id}
-                              question={question}
-                              onChange={(nextQuestion) =>
-                                updateSelectedBundle((bundle) => ({
-                                  ...bundle,
-                                  stages: bundle.stages.map(
-                                    (item, itemIndex) =>
-                                      itemIndex === stageIndex
-                                        ? {
-                                            ...item,
-                                            questions: item.questions.map(
-                                              (stageQuestion, itemQIndex) =>
-                                                itemQIndex === questionIndex
-                                                  ? nextQuestion
-                                                  : stageQuestion,
-                                            ),
-                                          }
-                                        : item,
-                                  ),
-                                }))
-                              }
-                              onRemove={() =>
-                                updateSelectedBundle((bundle) => ({
-                                  ...bundle,
-                                  stages: bundle.stages.map(
-                                    (item, itemIndex) =>
-                                      itemIndex === stageIndex
-                                        ? {
-                                            ...item,
-                                            questions: item.questions.filter(
-                                              (_, itemQIndex) =>
-                                                itemQIndex !== questionIndex,
-                                            ),
+                                            questions: replaceExisting
+                                              ? questions
+                                              : [
+                                                  ...item.questions,
+                                                  ...questions,
+                                                ],
                                           }
                                         : item,
                                   ),
                                 }))
                               }
                             />
-                          ))}
+                          </div>
+
+                          <div className="mt-6 flex flex-wrap gap-2">
+                            {(
+                              [
+                                "mcq",
+                                "debug",
+                                "scenario",
+                              ] as AssessmentQuestionType[]
+                            ).map((type) => (
+                              <button
+                                key={type}
+                                type="button"
+                                onClick={() =>
+                                  updateSelectedBundle((bundle) => ({
+                                    ...bundle,
+                                    stages: bundle.stages.map(
+                                      (item, itemIndex) =>
+                                        itemIndex === stageIndex
+                                          ? {
+                                              ...item,
+                                              questions: [
+                                                ...item.questions,
+                                                createQuestion(type),
+                                              ],
+                                            }
+                                          : item,
+                                    ),
+                                  }))
+                                }
+                                className="rounded-full border border-cyan-300/25 px-4 py-2 text-[10px] font-black uppercase tracking-[0.22em] text-cyan-100 transition-colors hover:bg-cyan-300/10"
+                              >
+                                <Plus size={12} className="mr-1 inline" />
+                                Add {type}
+                              </button>
+                            ))}
+                          </div>
+
+                          <div className="mt-6 space-y-5">
+                            {stage.questions.map((question, questionIndex) => (
+                              <QuestionEditor
+                                key={question.id}
+                                question={question}
+                                onChange={(nextQuestion) =>
+                                  updateSelectedBundle((bundle) => ({
+                                    ...bundle,
+                                    stages: bundle.stages.map(
+                                      (item, itemIndex) =>
+                                        itemIndex === stageIndex
+                                          ? {
+                                              ...item,
+                                              questions: item.questions.map(
+                                                (stageQuestion, itemQIndex) =>
+                                                  itemQIndex === questionIndex
+                                                    ? nextQuestion
+                                                    : stageQuestion,
+                                              ),
+                                            }
+                                          : item,
+                                    ),
+                                  }))
+                                }
+                                onRemove={() =>
+                                  updateSelectedBundle((bundle) => ({
+                                    ...bundle,
+                                    stages: bundle.stages.map(
+                                      (item, itemIndex) =>
+                                        itemIndex === stageIndex
+                                          ? {
+                                              ...item,
+                                              questions: item.questions.filter(
+                                                (_, itemQIndex) =>
+                                                  itemQIndex !== questionIndex,
+                                              ),
+                                            }
+                                          : item,
+                                    ),
+                                  }))
+                                }
+                              />
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                </section>
+                      ))}
+                    </div>
+                  </section>
+                </div>
               </div>
-            </div>
-          )}
+            )}
         </SignedIn>
       </div>
     </main>

@@ -265,6 +265,83 @@ export function buildDefaultQualifierTemplate(
     };
   }
 
+  if (normalizedType.includes("SECUR") || normalizedType.includes("CYBER")) {
+    return {
+      id: sharedId,
+      cohort_id: cohortId,
+      duration_seconds: 18 * 60,
+      updated_at: new Date(0).toISOString(),
+      questions: [
+        {
+          id: "q1",
+          type: "mcq",
+          prompt:
+            "What is the best first move when a new web app is suspected to have exposed credentials?",
+          guidance:
+            "Choose the action that reduces risk fastest while preserving evidence.",
+          rubric:
+            "Strong answers contain the breach, rotate secrets, and keep investigation evidence intact.",
+          options: [
+            {
+              id: "ignore",
+              label: "Ignore it until logs confirm a compromise",
+            },
+            {
+              id: "rotate",
+              label: "Rotate exposed secrets and isolate the affected surface",
+            },
+            {
+              id: "redeploy",
+              label: "Redeploy the app immediately without any investigation",
+            },
+            {
+              id: "announce",
+              label: "Publish a public notice before confirming scope",
+            },
+          ],
+          correctOptionIds: ["rotate"],
+          allowMultiple: false,
+        },
+        {
+          id: "q2",
+          type: "debug",
+          prompt:
+            "An internal dashboard is leaking more data than the role should allow. Describe how you would debug the authorization issue.",
+          guidance:
+            "Cover identity, authorization checks, logging, and validation of the fix.",
+          rubric:
+            "Look for least-privilege thinking, step-by-step verification, and safe rollback planning.",
+          language: "typescript",
+          starterCode: [
+            "export async function loadCustomerReport(userId: string) {",
+            "  const user = await authClient.currentUser(userId);",
+            "  const report = await reportService.fetchAll();",
+            "  return { user, report };",
+            "}",
+          ].join("\n"),
+          expectedOutcome:
+            "Identify where the access check is missing and how to confirm the fix prevents data leakage.",
+        },
+        {
+          id: "q3",
+          type: "scenario",
+          prompt:
+            "Design the first 48 hours of a cyber security sprint for hardening a product after a risk review.",
+          guidance:
+            "Break the plan into priorities, owners, validation, and communication checkpoints.",
+          rubric:
+            "Look for practical triage, clear sequencing, and measurable security outcomes.",
+          deliverable: "Incident response plan",
+          constraints: [
+            "One engineer and one security reviewer are available",
+            "Production traffic must stay online",
+            "A risk update is due at the end of day two",
+          ],
+        },
+      ],
+    };
+  }
+
   return {
     id: sharedId,
     cohort_id: cohortId,

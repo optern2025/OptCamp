@@ -4,16 +4,15 @@ import type { LucideIcon } from "lucide-react";
 import {
   BrainCircuit,
   ChevronDown,
-  Database,
   Filter,
   Layers,
-  Smartphone,
+  Shield,
   Star,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import SectionTitle from "./SectionTitle";
 
-type CohortId = "backend" | "ai-ml" | "fullstack" | "mobile";
+type CohortId = "ai-ml" | "fullstack" | "cyber-security";
 
 interface LeaderboardEntry {
   id: number;
@@ -37,10 +36,9 @@ interface LeaderboardProps {
 }
 
 const COHORTS: CohortTab[] = [
-  { id: "backend", label: "Backend", icon: Database },
   { id: "ai-ml", label: "AI / ML", icon: BrainCircuit },
   { id: "fullstack", label: "Full Stack", icon: Layers },
-  { id: "mobile", label: "Mobile", icon: Smartphone },
+  { id: "cyber-security", label: "Cyber Security", icon: Shield },
 ];
 
 const LEADERBOARD_DATA: LeaderboardEntry[] = [
@@ -52,7 +50,7 @@ const LEADERBOARD_DATA: LeaderboardEntry[] = [
     lastActive: "16 Oct • 12:37 am",
     college: "Indian Institute of Technology (IIT) Hyderabad",
     avatar: "P",
-    cohort: "backend",
+    cohort: "cyber-security",
   },
   {
     id: 2,
@@ -62,7 +60,7 @@ const LEADERBOARD_DATA: LeaderboardEntry[] = [
     lastActive: "17 Oct • 07:16 pm",
     college: "BITS Pilani - Hyderabad Campus",
     avatar: "H",
-    cohort: "backend",
+    cohort: "cyber-security",
   },
   {
     id: 3,
@@ -73,7 +71,7 @@ const LEADERBOARD_DATA: LeaderboardEntry[] = [
     college:
       "International Institute of Information Technology (IIIT) Hyderabad",
     avatar: "PU",
-    cohort: "backend",
+    cohort: "cyber-security",
   },
   {
     id: 4,
@@ -83,7 +81,7 @@ const LEADERBOARD_DATA: LeaderboardEntry[] = [
     lastActive: "16 Oct • 12:37 am",
     college: "Chaitanya Bharathi Institute of Technology (CBIT)",
     avatar: "A",
-    cohort: "backend",
+    cohort: "cyber-security",
   },
   {
     id: 5,
@@ -93,7 +91,7 @@ const LEADERBOARD_DATA: LeaderboardEntry[] = [
     lastActive: "17 Oct • 07:16 pm",
     college: "Jawaharlal Nehru Technological University (JNTU) Hyderabad",
     avatar: "S",
-    cohort: "backend",
+    cohort: "cyber-security",
   },
   {
     id: 6,
@@ -147,30 +145,10 @@ const LEADERBOARD_DATA: LeaderboardEntry[] = [
     avatar: "SI",
     cohort: "fullstack",
   },
-  {
-    id: 11,
-    name: "deevi yaswanth",
-    score: 2640,
-    progress: 91,
-    lastActive: "20 Feb • 11:45 pm",
-    college: "Indian Institute of Technology (IIT) Hyderabad",
-    avatar: "D",
-    cohort: "mobile",
-  },
-  {
-    id: 12,
-    name: "Supraja Sandhya Thota",
-    score: 2420,
-    progress: 84,
-    lastActive: "25 Feb • 09:20 am",
-    college: "Chaitanya Bharathi Institute of Technology (CBIT)",
-    avatar: "S",
-    cohort: "mobile",
-  },
 ];
 
 export default function Leaderboard({ id = "leaderboard" }: LeaderboardProps) {
-  const [activeCohort, setActiveCohort] = useState<CohortId>("backend");
+  const [activeCohort, setActiveCohort] = useState<CohortId>("cyber-security");
   const [collegeFilter, setCollegeFilter] = useState("All Institutions");
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const filterRef = useRef<HTMLDivElement | null>(null);

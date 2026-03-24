@@ -1,30 +1,75 @@
--- Admin-managed qualifier templates and richer question content.
+-- Refresh the cohort lineup to remove backend/mobile and add cyber security.
 
-create table if not exists public.cohort_qualifier_templates (
-    id uuid primary key default gen_random_uuid(),
-    cohort_id uuid not null references public.cohorts(id) on delete cascade unique,
-    duration_seconds integer not null default 900,
-    questions jsonb not null default '[]'::jsonb,
-    updated_at timestamptz not null default timezone('utc', now())
-);
+delete from public.cohorts
+where slug in ('backend-mar-2026', 'mobile-apr-2026');
 
-create or replace function public.touch_cohort_qualifier_templates_updated_at()
-returns trigger
-language plpgsql
-as $$
-begin
-    new.updated_at = timezone('utc', now());
-    return new;
-end;
-$$;
+insert into public.cohorts (slug, type, apply_window, sprint_window, apply_by, qualifier_test_url, is_active)
+values
+    ('aiml-mar-2026', 'AI / ML', 'Mar 23-24', 'Mar 25-28', 'Mar 24', 'https://opt-camp.vercel.app/qualifier/aiml-mar-2026', false),
+    ('fullstack-apr-2026', 'Full Stack', 'Apr 6-7', 'Apr 8-11', 'Apr 7', 'https://opt-camp.vercel.app/qualifier/fullstack-apr-2026', false),
+    ('cyber-security-may-2026', 'Cyber Security', 'May 4-5', 'May 6-9', 'May 5', 'https://opt-camp.vercel.app/qualifier/cyber-security-may-2026', true)
+on conflict (slug) do update
+set type = excluded.type,
+    apply_window = excluded.apply_window,
+    sprint_window = excluded.sprint_window,
+    apply_by = excluded.apply_by,
+    qualifier_test_url = excluded.qualifier_test_url,
+    is_active = excluded.is_active;
 
-drop trigger if exists trg_touch_cohort_qualifier_templates_updated_at
-    on public.cohort_qualifier_templates;
+insert into public.cohort_stages (cohort_id, stage_number, title, description, duration_minutes, questions)
+select
+    cohort_id,
+    stage_number,
+    title,
+    description,
+    duration_minutes,
+    questions::jsonb
+from (
+    select
+        c.id as cohort_id,
+        1 as stage_number,
+        'System Decomposition' as title,
+        'Break the sprint problem into an execution plan with milestones, owners, and acceptance criteria.' as description,
+        40 as duration_minutes,
+        '[
+          {"id":"q1","prompt":"Outline the first 24 hours of this sprint. What gets done first and why?","guidance":"Prioritize sequencing, ownership, and risk control."},
+          {"id":"q2","prompt":"Define the artifacts or deliverables you would produce by the halfway mark.","guidance":"Be concrete about documents, code, or checkpoints."}
+        ]' as questions
+    from public.cohorts c
 
-create trigger trg_touch_cohort_qualifier_templates_updated_at
-before update on public.cohort_qualifier_templates
-for each row
-execute function public.touch_cohort_qualifier_templates_updated_at();
+    union all
+
+    select
+        c.id as cohort_id,
+        2 as stage_number,
+        'Execution Under Constraint' as title,
+        'Respond to blockers, conflicting priorities, and tight timelines with a practical recovery plan.' as description,
+        45 as duration_minutes,
+        '[
+          {"id":"q1","prompt":"A critical dependency slips by 12 hours. How do you protect the sprint outcome?","guidance":"Explain the fallback plan and communication strategy."},
+          {"id":"q2","prompt":"Choose one metric you would use to judge whether the sprint is on track and justify it.","guidance":"Tie it to the cohort domain and sprint goals."}
+        ]' as questions
+    from public.cohorts c
+
+    union all
+
+    select
+        c.id as cohort_id,
+        3 as stage_number,
+        'Founder Readout' as title,
+        'Present a concise, high-signal summary of the work, tradeoffs, and next steps.' as description,
+        30 as duration_minutes,
+        '[
+          {"id":"q1","prompt":"Write the final update you would send to founders after this sprint.","guidance":"Cover outcome, tradeoffs, risks, and next steps."},
+          {"id":"q2","prompt":"What would you improve in the next sprint cycle after reviewing your own execution?","guidance":"Reflect on process, not just output."}
+        ]' as questions
+    from public.cohorts c
+) seeded
+on conflict (cohort_id, stage_number) do update
+set title = excluded.title,
+    description = excluded.description,
+    duration_minutes = excluded.duration_minutes,
+    questions = excluded.questions;
 
 insert into public.cohort_qualifier_templates (cohort_id, duration_seconds, questions)
 select

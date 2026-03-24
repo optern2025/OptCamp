@@ -1,6 +1,12 @@
 "use client";
 
-import { SignedIn, SignedOut, SignInButton, SignUpButton } from "@clerk/nextjs";
+import {
+  SignedIn,
+  SignedOut,
+  SignInButton,
+  SignUpButton,
+  useUser,
+} from "@clerk/nextjs";
 import {
   ArrowRight,
   CheckCircle2,
@@ -10,6 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { canAccessAdmin } from "@/lib/adminAccess";
 import { hasClerkPublishableKey } from "@/lib/clerkEnv";
 import type {
   CohortMembership,
@@ -67,9 +74,13 @@ function nextAction(membership: CohortMembership) {
 }
 
 function DashboardPageWithAuth() {
+  const { user } = useUser();
   const [payload, setPayload] = useState<DashboardPayload | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const canViewAdminLink = canAccessAdmin(
+    user?.primaryEmailAddress?.emailAddress ?? "",
+  );
 
   const loadDashboard = useCallback(async () => {
     setIsLoading(true);
@@ -192,12 +203,14 @@ function DashboardPageWithAuth() {
                 >
                   Back Home
                 </Link>
-                <Link
-                  href="/admin"
-                  className="inline-flex items-center gap-2 border border-white/10 px-5 py-3 text-xs font-black uppercase tracking-[0.24em] text-white/70 transition-colors hover:border-white/30 hover:text-white"
-                >
-                  Content Admin
-                </Link>
+                {canViewAdminLink ? (
+                  <Link
+                    href="/admin"
+                    className="inline-flex items-center gap-2 border border-white/10 px-5 py-3 text-xs font-black uppercase tracking-[0.24em] text-white/70 transition-colors hover:border-white/30 hover:text-white"
+                  >
+                    Content Admin
+                  </Link>
+                ) : null}
               </div>
             </div>
           </header>
@@ -294,9 +307,7 @@ function DashboardPageWithAuth() {
                     const stageProgressionBlock = (
                       <div
                         className={`rounded-[24px] border border-white/10 bg-black/20 p-5 ${
-                          isSingleMembership
-                            ? "mt-0 lg:mt-0 lg:h-full"
-                            : "mt-6"
+                          isSingleMembership ? "mt-0 lg:mt-0 lg:h-full" : "mt-6"
                         }`}
                       >
                         <div className="flex items-center gap-3">
@@ -363,7 +374,9 @@ function DashboardPageWithAuth() {
                     );
 
                     const heroColumn = (
-                      <div className={isSingleMembership ? "space-y-6" : undefined}>
+                      <div
+                        className={isSingleMembership ? "space-y-6" : undefined}
+                      >
                         <div className="flex flex-wrap items-start justify-between gap-4">
                           <div>
                             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300/80">
@@ -488,7 +501,7 @@ function DashboardPageWithAuth() {
             </div>
           )}
         </div>
-        </SignedIn>
+      </SignedIn>
     </main>
   );
 }

@@ -68,17 +68,6 @@ const selectionSteps: SelectionStep[] = [
 
 const fallbackCohorts: LandingCohort[] = [
   {
-    id: "fallback-backend",
-    slug: "backend-mar-2026",
-    type: "Backend",
-    apply_window: "Mar 9-10",
-    sprint_window: "Mar 11-14",
-    apply_by: "Mar 10",
-    qualifier_test_url: null,
-    is_active: true,
-    created_at: new Date().toISOString(),
-  },
-  {
     id: "fallback-aiml",
     slug: "aiml-mar-2026",
     type: "AI / ML",
@@ -101,14 +90,14 @@ const fallbackCohorts: LandingCohort[] = [
     created_at: new Date().toISOString(),
   },
   {
-    id: "fallback-mobile",
-    slug: "mobile-apr-2026",
-    type: "Mobile Dev",
-    apply_window: "Apr 20-21",
-    sprint_window: "Apr 22-25",
-    apply_by: "Apr 21",
+    id: "fallback-cyber-security",
+    slug: "cyber-security-may-2026",
+    type: "Cyber Security",
+    apply_window: "May 4-5",
+    sprint_window: "May 6-9",
+    apply_by: "May 5",
     qualifier_test_url: null,
-    is_active: false,
+    is_active: true,
     created_at: new Date().toISOString(),
   },
 ];
@@ -465,7 +454,7 @@ function HomePage() {
               <SectionTitle className="text-center mb-10 md:mb-20 italic">
                 Active Cycles
               </SectionTitle>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 max-w-7xl mx-auto">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 max-w-7xl mx-auto">
                 {cohorts.map((cohort) => (
                   <div
                     key={cohort.id}
