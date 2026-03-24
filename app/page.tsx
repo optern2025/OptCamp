@@ -594,10 +594,10 @@ function HomePage() {
           <section className="py-24 md:py-60 relative z-10 text-center">
             <div className="container mx-auto px-4 sm:px-6">
               <h2 className="text-4xl xs:text-5xl sm:text-7xl md:text-[7rem] lg:text-[8.5rem] font-black mb-8 md:mb-12 uppercase italic tracking-[-0.03em] md:tracking-[-0.05em] leading-[1.1] sm:leading-none break-words">
-                ONLY 40 <br className="hidden sm:block" /> APPLICATIONS.
+                ONLY 60 <br className="hidden sm:block" /> APPLICATIONS.
               </h2>
               <p className="text-base xs:text-xl sm:text-2xl md:text-3xl text-white/40 mb-10 md:mb-16 max-w-2xl mx-auto font-medium uppercase tracking-tighter italic px-4 leading-snug">
-                If you believe you can execute under pressure —
+                If you believe you can execute in an Organisation —
               </p>
               <GlowButton
                 onClick={handleApplyClick}
