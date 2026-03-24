@@ -1,4 +1,4 @@
-import { PDFParse } from "pdf-parse";
+import mammoth from "mammoth";
 import type {
   AssessmentChoice,
   AssessmentQuestion,
@@ -22,6 +22,11 @@ const FIELD_HEADERS = new Map<string, string>([
   ["expected outcome", "expectedOutcome"],
   ["allow multiple", "allowMultiple"],
 ]);
+
+const DOCX_MIME_TYPE =
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+const TXT_MIME_TYPES = new Set(["text/plain", "application/octet-stream"]);
 
 type ParsedQuestionField =
   | "type"
@@ -211,10 +216,7 @@ function appendFieldLine(
   }
 }
 
-function buildQuestion(
-  draft: ParsedQuestionDraft,
-  _index: number,
-): AssessmentQuestion {
+function buildQuestion(draft: ParsedQuestionDraft): AssessmentQuestion {
   const base = {
     id: crypto.randomUUID(),
     type: draft.type,
@@ -309,28 +311,57 @@ function parseQuestionBlock(block: string, index: number): AssessmentQuestion {
     );
   }
 
-  return buildQuestion(draft, index);
+  return buildQuestion(draft);
 }
 
-export async function extractPdfText(fileBuffer: Buffer): Promise<string> {
-  const parser = new PDFParse({ data: new Uint8Array(fileBuffer) });
+export function isSupportedQuestionImportFile(file: File): boolean {
+  const normalizedName = file.name.toLowerCase();
 
-  try {
-    const result = await parser.getText();
-    return normalizeBlockText(result.text);
-  } finally {
-    await parser.destroy();
+  if (normalizedName.endsWith(".docx")) {
+    return file.type === DOCX_MIME_TYPE || file.type === "";
   }
+
+  if (normalizedName.endsWith(".txt")) {
+    return TXT_MIME_TYPES.has(file.type) || file.type === "";
+  }
+
+  return false;
 }
 
-export function parseQuestionsFromPdfText(
+async function extractDocxText(fileBuffer: Buffer): Promise<string> {
+  const result = await mammoth.extractRawText({ buffer: fileBuffer });
+  return normalizeBlockText(result.value);
+}
+
+async function extractTxtText(fileBuffer: Buffer): Promise<string> {
+  return normalizeBlockText(fileBuffer.toString("utf8"));
+}
+
+export async function extractTextFromQuestionImportFile(
+  file: File,
+): Promise<string> {
+  if (!isSupportedQuestionImportFile(file)) {
+    throw new Error("Only .docx and .txt uploads are supported.");
+  }
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const normalizedName = file.name.toLowerCase();
+
+  if (normalizedName.endsWith(".docx")) {
+    return extractDocxText(buffer);
+  }
+
+  return extractTxtText(buffer);
+}
+
+export function parseQuestionsFromImportedText(
   rawText: string,
 ): AssessmentQuestion[] {
   const blocks = splitQuestionBlocks(rawText);
 
   if (blocks.length === 0) {
     throw new Error(
-      "No question blocks found. Use QUESTION / END QUESTION markers in the PDF.",
+      "No question blocks found. Use QUESTION / END QUESTION markers in the document.",
     );
   }
 

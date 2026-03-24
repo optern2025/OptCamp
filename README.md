@@ -219,12 +219,12 @@ Purpose:
 Response:
 - `200 { cohorts, contentByCohort }`
 
-### `POST /api/admin/content/import-pdf`
+### `POST /api/admin/content/import-questions`
 Auth:
 - Clerk session cookie
 
 Purpose:
-- Parse a structured PDF upload into the same `AssessmentQuestion[]` format used by the admin dashboard.
+- Parse a structured `.docx` or `.txt` upload into the same `AssessmentQuestion[]` format used by the admin dashboard.
 - Intended for the import panels shown alongside the qualifier and stage question editors in `/admin`.
 
 Response:
@@ -232,8 +232,8 @@ Response:
 - `400 { error: string }`
 - `401 { error: "Unauthorized." }`
 
-## PDF Import Format
-The admin dashboard can import questions from a PDF, but the PDF should contain plain, copyable text and follow a strict block structure so the parser can map each question into the app schema reliably.
+## Document Import Format
+The admin dashboard can import questions from a `.docx` or `.txt` file, but the document should contain plain, copyable text and follow a strict block structure so the parser can map each question into the app schema reliably.
 
 Rules:
 - Start each question block with `QUESTION` or `QUESTION 1`, `QUESTION 2`, etc.
@@ -252,7 +252,7 @@ Supported fields by type:
 - Debug: `Language`, `Starter Code`, `Expected Outcome`
 - Scenario: `Deliverable`, `Constraints`
 
-Example PDF text:
+Example document text:
 
 ````text
 QUESTION 1

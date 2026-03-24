@@ -383,9 +383,9 @@ function QuestionImportPanel({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const importPdf = async () => {
+  const importQuestions = async () => {
     if (!file) {
-      setErrorMessage("Choose a PDF before importing.");
+      setErrorMessage("Choose a .docx or .txt file before importing.");
       return;
     }
 
@@ -397,7 +397,7 @@ function QuestionImportPanel({
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await fetch("/api/admin/content/import-pdf", {
+      const response = await fetch("/api/admin/content/import-questions", {
         method: "POST",
         body: formData,
       });
@@ -407,7 +407,9 @@ function QuestionImportPanel({
       }>(response);
 
       if (!response.ok || !data.questions) {
-        throw new Error(data.error ?? "Unable to import questions from PDF.");
+        throw new Error(
+          data.error ?? "Unable to import questions from that document.",
+        );
       }
 
       onImported(data.questions, replaceExisting);
@@ -421,7 +423,7 @@ function QuestionImportPanel({
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "Unable to import questions from PDF.",
+          : "Unable to import questions from that document.",
       );
     } finally {
       setIsImporting(false);
@@ -433,29 +435,29 @@ function QuestionImportPanel({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.26em] text-cyan-300/70">
-            PDF import
+            Document import
           </p>
           <p className="mt-2 max-w-2xl text-xs uppercase tracking-[0.14em] text-white/50">
-            Upload a structured PDF to generate questions, then keep refining
-            them in the editor below.
+            Upload a structured `.docx` or `.txt` file to generate questions,
+            then keep refining them in the editor below.
           </p>
         </div>
         <button
           type="button"
-          onClick={importPdf}
+          onClick={importQuestions}
           disabled={!file || isImporting}
           className="inline-flex items-center gap-2 rounded-full border border-cyan-300/30 px-4 py-2 text-[10px] font-black uppercase tracking-[0.24em] text-cyan-100 transition-colors hover:bg-cyan-300/10 disabled:opacity-50"
         >
           <FileUp size={14} />
-          {isImporting ? "Importing..." : "Import PDF"}
+          {isImporting ? "Importing..." : "Import File"}
         </button>
       </div>
 
       <div className="mt-4 grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
-        <Field label="PDF file">
+        <Field label="Document file">
           <input
             type="file"
-            accept="application/pdf"
+            accept=".docx,.txt,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             onChange={(event) => setFile(event.target.files?.[0] ?? null)}
             className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white file:mr-4 file:rounded-full file:border-0 file:bg-cyan-300 file:px-4 file:py-2 file:text-xs file:font-black file:uppercase file:tracking-[0.18em] file:text-black"
           />

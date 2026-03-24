@@ -112,59 +112,29 @@ function DashboardPageWithAuth() {
   const availableCohorts = useMemo(() => payload?.cohorts ?? [], [payload]);
 
   return (
-    <main className="min-h-screen bg-[#061018] text-white px-4 py-12">
-      <div className="mx-auto max-w-7xl space-y-8">
-        <header className="overflow-hidden rounded-[28px] border border-cyan-500/20 bg-[radial-gradient(circle_at_top_right,_rgba(34,211,238,0.24),_transparent_28%),linear-gradient(135deg,#08131d_0%,#05080c_100%)] p-8 md:p-10">
-          <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-            <div className="space-y-4">
-              <p className="text-[11px] font-black uppercase tracking-[0.35em] text-cyan-300/80">
-                Cohort Command Center
+    <main className="min-h-screen bg-[#061018] text-white">
+      <SignedOut>
+        <div className="flex min-h-screen flex-col items-center justify-center p-4">
+          <section className="w-full max-w-3xl overflow-hidden rounded-[32px] border border-cyan-500/20 bg-[radial-gradient(circle_at_top_right,_rgba(34,211,238,0.15),_transparent_40%),linear-gradient(135deg,#08131d_0%,#05080c_100%)] p-12 text-center md:p-20">
+            <div className="space-y-6">
+              <p className="text-[12px] font-black uppercase tracking-[0.4em] text-cyan-300/80">
+                Authentication Required
               </p>
-              <h1 className="text-4xl font-black uppercase italic tracking-tight md:text-6xl">
-                Your Cohorts. Your Progress.
-              </h1>
-              <p className="max-w-2xl text-sm font-bold uppercase tracking-[0.18em] text-white/55">
-                Track applications, clear the qualifier, and unlock the sprint
-                stages one by one.
+              <h2 className="text-5xl font-black uppercase italic tracking-tight md:text-7xl">
+                Your Sprint <br />
+                <span className="text-cyan-400">Starts Here.</span>
+              </h2>
+              <p className="mx-auto max-w-lg text-sm font-bold uppercase tracking-[0.2em] text-white/55">
+                Sign in to open your dashboard, track applications, and unlock
+                your cohort progression.
               </p>
             </div>
-            <div className="flex flex-wrap gap-3">
-              <Link
-                href="/?apply=1"
-                className="inline-flex items-center gap-2 border border-cyan-400 px-5 py-3 text-xs font-black uppercase tracking-[0.24em] text-cyan-300 transition-colors hover:bg-cyan-400 hover:text-black"
-              >
-                Apply to Another Cohort <ArrowRight size={14} />
-              </Link>
-              <Link
-                href="/"
-                className="inline-flex items-center gap-2 border border-white/10 px-5 py-3 text-xs font-black uppercase tracking-[0.24em] text-white/70 transition-colors hover:border-white/30 hover:text-white"
-              >
-                Back Home
-              </Link>
-              <Link
-                href="/admin"
-                className="inline-flex items-center gap-2 border border-white/10 px-5 py-3 text-xs font-black uppercase tracking-[0.24em] text-white/70 transition-colors hover:border-white/30 hover:text-white"
-              >
-                Content Admin
-              </Link>
-            </div>
-          </div>
-        </header>
 
-        <SignedOut>
-          <section className="rounded-[24px] border border-white/10 bg-black/30 p-8">
-            <h2 className="text-2xl font-black uppercase tracking-tight">
-              Sign in to open your dashboard
-            </h2>
-            <p className="mt-2 text-xs font-bold uppercase tracking-[0.2em] text-white/55">
-              Your applications, qualifier state, and cohort stages live behind
-              your account.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="mt-12 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <SignInButton mode="modal">
                 <button
                   type="button"
-                  className="bg-cyan-400 px-6 py-3 text-xs font-black uppercase tracking-[0.24em] text-black transition-colors hover:bg-cyan-300"
+                  className="w-full bg-cyan-400 px-10 py-5 text-sm font-black uppercase tracking-[0.24em] text-black transition-all hover:scale-105 hover:bg-cyan-300 sm:w-auto"
                 >
                   Sign In
                 </button>
@@ -172,16 +142,64 @@ function DashboardPageWithAuth() {
               <SignUpButton mode="modal">
                 <button
                   type="button"
-                  className="border border-cyan-400 px-6 py-3 text-xs font-black uppercase tracking-[0.24em] text-cyan-300 transition-colors hover:bg-cyan-400 hover:text-black"
+                  className="w-full border border-cyan-400 px-10 py-5 text-sm font-black uppercase tracking-[0.24em] text-cyan-300 transition-all hover:scale-105 hover:bg-cyan-400 hover:text-black sm:w-auto"
                 >
                   Create Account
                 </button>
               </SignUpButton>
             </div>
-          </section>
-        </SignedOut>
 
-        <SignedIn>
+            <div className="mt-12">
+              <Link
+                href="/"
+                className="text-xs font-black uppercase tracking-[0.3em] text-white/30 transition-colors hover:text-white"
+              >
+                ← Back to Home
+              </Link>
+            </div>
+          </section>
+        </div>
+      </SignedOut>
+
+      <SignedIn>
+        <div className="mx-auto max-w-7xl space-y-8 px-4 py-12">
+          <header className="overflow-hidden rounded-[28px] border border-cyan-500/20 bg-[radial-gradient(circle_at_top_right,_rgba(34,211,238,0.24),_transparent_28%),linear-gradient(135deg,#08131d_0%,#05080c_100%)] p-8 md:p-10">
+            <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+              <div className="space-y-4">
+                <p className="text-[11px] font-black uppercase tracking-[0.35em] text-cyan-300/80">
+                  Cohort Center
+                </p>
+                <h1 className="text-4xl font-black uppercase italic tracking-tight md:text-6xl">
+                  Your Cohorts. Your Progress.
+                </h1>
+                <p className="max-w-2xl text-sm font-bold uppercase tracking-[0.18em] text-white/55">
+                  Track applications, clear the qualifier, and unlock the sprint
+                  stages one by one.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Link
+                  href="/?apply=1"
+                  className="inline-flex items-center gap-2 border border-cyan-400 px-5 py-3 text-xs font-black uppercase tracking-[0.24em] text-cyan-300 transition-colors hover:bg-cyan-400 hover:text-black"
+                >
+                  Apply to Another Cohort <ArrowRight size={14} />
+                </Link>
+                <Link
+                  href="/"
+                  className="inline-flex items-center gap-2 border border-white/10 px-5 py-3 text-xs font-black uppercase tracking-[0.24em] text-white/70 transition-colors hover:border-white/30 hover:text-white"
+                >
+                  Back Home
+                </Link>
+                <Link
+                  href="/admin"
+                  className="inline-flex items-center gap-2 border border-white/10 px-5 py-3 text-xs font-black uppercase tracking-[0.24em] text-white/70 transition-colors hover:border-white/30 hover:text-white"
+                >
+                  Content Admin
+                </Link>
+              </div>
+            </div>
+          </header>
+
           {isLoading && (
             <section className="rounded-[24px] border border-white/10 bg-black/30 p-8">
               <p className="text-sm font-bold uppercase tracking-[0.24em] text-white/55">

@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { requireAdminUser } from "@/lib/admin";
 import {
-  extractPdfText,
-  parseQuestionsFromPdfText,
-} from "@/lib/adminPdfImport";
+  extractTextFromQuestionImportFile,
+  isSupportedQuestionImportFile,
+  parseQuestionsFromImportedText,
+} from "@/lib/adminQuestionImport";
 import { normalizeAssessmentQuestions } from "@/lib/assessment";
 
 export async function POST(request: Request) {
@@ -15,31 +16,26 @@ export async function POST(request: Request) {
 
     if (!(file instanceof File)) {
       return NextResponse.json(
-        { error: "Attach a PDF file to import questions." },
+        { error: "Attach a .docx or .txt file to import questions." },
         { status: 400 },
       );
     }
 
-    const isPdf =
-      file.type === "application/pdf" ||
-      file.name.toLowerCase().endsWith(".pdf");
-
-    if (!isPdf) {
+    if (!isSupportedQuestionImportFile(file)) {
       return NextResponse.json(
-        { error: "Only PDF uploads are supported." },
+        { error: "Only .docx and .txt uploads are supported." },
         { status: 400 },
       );
     }
 
-    const arrayBuffer = await file.arrayBuffer();
-    const text = await extractPdfText(Buffer.from(arrayBuffer));
+    const text = await extractTextFromQuestionImportFile(file);
     const questions = normalizeAssessmentQuestions(
-      parseQuestionsFromPdfText(text),
+      parseQuestionsFromImportedText(text),
     );
 
     if (questions.length === 0) {
       return NextResponse.json(
-        { error: "No valid questions were found in the uploaded PDF." },
+        { error: "No valid questions were found in the uploaded document." },
         { status: 400 },
       );
     }
@@ -52,7 +48,7 @@ export async function POST(request: Request) {
     const message =
       error instanceof Error
         ? error.message
-        : "Unable to import questions from that PDF.";
+        : "Unable to import questions from that document.";
 
     return NextResponse.json(
       { error: message },

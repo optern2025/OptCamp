@@ -239,14 +239,14 @@ function HomePage() {
           <div className="hidden lg:flex gap-6 xl:gap-10 text-[10px] font-black tracking-[0.3em] uppercase text-white/40">
             <button
               type="button"
-              onClick={() => setCurrentPage("landing")}
+              onClick={() => handleLandingAnchorClick("gauntlet")}
               className="hover:text-cyan-500 transition-colors"
             >
               Gauntlet
             </button>
             <button
               type="button"
-              onClick={() => setCurrentPage("landing")}
+              onClick={() => handleLandingAnchorClick("cohorts")}
               className="hover:text-cyan-500 transition-colors"
             >
               Cycles
