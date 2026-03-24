@@ -110,6 +110,8 @@ function DashboardPageWithAuth() {
   }, [loadDashboard]);
 
   const availableCohorts = useMemo(() => payload?.cohorts ?? [], [payload]);
+  const memberships = useMemo(() => payload?.memberships ?? [], [payload]);
+  const isSingleMembership = memberships.length === 1;
 
   return (
     <main className="min-h-screen bg-[#061018] text-white">
@@ -268,7 +270,7 @@ function DashboardPageWithAuth() {
                   </div>
                 </div>
 
-                {payload.memberships.length === 0 && (
+                {memberships.length === 0 && (
                   <div className="rounded-[24px] border border-dashed border-white/10 bg-black/20 p-10 text-center">
                     <p className="text-sm font-black uppercase tracking-[0.24em] text-white/60">
                       No cohorts joined yet.
@@ -282,15 +284,86 @@ function DashboardPageWithAuth() {
                   </div>
                 )}
 
-                <div className="grid gap-5 xl:grid-cols-2">
-                  {payload.memberships.map((membership) => {
+                <div
+                  className={`grid gap-5 ${
+                    isSingleMembership ? "mx-auto max-w-5xl" : "xl:grid-cols-2"
+                  }`}
+                >
+                  {memberships.map((membership) => {
                     const action = nextAction(membership);
-
-                    return (
-                      <article
-                        key={membership.cohort.id}
-                        className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-7"
+                    const stageProgressionBlock = (
+                      <div
+                        className={`rounded-[24px] border border-white/10 bg-black/20 p-5 ${
+                          isSingleMembership
+                            ? "mt-0 lg:mt-0 lg:h-full"
+                            : "mt-6"
+                        }`}
                       >
+                        <div className="flex items-center gap-3">
+                          <Layers3 className="text-cyan-300" size={18} />
+                          <h4 className="text-sm font-black uppercase tracking-[0.22em]">
+                            Stage Progression
+                          </h4>
+                        </div>
+                        <div className="mt-5 grid gap-3">
+                          {membership.stages.map((stage) => (
+                            <div
+                              key={stage.id}
+                              className={`rounded-2xl border p-4 ${
+                                stage.status === "passed"
+                                  ? "border-emerald-400/40 bg-emerald-400/10"
+                                  : stage.status === "unlocked"
+                                    ? "border-cyan-400/40 bg-cyan-400/10"
+                                    : "border-white/10 bg-white/[0.03]"
+                              }`}
+                            >
+                              <div className="flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                  <p className="text-[10px] font-black uppercase tracking-[0.28em] text-white/45">
+                                    Stage {stage.stage_number}
+                                  </p>
+                                  <p className="mt-2 text-lg font-black uppercase tracking-tight">
+                                    {stage.title}
+                                  </p>
+                                </div>
+                                <span className="text-[10px] font-black uppercase tracking-[0.24em] text-white/60">
+                                  {stage.status}
+                                </span>
+                              </div>
+                              <p className="mt-3 text-xs font-bold uppercase tracking-[0.16em] text-white/55">
+                                {stage.description}
+                              </p>
+                              <div className="mt-4 flex flex-wrap items-center gap-3 text-[10px] font-black uppercase tracking-[0.2em] text-white/45">
+                                <span className="inline-flex items-center gap-2">
+                                  <Clock3 size={12} /> {stage.duration_minutes}{" "}
+                                  min
+                                </span>
+                                {stage.attempt && (
+                                  <span className="inline-flex items-center gap-2">
+                                    <CheckCircle2 size={12} />{" "}
+                                    {stage.attempt.score}/100
+                                  </span>
+                                )}
+                              </div>
+                              {stage.status !== "locked" && (
+                                <Link
+                                  href={`/dashboard/stage?cohortId=${membership.cohort.id}&stageId=${stage.id}`}
+                                  className="mt-4 inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.24em] text-cyan-300 transition-colors hover:text-cyan-200"
+                                >
+                                  {stage.status === "passed"
+                                    ? "Review Stage"
+                                    : "Open Stage"}
+                                  <ArrowRight size={14} />
+                                </Link>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+
+                    const heroColumn = (
+                      <div className={isSingleMembership ? "space-y-6" : undefined}>
                         <div className="flex flex-wrap items-start justify-between gap-4">
                           <div>
                             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300/80">
@@ -359,68 +432,27 @@ function DashboardPageWithAuth() {
                           )}
                         </div>
 
-                        <div className="mt-6 rounded-[24px] border border-white/10 bg-black/20 p-5">
-                          <div className="flex items-center gap-3">
-                            <Layers3 className="text-cyan-300" size={18} />
-                            <h4 className="text-sm font-black uppercase tracking-[0.22em]">
-                              Stage Progression
-                            </h4>
-                          </div>
-                          <div className="mt-5 grid gap-3">
-                            {membership.stages.map((stage) => (
-                              <div
-                                key={stage.id}
-                                className={`rounded-2xl border p-4 ${
-                                  stage.status === "passed"
-                                    ? "border-emerald-400/40 bg-emerald-400/10"
-                                    : stage.status === "unlocked"
-                                      ? "border-cyan-400/40 bg-cyan-400/10"
-                                      : "border-white/10 bg-white/[0.03]"
-                                }`}
-                              >
-                                <div className="flex flex-wrap items-center justify-between gap-3">
-                                  <div>
-                                    <p className="text-[10px] font-black uppercase tracking-[0.28em] text-white/45">
-                                      Stage {stage.stage_number}
-                                    </p>
-                                    <p className="mt-2 text-lg font-black uppercase tracking-tight">
-                                      {stage.title}
-                                    </p>
-                                  </div>
-                                  <span className="text-[10px] font-black uppercase tracking-[0.24em] text-white/60">
-                                    {stage.status}
-                                  </span>
-                                </div>
-                                <p className="mt-3 text-xs font-bold uppercase tracking-[0.16em] text-white/55">
-                                  {stage.description}
-                                </p>
-                                <div className="mt-4 flex flex-wrap items-center gap-3 text-[10px] font-black uppercase tracking-[0.2em] text-white/45">
-                                  <span className="inline-flex items-center gap-2">
-                                    <Clock3 size={12} />{" "}
-                                    {stage.duration_minutes} min
-                                  </span>
-                                  {stage.attempt && (
-                                    <span className="inline-flex items-center gap-2">
-                                      <CheckCircle2 size={12} />{" "}
-                                      {stage.attempt.score}/100
-                                    </span>
-                                  )}
-                                </div>
-                                {stage.status !== "locked" && (
-                                  <Link
-                                    href={`/dashboard/stage?cohortId=${membership.cohort.id}&stageId=${stage.id}`}
-                                    className="mt-4 inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.24em] text-cyan-300 transition-colors hover:text-cyan-200"
-                                  >
-                                    {stage.status === "passed"
-                                      ? "Review Stage"
-                                      : "Open Stage"}
-                                    <ArrowRight size={14} />
-                                  </Link>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
+                        {!isSingleMembership && stageProgressionBlock}
+                      </div>
+                    );
+
+                    return (
+                      <article
+                        key={membership.cohort.id}
+                        className={`rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-7 ${
+                          isSingleMembership
+                            ? "lg:grid lg:grid-cols-[1.2fr,0.9fr] lg:items-start lg:gap-6"
+                            : ""
+                        }`}
+                      >
+                        {isSingleMembership ? (
+                          <>
+                            {heroColumn}
+                            {stageProgressionBlock}
+                          </>
+                        ) : (
+                          heroColumn
+                        )}
                       </article>
                     );
                   })}
