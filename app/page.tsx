@@ -86,6 +86,24 @@ const cohortDisplayOverrides: Record<
     qualifierLabel: "Qualifier Round",
     sprintLabel: "Cohort Sprint",
   },
+  "ai / ml": {
+    apply_window: "26th - 29th March",
+    qualifierWindow: "30 & 31st March",
+    sprint_window: "1st - 4th April",
+    apply_by: "29th March",
+    applicationLabel: "Application Starts",
+    qualifierLabel: "Qualifier Round",
+    sprintLabel: "Cohort Sprint",
+  },
+  "cyber security": {
+    apply_window: "26th - 29th March",
+    qualifierWindow: "30 & 31st March",
+    sprint_window: "1st - 4th April",
+    apply_by: "29th March",
+    applicationLabel: "Application Starts",
+    qualifierLabel: "Qualifier Round",
+    sprintLabel: "Cohort Sprint",
+  },
 };
 
 function normalizeCohortType(type: string) {
@@ -139,9 +157,9 @@ const fallbackCohorts: LandingCohort[] = [
     id: "fallback-aiml",
     slug: "aiml-mar-2026",
     type: "AI / ML",
-    apply_window: "Mar 23-24",
-    sprint_window: "Mar 25-28",
-    apply_by: "Mar 24",
+    apply_window: "26th - 29th March",
+    sprint_window: "1st - 4th April",
+    apply_by: "29th March",
     qualifier_test_url: null,
     is_active: false,
     created_at: new Date().toISOString(),
@@ -150,9 +168,9 @@ const fallbackCohorts: LandingCohort[] = [
     id: "fallback-cyber-security",
     slug: "cyber-security-may-2026",
     type: "Cyber Security",
-    apply_window: "May 4-5",
-    sprint_window: "May 6-9",
-    apply_by: "May 5",
+    apply_window: "26th - 29th March",
+    sprint_window: "1st - 4th April",
+    apply_by: "29th March",
     qualifier_test_url: null,
     is_active: true,
     created_at: new Date().toISOString(),
@@ -323,13 +341,6 @@ function HomePage() {
           {/* SECTION 1: HERO */}
           <header className="relative min-h-[90vh] md:min-h-screen flex items-center justify-center pt-24 sm:pt-32 pb-12 z-10">
             <div className="container mx-auto px-4 sm:px-6 text-center">
-              <div className="flex justify-center mb-6 sm:mb-12">
-                <OptCampLogo
-                  scale={0.8}
-                  className="sm:scale-[1.3] md:scale-[1.6]"
-                />
-              </div>
-
               <h1 className="text-4xl xs:text-5xl sm:text-7xl md:text-[7rem] lg:text-[8.5rem] xl:text-[9.5rem] font-black leading-[1] sm:leading-[0.85] tracking-tighter mb-6 md:mb-8 uppercase break-words">
                 OPTCAMP <br className="xs:hidden md:block" />
                 <span
