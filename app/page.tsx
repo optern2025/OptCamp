@@ -161,7 +161,7 @@ const fallbackCohorts: LandingCohort[] = [
     sprint_window: "1st - 4th April",
     apply_by: "29th March",
     qualifier_test_url: null,
-    is_active: false,
+    is_active: true,
     created_at: new Date().toISOString(),
   },
   {
