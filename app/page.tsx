@@ -376,9 +376,6 @@ function HomePage() {
                   className="w-full sm:w-auto"
                 >
                   Apply Now
-                  <span className="block text-[8px] sm:text-[10px] opacity-70 mt-1 font-bold">
-                    (Max 40 Applications)
-                  </span>
                 </GlowButton>
               </div>
             </div>
