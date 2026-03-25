@@ -1,16 +1,14 @@
 import Image from "next/image";
 import type React from "react";
 
-interface OpternLogoProps {
+interface OptCampLogoProps {
   className?: string;
-  showText?: boolean;
   scale?: number;
   isScrolled?: boolean;
 }
 
-const OpternLogo: React.FC<OpternLogoProps> = ({
+const OptCampLogo: React.FC<OptCampLogoProps> = ({
   className = "",
-  showText = true,
   scale = 1,
   isScrolled = false,
 }) => (
@@ -31,19 +29,7 @@ const OpternLogo: React.FC<OpternLogoProps> = ({
         className="h-auto w-28 xs:w-36 sm:w-44 md:w-52 transition-all duration-500"
       />
     </div>
-
-    {showText && (
-      <span
-        className="text-xl xs:text-2xl sm:text-4xl font-black tracking-[-0.01em] text-white uppercase"
-        style={{
-          textShadow:
-            "0 0 10px rgba(0, 245, 255, 0.8), 0 0 20px rgba(0, 245, 255, 0.4)",
-        }}
-      >
-        OPTCAMP
-      </span>
-    )}
   </div>
 );
 
-export default OpternLogo;
+export default OptCampLogo;

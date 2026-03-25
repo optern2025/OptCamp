@@ -16,7 +16,7 @@ import { Suspense, useEffect, useState } from "react";
 import type { Cohort as LandingCohort } from "@/lib/types";
 import GlowButton from "./components/GlowButton";
 import Leaderboard from "./components/Leaderboard";
-import OpternLogo from "./components/OpternLogo";
+import OptCampLogo from "./components/OptCampLogo";
 import RegistrationPage from "./components/RegistrationPage";
 import SectionTitle from "./components/SectionTitle";
 
@@ -277,8 +277,7 @@ function HomePage() {
             className="flex items-center gap-2 sm:gap-4 group cursor-pointer transition-transform hover:scale-105"
             onClick={() => setCurrentPage("landing")}
           >
-            <OpternLogo
-              showText={true}
+            <OptCampLogo
               scale={scrolled || currentPage === "register" ? 0.35 : 0.45}
               isScrolled={scrolled || currentPage === "register"}
               className="origin-left"
@@ -325,8 +324,7 @@ function HomePage() {
           <header className="relative min-h-[90vh] md:min-h-screen flex items-center justify-center pt-24 sm:pt-32 pb-12 z-10">
             <div className="container mx-auto px-4 sm:px-6 text-center">
               <div className="flex justify-center mb-6 sm:mb-12">
-                <OpternLogo
-                  showText={false}
+                <OptCampLogo
                   scale={0.8}
                   className="sm:scale-[1.3] md:scale-[1.6]"
                 />
@@ -670,8 +668,7 @@ function HomePage() {
 
               <footer className="mt-24 md:mt-60 pt-8 md:pt-12 border-t border-white/5 flex flex-col md:flex-row justify-between items-center text-[7px] xs:text-[8px] md:text-[10px] font-black tracking-[0.1em] md:tracking-[0.4em] text-white/20 uppercase gap-6 md:gap-8">
                 <div className="flex items-center gap-2 md:gap-4 shrink-0">
-                  <OpternLogo
-                    showText={false}
+                  <OptCampLogo
                     scale={0.25}
                     isScrolled={false}
                     className="origin-center"
