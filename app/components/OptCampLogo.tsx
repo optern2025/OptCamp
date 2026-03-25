@@ -26,7 +26,7 @@ const OptCampLogo: React.FC<OptCampLogoProps> = ({
         width={588}
         height={165}
         priority
-        className="h-auto w-28 xs:w-36 sm:w-44 md:w-52 transition-all duration-500"
+        className="h-auto w-36 xs:w-44 sm:w-52 md:w-60 transition-all duration-500"
       />
     </div>
   </div>

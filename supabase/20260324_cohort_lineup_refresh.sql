@@ -5,8 +5,8 @@ where slug in ('backend-mar-2026', 'mobile-apr-2026');
 
 insert into public.cohorts (slug, type, apply_window, sprint_window, apply_by, qualifier_test_url, is_active)
 values
-    ('aiml-mar-2026', 'AI / ML', 'Mar 23-24', 'Mar 25-28', 'Mar 24', 'https://opt-camp.vercel.app/qualifier/aiml-mar-2026', false),
-    ('fullstack-apr-2026', 'Full Stack', 'Apr 6-7', 'Apr 8-11', 'Apr 7', 'https://opt-camp.vercel.app/qualifier/fullstack-apr-2026', false),
+    ('aiml-mar-2026', 'AI / ML', 'Mar 23-24', 'Mar 25-28', 'Mar 24', 'https://opt-camp.vercel.app/qualifier/aiml-mar-2026', true),
+    ('fullstack-apr-2026', 'Full Stack', 'Apr 6-7', 'Apr 8-11', 'Apr 7', 'https://opt-camp.vercel.app/qualifier/fullstack-apr-2026', true),
     ('cyber-security-may-2026', 'Cyber Security', 'May 4-5', 'May 6-9', 'May 5', 'https://opt-camp.vercel.app/qualifier/cyber-security-may-2026', true)
 on conflict (slug) do update
 set type = excluded.type,

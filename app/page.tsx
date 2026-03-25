@@ -296,7 +296,7 @@ function HomePage() {
             onClick={() => setCurrentPage("landing")}
           >
             <OptCampLogo
-              scale={scrolled || currentPage === "register" ? 0.35 : 0.45}
+              scale={scrolled || currentPage === "register" ? 0.45 : 0.55}
               isScrolled={scrolled || currentPage === "register"}
               className="origin-left"
             />
