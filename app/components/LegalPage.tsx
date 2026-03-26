@@ -1,22 +1,38 @@
 "use client";
 
 import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
 
 interface LegalPageProps {
-  onBack: () => void;
+  onBack?: () => void;
+  backHref?: string;
+  backLabel?: string;
 }
 
-export default function LegalPage({ onBack }: LegalPageProps) {
+export default function LegalPage({
+  onBack,
+  backHref,
+  backLabel = "Back to Arena",
+}: LegalPageProps) {
   return (
     <div className="min-h-screen bg-black px-4 pb-20 pt-32">
       <div className="mx-auto max-w-4xl">
-        <button
-          type="button"
-          onClick={onBack}
-          className="mb-8 flex items-center gap-2 text-xs font-black uppercase tracking-[0.24em] text-cyan-400 transition-colors hover:text-white"
-        >
-          <ArrowLeft size={16} /> Back to Arena
-        </button>
+        {onBack ? (
+          <button
+            type="button"
+            onClick={onBack}
+            className="mb-8 flex items-center gap-2 text-xs font-black uppercase tracking-[0.24em] text-cyan-400 transition-colors hover:text-white"
+          >
+            <ArrowLeft size={16} /> {backLabel}
+          </button>
+        ) : backHref ? (
+          <Link
+            href={backHref}
+            className="mb-8 inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.24em] text-cyan-400 transition-colors hover:text-white"
+          >
+            <ArrowLeft size={16} /> {backLabel}
+          </Link>
+        ) : null}
 
         {/* Terms & Conditions */}
         <section className="mb-16">

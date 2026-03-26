@@ -87,6 +87,8 @@ function QualifierPageWithAuth() {
   const [isStarting, setIsStarting] = useState(false);
   const [result, setResult] = useState<GradeResponse | null>(null);
   const [hasStarted, setHasStarted] = useState(false);
+  const [showTermsDialog, setShowTermsDialog] = useState(false);
+  const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, AssessmentAnswerValue>>(
     {},
@@ -252,6 +254,24 @@ function QualifierPageWithAuth() {
       setIsStarting(false);
     }
   }, [exam, hasStarted, hydrateExamState, isStarting, loadExam]);
+
+  const openTermsDialog = useCallback(() => {
+    setHasAcceptedTerms(false);
+    setShowTermsDialog(true);
+    setErrorMessage(null);
+  }, []);
+
+  const confirmTermsAndStart = useCallback(() => {
+    if (!hasAcceptedTerms) {
+      setErrorMessage(
+        "Accept the Terms & Conditions before starting the qualifier.",
+      );
+      return;
+    }
+
+    setShowTermsDialog(false);
+    void startExam();
+  }, [hasAcceptedTerms, startExam]);
 
   const handleFinish = useCallback(async () => {
     if (!exam || isScoring || result) {
@@ -555,13 +575,77 @@ function QualifierPageWithAuth() {
 
               <button
                 type="button"
-                onClick={() => void startExam()}
+                onClick={openTermsDialog}
                 disabled={isStarting || availabilityTimeLeft === 0}
                 className="bg-cyan-500 px-8 py-4 text-xs font-black uppercase tracking-[0.2em] text-black transition-colors hover:bg-cyan-400 disabled:cursor-not-allowed disabled:bg-white/20 disabled:text-white/45"
               >
                 {isStarting ? "Starting..." : "Start Qualifier"}
               </button>
             </section>
+          )}
+
+          {showTermsDialog && exam && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 backdrop-blur-md">
+              <div className="relative w-full max-w-xl overflow-hidden rounded-[28px] border border-cyan-500/60 bg-[#0B0F14] p-8">
+                <div className="absolute left-0 top-0 h-1 w-full bg-cyan-500" />
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300/80">
+                  Mandatory Acceptance
+                </p>
+                <h3 className="mt-4 text-3xl font-black uppercase tracking-tight">
+                  Accept Legal Terms Before Starting
+                </h3>
+                <p className="mt-4 text-sm font-bold uppercase tracking-[0.14em] text-white/65">
+                  You must review and accept all Terms & Conditions, privacy
+                  terms, and rules before the {exam.cohortType} qualifier can
+                  begin.
+                </p>
+
+                <Link
+                  href="/legal"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-6 inline-flex items-center gap-2 border border-cyan-400 px-5 py-3 text-xs font-black uppercase tracking-[0.24em] text-cyan-300 transition-colors hover:bg-cyan-400 hover:text-black"
+                >
+                  Open Legal Page
+                </Link>
+
+                <label className="mt-6 flex cursor-pointer items-start gap-3 rounded-[20px] border border-white/10 bg-white/[0.03] p-4 text-xs font-bold uppercase tracking-[0.16em] text-white/75">
+                  <input
+                    type="checkbox"
+                    checked={hasAcceptedTerms}
+                    onChange={(event) =>
+                      setHasAcceptedTerms(event.target.checked)
+                    }
+                    className="mt-0.5 h-4 w-4 accent-cyan-400"
+                  />
+                  <span>
+                    I have read the legal page and accept all Terms & Conditions
+                    required to take this qualifier.
+                  </span>
+                </label>
+
+                <div className="mt-8 flex flex-wrap justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowTermsDialog(false);
+                      setHasAcceptedTerms(false);
+                    }}
+                    className="border border-white/15 px-5 py-3 text-xs font-black uppercase tracking-[0.24em] text-white/70 transition-colors hover:border-white/30 hover:text-white"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmTermsAndStart}
+                    disabled={isStarting}
+                    className="bg-cyan-500 px-5 py-3 text-xs font-black uppercase tracking-[0.24em] text-black transition-colors hover:bg-cyan-400 disabled:cursor-not-allowed disabled:bg-white/20 disabled:text-white/45"
+                  >
+                    {isStarting ? "Starting..." : "Accept and Start"}
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
 
           {portal === "exam" && exam && (
