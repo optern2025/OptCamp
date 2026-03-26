@@ -13,6 +13,7 @@ import { canAccessAdmin } from "@/lib/adminAccess";
 import { hasClerkPublishableKey } from "@/lib/clerkEnv";
 import type {
   AdminContentPayload,
+  AdminUserDashboardPayload,
   AssessmentQuestion,
   AssessmentQuestionType,
   CohortContentBundle,
@@ -107,6 +108,43 @@ async function readJsonResponse<T>(response: Response): Promise<T> {
     compact
       ? `Expected JSON but received: ${compact}`
       : "Expected JSON but received an empty response.",
+  );
+}
+
+const adminDateTimeFormatter = new Intl.DateTimeFormat("en-IN", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
+function formatAdminDateTime(value: string | null): string {
+  if (!value) {
+    return "—";
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return adminDateTimeFormatter.format(parsed);
+}
+
+function SummaryCard({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) {
+  return (
+    <div className="rounded-[24px] border border-white/10 bg-[#09131d] p-5">
+      <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/45">
+        {label}
+      </p>
+      <p className="mt-3 text-3xl font-black tracking-tight text-white">
+        {value}
+      </p>
+    </div>
   );
 }
 
@@ -500,11 +538,17 @@ function QuestionImportPanel({
 function AdminPageContent() {
   const { isLoaded, user } = useUser();
   const [payload, setPayload] = useState<AdminContentPayload | null>(null);
+  const [userDashboard, setUserDashboard] =
+    useState<AdminUserDashboardPayload | null>(null);
   const [selectedCohortId, setSelectedCohortId] = useState("");
   const [drafts, setDrafts] = useState<Record<string, CohortContentBundle>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [userDashboardError, setUserDashboardError] = useState<string | null>(
+    null,
+  );
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const canManageContent = canAccessAdmin(
     user?.primaryEmailAddress?.emailAddress ?? "",
@@ -547,6 +591,32 @@ function AdminPageContent() {
     }
   }, []);
 
+  const loadAdminUsers = useCallback(async () => {
+    setIsLoadingUsers(true);
+    setUserDashboardError(null);
+
+    try {
+      const response = await fetch("/api/admin/users");
+      const data = await readJsonResponse<
+        AdminUserDashboardPayload & {
+          error?: string;
+        }
+      >(response);
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Unable to load admin users.");
+      }
+
+      setUserDashboard(data);
+    } catch (error) {
+      setUserDashboardError(
+        error instanceof Error ? error.message : "Unable to load admin users.",
+      );
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!isLoaded) {
       return;
@@ -554,11 +624,13 @@ function AdminPageContent() {
 
     if (!canManageContent) {
       setIsLoading(false);
+      setIsLoadingUsers(false);
       return;
     }
 
     loadAdminContent();
-  }, [canManageContent, isLoaded, loadAdminContent]);
+    loadAdminUsers();
+  }, [canManageContent, isLoaded, loadAdminContent, loadAdminUsers]);
 
   const selectedCohort = useMemo(
     () =>
@@ -728,6 +800,295 @@ function AdminPageContent() {
               <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-100">
                 {successMessage}
               </p>
+            </section>
+          )}
+
+          {canManageContent && (
+            <section className="rounded-[28px] border border-white/10 bg-black/20 p-6">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300/80">
+                    Registrations
+                  </p>
+                  <h2 className="mt-2 text-3xl font-black uppercase tracking-tight">
+                    User and cohort dashboard
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={loadAdminUsers}
+                  disabled={isLoadingUsers}
+                  className="rounded-full border border-cyan-300/30 px-4 py-2 text-[10px] font-black uppercase tracking-[0.22em] text-cyan-100 transition-colors hover:bg-cyan-300/10 disabled:opacity-60"
+                >
+                  {isLoadingUsers ? "Refreshing..." : "Refresh table"}
+                </button>
+              </div>
+
+              {isLoadingUsers && (
+                <div className="mt-6 rounded-[24px] border border-white/10 bg-[#09131d] p-6">
+                  <p className="text-sm font-bold uppercase tracking-[0.22em] text-white/55">
+                    Loading user registrations...
+                  </p>
+                </div>
+              )}
+
+              {!isLoadingUsers && userDashboardError && (
+                <div className="mt-6 rounded-[24px] border border-red-500/30 bg-red-500/10 p-6">
+                  <p className="text-xs font-black uppercase tracking-[0.22em] text-red-200">
+                    {userDashboardError}
+                  </p>
+                </div>
+              )}
+
+              {!isLoadingUsers && userDashboard && (
+                <div className="mt-6 space-y-6">
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+                    <SummaryCard
+                      label="Total Users"
+                      value={userDashboard.summary.totalUsers}
+                    />
+                    <SummaryCard
+                      label="Registered Users"
+                      value={userDashboard.summary.registeredUsers}
+                    />
+                    <SummaryCard
+                      label="Applications"
+                      value={userDashboard.summary.totalApplications}
+                    />
+                    <SummaryCard
+                      label="Active Cohorts"
+                      value={userDashboard.summary.activeCohorts}
+                    />
+                    <SummaryCard
+                      label="Enrolled Users"
+                      value={userDashboard.summary.enrolledUsers}
+                    />
+                    <SummaryCard
+                      label="Completed Users"
+                      value={userDashboard.summary.completedUsers}
+                    />
+                  </div>
+
+                  <div className="overflow-x-auto rounded-[24px] border border-white/10 bg-[#08111a]">
+                    <table className="min-w-full divide-y divide-white/10 text-left">
+                      <thead className="bg-white/[0.03]">
+                        <tr className="text-[10px] font-black uppercase tracking-[0.22em] text-white/45">
+                          <th className="px-4 py-4">Candidate</th>
+                          <th className="px-4 py-4">Profile</th>
+                          <th className="px-4 py-4">Registered Cohorts</th>
+                          <th className="px-4 py-4">Progress</th>
+                          <th className="px-4 py-4">Activity</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/10 align-top">
+                        {userDashboard.users.map((dashboardUser) => (
+                          <tr key={dashboardUser.id} className="text-sm">
+                            <td className="px-4 py-4">
+                              <p className="font-black uppercase tracking-[0.08em] text-white">
+                                {dashboardUser.name || "Unnamed user"}
+                              </p>
+                              <p className="mt-2 text-xs font-bold text-cyan-100/90">
+                                {dashboardUser.email}
+                              </p>
+                              <p className="mt-2 text-xs text-white/65">
+                                {dashboardUser.university ||
+                                  "University not provided"}
+                              </p>
+                              <p className="mt-3 text-[11px] text-white/55">
+                                {dashboardUser.intent ||
+                                  "No application intent provided."}
+                              </p>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="space-y-2 text-xs text-white/70">
+                                <p>
+                                  <span className="font-black uppercase tracking-[0.14em] text-white/45">
+                                    Stack
+                                  </span>
+                                  <br />
+                                  {dashboardUser.stack || "—"}
+                                </p>
+                                <p>
+                                  <span className="font-black uppercase tracking-[0.14em] text-white/45">
+                                    Github
+                                  </span>
+                                  <br />
+                                  {dashboardUser.github ? (
+                                    <a
+                                      href={dashboardUser.github}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="text-cyan-200 underline decoration-cyan-400/40 underline-offset-4"
+                                    >
+                                      {dashboardUser.github}
+                                    </a>
+                                  ) : (
+                                    "—"
+                                  )}
+                                </p>
+                                <p>
+                                  <span className="font-black uppercase tracking-[0.14em] text-white/45">
+                                    Availability
+                                  </span>
+                                  <br />
+                                  {dashboardUser.availability
+                                    ? "Confirmed"
+                                    : "Not confirmed"}
+                                </p>
+                                <p>
+                                  <span className="font-black uppercase tracking-[0.14em] text-white/45">
+                                    Clerk ID
+                                  </span>
+                                  <br />
+                                  <span className="break-all">
+                                    {dashboardUser.clerk_user_id}
+                                  </span>
+                                </p>
+                              </div>
+                            </td>
+                            <td className="px-4 py-4">
+                              {dashboardUser.memberships.length === 0 ? (
+                                <p className="text-xs text-white/45">
+                                  No cohort registrations yet.
+                                </p>
+                              ) : (
+                                <div className="space-y-3">
+                                  {dashboardUser.memberships.map(
+                                    (membership) => (
+                                      <div
+                                        key={`${dashboardUser.id}-${membership.cohort.id}`}
+                                        className="rounded-[18px] border border-white/10 bg-white/[0.03] p-3"
+                                      >
+                                        <p className="font-black uppercase tracking-[0.12em] text-white">
+                                          {membership.cohort.type}
+                                        </p>
+                                        <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.16em] text-white/45">
+                                          {membership.cohort.slug}
+                                        </p>
+                                        <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.16em]">
+                                          <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-2 py-1 text-cyan-100">
+                                            {membership.status.replaceAll(
+                                              "_",
+                                              " ",
+                                            )}
+                                          </span>
+                                          <span className="rounded-full border border-white/10 px-2 py-1 text-white/55">
+                                            Apply by{" "}
+                                            {membership.cohort.apply_by}
+                                          </span>
+                                          <span className="rounded-full border border-white/10 px-2 py-1 text-white/55">
+                                            {membership.cohort.is_active
+                                              ? "Active"
+                                              : "Inactive"}
+                                          </span>
+                                        </div>
+                                        <p className="mt-3 text-[11px] text-white/55">
+                                          Applied{" "}
+                                          {formatAdminDateTime(
+                                            membership.applied_at,
+                                          )}
+                                        </p>
+                                      </div>
+                                    ),
+                                  )}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-4 py-4">
+                              {dashboardUser.memberships.length === 0 ? (
+                                <p className="text-xs text-white/45">—</p>
+                              ) : (
+                                <div className="space-y-3">
+                                  {dashboardUser.memberships.map(
+                                    (membership) => (
+                                      <div
+                                        key={`${dashboardUser.id}-${membership.cohort.id}-progress`}
+                                        className="rounded-[18px] border border-white/10 bg-white/[0.03] p-3 text-xs text-white/70"
+                                      >
+                                        <p className="font-black uppercase tracking-[0.14em] text-white/45">
+                                          {membership.cohort.type}
+                                        </p>
+                                        <p className="mt-2">
+                                          Qualifier:{" "}
+                                          {membership.qualifier_score === null
+                                            ? "Not submitted"
+                                            : `${membership.qualifier_score}% ${
+                                                membership.qualifier_passed ===
+                                                true
+                                                  ? "(passed)"
+                                                  : membership.qualifier_passed ===
+                                                      false
+                                                    ? "(failed)"
+                                                    : ""
+                                              }`}
+                                        </p>
+                                        <p className="mt-1">
+                                          Stages:{" "}
+                                          {membership.stages_passed_count}/
+                                          {membership.total_stage_count}
+                                        </p>
+                                        <p className="mt-1">
+                                          Qualifier submitted:{" "}
+                                          {formatAdminDateTime(
+                                            membership.qualifier_submitted_at,
+                                          )}
+                                        </p>
+                                        <p className="mt-1">
+                                          Enrolled:{" "}
+                                          {formatAdminDateTime(
+                                            membership.enrolled_at,
+                                          )}
+                                        </p>
+                                        <p className="mt-1">
+                                          Completed:{" "}
+                                          {formatAdminDateTime(
+                                            membership.completed_at,
+                                          )}
+                                        </p>
+                                      </div>
+                                    ),
+                                  )}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="space-y-2 text-xs text-white/70">
+                                <p>
+                                  <span className="font-black uppercase tracking-[0.14em] text-white/45">
+                                    Latest
+                                  </span>
+                                  <br />
+                                  {formatAdminDateTime(
+                                    dashboardUser.latest_activity_at,
+                                  )}
+                                </p>
+                                <p>
+                                  <span className="font-black uppercase tracking-[0.14em] text-white/45">
+                                    Created
+                                  </span>
+                                  <br />
+                                  {formatAdminDateTime(
+                                    dashboardUser.created_at,
+                                  )}
+                                </p>
+                                <p>
+                                  <span className="font-black uppercase tracking-[0.14em] text-white/45">
+                                    Updated
+                                  </span>
+                                  <br />
+                                  {formatAdminDateTime(
+                                    dashboardUser.updated_at,
+                                  )}
+                                </p>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </section>
           )}
 

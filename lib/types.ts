@@ -158,6 +158,43 @@ export interface AdminContentPayload {
   contentByCohort: Record<string, CohortContentBundle>;
 }
 
+export interface AdminUserCohortMembership {
+  cohort: Pick<Cohort, "id" | "slug" | "type" | "apply_by" | "is_active">;
+  status: UserCohortStatus;
+  applied_at: string;
+  qualifier_score: number | null;
+  qualifier_passed: boolean | null;
+  qualifier_started_at: string | null;
+  qualifier_submitted_at: string | null;
+  qualified_at: string | null;
+  enrolled_at: string | null;
+  completed_at: string | null;
+  stages_passed_count: number;
+  total_stage_count: number;
+  latest_activity_at: string | null;
+}
+
+export interface AdminUserDashboardEntry extends UserProfile {
+  clerk_user_id: string;
+  cohort_count: number;
+  latest_activity_at: string | null;
+  memberships: AdminUserCohortMembership[];
+}
+
+export interface AdminUserDashboardSummary {
+  totalUsers: number;
+  registeredUsers: number;
+  totalApplications: number;
+  activeCohorts: number;
+  enrolledUsers: number;
+  completedUsers: number;
+}
+
+export interface AdminUserDashboardPayload {
+  users: AdminUserDashboardEntry[];
+  summary: AdminUserDashboardSummary;
+}
+
 export interface ApiError {
   error: string;
 }
