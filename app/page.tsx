@@ -16,11 +16,12 @@ import { Suspense, useEffect, useState } from "react";
 import type { Cohort as LandingCohort } from "@/lib/types";
 import GlowButton from "./components/GlowButton";
 import Leaderboard from "./components/Leaderboard";
+import LegalPage from "./components/LegalPage";
 import OptCampLogo from "./components/OptCampLogo";
 import RegistrationPage from "./components/RegistrationPage";
 import SectionTitle from "./components/SectionTitle";
 
-type PageType = "landing" | "register";
+type PageType = "landing" | "register" | "legal";
 
 interface GauntletDay {
   day: string;
@@ -703,7 +704,7 @@ function HomePage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setCurrentPage("landing")}
+                    onClick={() => setCurrentPage("legal")}
                     className="hover:text-cyan-500 transition-colors shrink-0"
                   >
                     Legal
@@ -719,6 +720,8 @@ function HomePage() {
             </div>
           </section>
         </>
+      ) : currentPage === "legal" ? (
+        <LegalPage onBack={() => setCurrentPage("landing")} />
       ) : (
         <RegistrationPage
           onBack={() => setCurrentPage("landing")}

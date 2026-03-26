@@ -22,6 +22,8 @@ import type {
   ScenarioQuestion,
 } from "@/lib/types";
 
+export const dynamic = "force-dynamic";
+
 function createQuestion(type: AssessmentQuestionType): AssessmentQuestion {
   const base = {
     id: crypto.randomUUID(),
@@ -495,7 +497,7 @@ function QuestionImportPanel({
   );
 }
 
-export default function AdminPage() {
+function AdminPageContent() {
   const { isLoaded, user } = useUser();
   const [payload, setPayload] = useState<AdminContentPayload | null>(null);
   const [selectedCohortId, setSelectedCohortId] = useState("");
@@ -651,22 +653,6 @@ export default function AdminPage() {
     }
   };
 
-  if (!hasClerkPublishableKey) {
-    return (
-      <main className="min-h-screen bg-[#071018] px-4 py-10 text-white">
-        <section className="mx-auto max-w-4xl rounded-[24px] border border-amber-400/20 bg-amber-400/10 p-8">
-          <h1 className="text-3xl font-black uppercase tracking-tight">
-            Admin access is unavailable
-          </h1>
-          <p className="mt-4 text-sm font-bold uppercase tracking-[0.16em] text-white/65">
-            Add <code>NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY</code> to use the admin
-            content studio.
-          </p>
-        </section>
-      </main>
-    );
-  }
-
   return (
     <main className="min-h-screen bg-[#071018] px-4 py-10 text-white">
       <div className="mx-auto max-w-7xl space-y-6">
@@ -716,8 +702,7 @@ export default function AdminPage() {
                 Admin access is restricted
               </h2>
               <p className="mt-4 text-sm font-bold uppercase tracking-[0.16em] text-white/65">
-                Only admins can manage cohort
-                content.
+                Only admins can manage cohort content.
               </p>
             </section>
           )}
@@ -1188,4 +1173,24 @@ export default function AdminPage() {
       </div>
     </main>
   );
+}
+
+export default function AdminPage() {
+  if (!hasClerkPublishableKey) {
+    return (
+      <main className="min-h-screen bg-[#071018] px-4 py-10 text-white">
+        <section className="mx-auto max-w-4xl rounded-[24px] border border-amber-400/20 bg-amber-400/10 p-8">
+          <h1 className="text-3xl font-black uppercase tracking-tight">
+            Admin access is unavailable
+          </h1>
+          <p className="mt-4 text-sm font-bold uppercase tracking-[0.16em] text-white/65">
+            Add <code>NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY</code> to use the admin
+            content studio.
+          </p>
+        </section>
+      </main>
+    );
+  }
+
+  return <AdminPageContent />;
 }
