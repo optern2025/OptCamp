@@ -19,6 +19,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { canAccessAdmin } from "@/lib/adminAccess";
 import { hasClerkPublishableKey } from "@/lib/clerkEnv";
+import { getQualifierTiming } from "@/lib/qualifierTiming";
 import type {
   CohortMembership,
   CohortStageProgress,
@@ -48,16 +49,36 @@ function findCurrentStage(stages: CohortStageProgress[]) {
   return stages.find((stage) => stage.status === "unlocked") ?? null;
 }
 
+function formatDuration(seconds: number) {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+
+  return `${minutes}m`;
+}
+
+function getQualifierState(membership: CohortMembership) {
+  return getQualifierTiming({
+    appliedAt: membership.applied_at,
+    startedAt: membership.qualifier_started_at,
+    submittedAt: membership.qualifier_submitted_at,
+  });
+}
+
 function nextAction(membership: CohortMembership) {
+  const qualifierState = getQualifierState(membership);
+
   if (
-    membership.status === "applied" ||
-    membership.status === "qualifier_in_progress" ||
-    membership.status === "qualifier_failed"
+    qualifierState.canStart ||
+    (qualifierState.canResume && membership.status === "qualifier_in_progress")
   ) {
     return {
       label:
-        membership.status === "qualifier_failed"
-          ? "Retry Qualifier"
+        membership.status === "qualifier_in_progress"
+          ? "Resume Qualifier"
           : "Start Qualifier",
       href: `/cohort-test/proctor?cohortId=${membership.cohort.id}`,
     };
@@ -72,6 +93,40 @@ function nextAction(membership: CohortMembership) {
   }
 
   return null;
+}
+
+function getQualifierGateMessage(membership: CohortMembership) {
+  const qualifierState = getQualifierState(membership);
+
+  if (membership.latest_qualifier_attempt?.feedback) {
+    return membership.latest_qualifier_attempt.feedback;
+  }
+
+  if (qualifierState.canResume) {
+    return `Qualifier in progress. ${formatDuration(
+      qualifierState.remainingAttemptSeconds,
+    )} remaining in the 3-hour attempt.`;
+  }
+
+  if (qualifierState.canStart) {
+    return `Qualifier available for ${formatDuration(
+      qualifierState.remainingAvailabilitySeconds,
+    )} more from your 48-hour signup window.`;
+  }
+
+  if (qualifierState.attemptExpired) {
+    return "Your 3-hour qualifier time limit has expired.";
+  }
+
+  if (qualifierState.availabilityExpired) {
+    return "Your 48-hour qualifier access window has ended.";
+  }
+
+  if (membership.qualifier_feedback) {
+    return membership.qualifier_feedback;
+  }
+
+  return "Complete the qualifier to unlock cohort stages.";
 }
 
 function DashboardPageWithAuth() {
@@ -442,8 +497,7 @@ function DashboardPageWithAuth() {
                             </h4>
                           </div>
                           <p className="mt-3 text-sm font-bold uppercase tracking-[0.16em] text-white/65">
-                            {membership.latest_qualifier_attempt?.feedback ??
-                              "Complete the qualifier to unlock cohort stages."}
+                            {getQualifierGateMessage(membership)}
                           </p>
                           {action && (
                             <Link

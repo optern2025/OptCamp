@@ -26,6 +26,11 @@ interface ProctorExamPayload {
   cohortType: string;
   durationSeconds: number;
   questions: AssessmentQuestion[];
+  startedAt: string | null;
+  remainingSeconds: number;
+  availabilityEndsAt: string | null;
+  attemptEndsAt: string | null;
+  hasStarted: boolean;
 }
 
 interface GradeResponse {
@@ -44,6 +49,32 @@ function normalizeAnswer(value: AssessmentAnswerValue | undefined): string {
   return typeof value === "string" ? value : "";
 }
 
+function secondsUntil(isoTimestamp: string | null): number {
+  if (!isoTimestamp) {
+    return 0;
+  }
+
+  const deadline = Date.parse(isoTimestamp);
+  if (!Number.isFinite(deadline)) {
+    return 0;
+  }
+
+  return Math.max(0, Math.floor((deadline - Date.now()) / 1000));
+}
+
+function formatDateTime(value: string | null): string {
+  if (!value) {
+    return "Unavailable";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "Unavailable";
+  }
+
+  return date.toLocaleString();
+}
+
 function QualifierPageWithAuth() {
   const searchParams = useSearchParams();
   const cohortId = searchParams.get("cohortId") ?? "";
@@ -51,7 +82,9 @@ function QualifierPageWithAuth() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [exam, setExam] = useState<ProctorExamPayload | null>(null);
   const [timeLeft, setTimeLeft] = useState(0);
+  const [availabilityTimeLeft, setAvailabilityTimeLeft] = useState(0);
   const [isScoring, setIsScoring] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
   const [result, setResult] = useState<GradeResponse | null>(null);
   const [hasStarted, setHasStarted] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -62,6 +95,77 @@ function QualifierPageWithAuth() {
 
   const timerRef = useRef<number | null>(null);
   const securityStopRef = useRef(false);
+
+  const clearTimer = useCallback(() => {
+    if (timerRef.current) {
+      window.clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
+  const syncClock = useCallback(
+    (nextPortal: PortalState, payload: ProctorExamPayload) => {
+      clearTimer();
+
+      if (nextPortal === "exam") {
+        const update = () => {
+          setTimeLeft(secondsUntil(payload.attemptEndsAt));
+        };
+
+        update();
+        timerRef.current = window.setInterval(update, 1000);
+        return;
+      }
+
+      if (nextPortal === "ready") {
+        const update = () => {
+          setAvailabilityTimeLeft(secondsUntil(payload.availabilityEndsAt));
+        };
+
+        update();
+        timerRef.current = window.setInterval(update, 1000);
+      }
+    },
+    [clearTimer],
+  );
+
+  const hydrateExamState = useCallback(
+    (payload: ProctorExamPayload) => {
+      const initialAnswers = Object.fromEntries(
+        payload.questions.map((question) => [
+          question.id,
+          question.type === "mcq" && question.allowMultiple ? [] : "",
+        ]),
+      ) as Record<string, AssessmentAnswerValue>;
+
+      setExam(payload);
+      setAnswers(initialAnswers);
+      setReviewFlags(
+        Object.fromEntries(
+          payload.questions.map((question) => [question.id, false]),
+        ),
+      );
+      setCurrentIndex(0);
+      setResult(null);
+      setErrorMessage(null);
+      securityStopRef.current = false;
+
+      if (payload.hasStarted && payload.attemptEndsAt) {
+        setHasStarted(true);
+        setTimeLeft(payload.remainingSeconds);
+        setPortal("exam");
+        syncClock("exam", payload);
+        return;
+      }
+
+      setHasStarted(false);
+      setTimeLeft(payload.durationSeconds);
+      setAvailabilityTimeLeft(secondsUntil(payload.availabilityEndsAt));
+      setPortal("ready");
+      syncClock("ready", payload);
+    },
+    [syncClock],
+  );
 
   const loadExam = useCallback(async () => {
     if (!cohortId) {
@@ -83,29 +187,17 @@ function QualifierPageWithAuth() {
       };
 
       if (!response.ok) {
+        clearTimer();
+        setExam(null);
         setErrorMessage(data.error ?? "Unable to load your qualifier.");
         setPortal("ready");
         return;
       }
 
-      const initialAnswers = Object.fromEntries(
-        data.questions.map((question) => [
-          question.id,
-          question.type === "mcq" && question.allowMultiple ? [] : "",
-        ]),
-      ) as Record<string, AssessmentAnswerValue>;
-
-      setExam(data);
-      setAnswers(initialAnswers);
-      setReviewFlags(
-        Object.fromEntries(
-          data.questions.map((question) => [question.id, false]),
-        ),
-      );
-      setTimeLeft(data.durationSeconds);
-      setCurrentIndex(0);
-      setPortal("ready");
+      hydrateExamState(data);
     } catch (error) {
+      clearTimer();
+      setExam(null);
       setErrorMessage(
         error instanceof Error
           ? error.message
@@ -113,56 +205,60 @@ function QualifierPageWithAuth() {
       );
       setPortal("ready");
     }
-  }, [cohortId]);
+  }, [clearTimer, cohortId, hydrateExamState]);
 
   useEffect(() => {
     loadExam();
   }, [loadExam]);
 
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) {
-        window.clearInterval(timerRef.current);
-      }
-    };
-  }, []);
+  useEffect(() => clearTimer, [clearTimer]);
 
-  const startExam = useCallback(() => {
-    if (!exam || hasStarted) {
+  const startExam = useCallback(async () => {
+    if (!exam || hasStarted || isStarting) {
       return;
     }
 
-    setHasStarted(true);
-    setPortal("exam");
-    setTimeLeft(exam.durationSeconds);
+    setIsStarting(true);
     setErrorMessage(null);
-    securityStopRef.current = false;
 
-    timerRef.current = window.setInterval(() => {
-      setTimeLeft((previous) => {
-        if (previous <= 1) {
-          if (timerRef.current) {
-            window.clearInterval(timerRef.current);
-            timerRef.current = null;
-          }
-          return 0;
-        }
-
-        return previous - 1;
+    try {
+      const response = await fetch("/api/me/proctor-exam", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          cohortId: exam.cohortId,
+        }),
       });
-    }, 1000);
-  }, [exam, hasStarted]);
+
+      const data = (await response.json()) as ProctorExamPayload & {
+        error?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Unable to start your qualifier.");
+      }
+
+      hydrateExamState(data);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Unable to start the qualifier.",
+      );
+      await loadExam();
+    } finally {
+      setIsStarting(false);
+    }
+  }, [exam, hasStarted, hydrateExamState, isStarting, loadExam]);
 
   const handleFinish = useCallback(async () => {
     if (!exam || isScoring || result) {
       return;
     }
 
-    if (timerRef.current) {
-      window.clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-
+    clearTimer();
     setIsScoring(true);
 
     try {
@@ -200,20 +296,19 @@ function QualifierPageWithAuth() {
       setResult(data);
       setPortal("results");
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "Failed to complete grading.",
-      );
+      const message =
+        error instanceof Error ? error.message : "Failed to complete grading.";
+      setErrorMessage(message);
       setResult({
         score: 0,
-        feedback:
-          "Submission captured. Manual review required due to a grading issue.",
+        feedback: message,
         passed: false,
       });
       setPortal("results");
     } finally {
       setIsScoring(false);
     }
-  }, [answers, exam, isScoring, result]);
+  }, [answers, clearTimer, exam, isScoring, result]);
 
   const stopExamForSecurityReason = useCallback(
     (message: string) => {
@@ -230,9 +325,19 @@ function QualifierPageWithAuth() {
 
   useEffect(() => {
     if (portal === "exam" && timeLeft === 0 && !isScoring && !result) {
-      handleFinish();
+      void handleFinish();
     }
   }, [handleFinish, isScoring, portal, result, timeLeft]);
+
+  useEffect(() => {
+    if (portal !== "ready" || !exam) {
+      return;
+    }
+
+    if (availabilityTimeLeft === 0) {
+      void loadExam();
+    }
+  }, [availabilityTimeLeft, exam, loadExam, portal]);
 
   useEffect(() => {
     if (portal !== "exam") {
@@ -292,40 +397,17 @@ function QualifierPageWithAuth() {
   }, [portal, stopExamForSecurityReason]);
 
   const formatTime = useMemo(
-    () => (seconds: number) =>
-      `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, "0")}`,
+    () => (seconds: number) => {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      const remainingSeconds = seconds % 60;
+
+      return [hours, minutes, remainingSeconds]
+        .map((value) => value.toString().padStart(2, "0"))
+        .join(":");
+    },
     [],
   );
-
-  const resetAttempt = () => {
-    if (timerRef.current) {
-      window.clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-
-    setResult(null);
-    setErrorMessage(null);
-    setHasStarted(false);
-    securityStopRef.current = false;
-    setCurrentIndex(0);
-    setTimeLeft(exam?.durationSeconds ?? 0);
-    if (exam) {
-      setAnswers(
-        Object.fromEntries(
-          exam.questions.map((question) => [
-            question.id,
-            question.type === "mcq" && question.allowMultiple ? [] : "",
-          ]),
-        ) as Record<string, AssessmentAnswerValue>,
-      );
-      setReviewFlags(
-        Object.fromEntries(
-          exam.questions.map((question) => [question.id, false]),
-        ),
-      );
-    }
-    setPortal("ready");
-  };
 
   return (
     <main
@@ -406,12 +488,12 @@ function QualifierPageWithAuth() {
                 Ready to begin
               </h2>
               <p className="max-w-3xl text-sm font-bold uppercase tracking-[0.14em] text-white/60">
-                Your qualifier now supports MCQs, debugging prompts, and sprint
-                scenarios. Use the in-test navigator to jump between questions,
-                mark items for review, and submit when you are satisfied.
+                After signup, the qualifier is only available for 48 hours. Once
+                you start, the 3-hour exam timer is final and cannot be
+                restarted.
               </p>
 
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-4">
                 <div className="border border-white/10 bg-white/5 p-5">
                   <div className="flex items-center gap-3 text-cyan-400">
                     <FileText size={18} />
@@ -427,11 +509,22 @@ function QualifierPageWithAuth() {
                   <div className="flex items-center gap-3 text-cyan-400">
                     <TimerReset size={18} />
                     <span className="text-[10px] font-black uppercase tracking-[0.24em]">
-                      Time
+                      Exam Time
                     </span>
                   </div>
                   <p className="mt-4 text-3xl font-black">
                     {formatTime(exam.durationSeconds)}
+                  </p>
+                </div>
+                <div className="border border-white/10 bg-white/5 p-5">
+                  <div className="flex items-center gap-3 text-cyan-400">
+                    <TimerReset size={18} />
+                    <span className="text-[10px] font-black uppercase tracking-[0.24em]">
+                      Access Left
+                    </span>
+                  </div>
+                  <p className="mt-4 text-3xl font-black">
+                    {formatTime(availabilityTimeLeft)}
                   </p>
                 </div>
                 <div className="border border-white/10 bg-white/5 p-5">
@@ -445,12 +538,28 @@ function QualifierPageWithAuth() {
                 </div>
               </div>
 
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="border border-white/10 bg-white/5 p-5 text-xs font-bold uppercase tracking-[0.18em] text-white/65">
+                  <p>Access closes at</p>
+                  <p className="mt-2 text-sm text-cyan-300">
+                    {formatDateTime(exam.availabilityEndsAt)}
+                  </p>
+                </div>
+                <div className="border border-white/10 bg-white/5 p-5 text-xs font-bold uppercase tracking-[0.18em] text-white/65">
+                  <p>Timer starts only after you press start</p>
+                  <p className="mt-2 text-sm text-cyan-300">
+                    Submission is auto-sent when the 3-hour timer hits zero.
+                  </p>
+                </div>
+              </div>
+
               <button
                 type="button"
-                onClick={startExam}
-                className="bg-cyan-500 px-8 py-4 text-xs font-black uppercase tracking-[0.2em] text-black transition-colors hover:bg-cyan-400"
+                onClick={() => void startExam()}
+                disabled={isStarting || availabilityTimeLeft === 0}
+                className="bg-cyan-500 px-8 py-4 text-xs font-black uppercase tracking-[0.2em] text-black transition-colors hover:bg-cyan-400 disabled:cursor-not-allowed disabled:bg-white/20 disabled:text-white/45"
               >
-                Start Qualifier
+                {isStarting ? "Starting..." : "Start Qualifier"}
               </button>
             </section>
           )}
@@ -459,7 +568,7 @@ function QualifierPageWithAuth() {
             <AssessmentRunner
               eyebrow={`${exam.cohortType} / ${exam.examId}`}
               title={exam.subject}
-              subtitle="Move through the test with the question palette, mark uncertain items for review, and submit when your final pass is complete."
+              subtitle="Move through the test with the question palette, mark uncertain items for review, and submit before the timer expires."
               questions={exam.questions}
               answers={answers}
               reviewFlags={reviewFlags}
@@ -483,9 +592,10 @@ function QualifierPageWithAuth() {
               timeDisplay={formatTime(timeLeft)}
               meta={
                 <div className="rounded-[18px] border border-cyan-300/20 bg-cyan-300/10 p-4 text-xs uppercase tracking-[0.18em] text-cyan-50/85">
-                  Timer is live. Copy, paste, and tab switching are disabled.
-                  When the clock reaches zero, your submission is sent
-                  automatically.
+                  Timer is live and server-enforced until{" "}
+                  {formatDateTime(exam.attemptEndsAt)}. Copy, paste, and tab
+                  switching are disabled. When the clock reaches zero, your
+                  submission is sent automatically.
                 </div>
               }
             />
@@ -511,15 +621,6 @@ function QualifierPageWithAuth() {
               </p>
 
               <div className="flex flex-wrap justify-center gap-3">
-                {!result.passed && (
-                  <button
-                    type="button"
-                    onClick={resetAttempt}
-                    className="bg-cyan-400 px-6 py-3 text-xs font-black uppercase tracking-[0.2em] text-black transition-colors hover:bg-cyan-300"
-                  >
-                    Retry Qualifier
-                  </button>
-                )}
                 <Link
                   href="/dashboard"
                   className="border border-cyan-500 px-6 py-3 text-xs font-black uppercase tracking-[0.2em] text-cyan-500 transition-colors hover:bg-cyan-500 hover:text-black"

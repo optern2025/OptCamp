@@ -7,6 +7,10 @@ import {
   gradeWithGemini,
   type SubmissionAnswer,
 } from "@/lib/grading";
+import {
+  getQualifierTiming,
+  QUALIFIER_DURATION_SECONDS,
+} from "@/lib/qualifierTiming";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import type { UserCohortStatus } from "@/lib/types";
 
@@ -80,7 +84,9 @@ export async function POST(request: Request) {
 
     const { data: membership, error: membershipError } = await supabase
       .from("user_cohorts")
-      .select("status, qualifier_started_at")
+      .select(
+        "status, applied_at, qualifier_started_at, qualifier_submitted_at",
+      )
       .eq("user_id", profile.id)
       .eq("cohort_id", cohortId)
       .maybeSingle();
@@ -96,6 +102,55 @@ export async function POST(request: Request) {
     if (currentStatus === "enrolled" || currentStatus === "completed") {
       return NextResponse.json(
         { error: "Qualifier already completed for this cohort." },
+        { status: 409 },
+      );
+    }
+
+    if (membership.qualifier_submitted_at) {
+      return NextResponse.json(
+        { error: "Qualifier attempt already submitted for this cohort." },
+        { status: 409 },
+      );
+    }
+
+    const timing = getQualifierTiming({
+      appliedAt:
+        typeof membership.applied_at === "string"
+          ? membership.applied_at
+          : null,
+      startedAt:
+        typeof membership.qualifier_started_at === "string"
+          ? membership.qualifier_started_at
+          : null,
+      submittedAt:
+        typeof membership.qualifier_submitted_at === "string"
+          ? membership.qualifier_submitted_at
+          : null,
+    });
+
+    if (!timing.hasStarted) {
+      return NextResponse.json(
+        { error: "Start the qualifier before submitting it." },
+        { status: 409 },
+      );
+    }
+
+    if (timing.attemptExpired || !timing.canResume) {
+      const submittedAt = new Date().toISOString();
+
+      await supabase
+        .from("user_cohorts")
+        .update({
+          status: "qualifier_failed",
+          qualifier_feedback: "Your qualifier attempt expired after 3 hours.",
+          qualifier_submitted_at: submittedAt,
+        })
+        .eq("user_id", profile.id)
+        .eq("cohort_id", cohortId)
+        .is("qualifier_submitted_at", null);
+
+      return NextResponse.json(
+        { error: "Your 3-hour qualifier window has ended." },
         { status: 409 },
       );
     }
@@ -122,6 +177,16 @@ export async function POST(request: Request) {
       typeof membership.qualifier_started_at === "string"
         ? membership.qualifier_started_at
         : submittedAt;
+
+    if (
+      Date.parse(submittedAt) - Date.parse(startedAt) >
+      QUALIFIER_DURATION_SECONDS * 1000
+    ) {
+      return NextResponse.json(
+        { error: "Your 3-hour qualifier window has ended." },
+        { status: 409 },
+      );
+    }
 
     const { error: insertAttemptError } = await supabase
       .from("qualifier_attempts")

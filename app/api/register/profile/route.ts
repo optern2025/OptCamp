@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
     const { data: existingLink, error: existingLinkError } = await supabase
       .from("user_cohorts")
       .select(
-        "status, qualified_at, enrolled_at, completed_at, qualifier_score, qualifier_feedback, qualifier_started_at, qualifier_submitted_at",
+        "status, applied_at, qualified_at, enrolled_at, completed_at, qualifier_score, qualifier_feedback, qualifier_started_at, qualifier_submitted_at",
       )
       .eq("user_id", userId)
       .eq("cohort_id", cohortId)
@@ -136,22 +136,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const preservedStatus = new Set<UserCohortStatus>([
-      "enrolled",
-      "completed",
-    ]);
-    const nextStatus: UserCohortStatus =
-      existingLink &&
-      preservedStatus.has(existingLink.status as UserCohortStatus)
-        ? (existingLink.status as UserCohortStatus)
-        : "applied";
+    const nextStatus: UserCohortStatus = existingLink
+      ? (existingLink.status as UserCohortStatus)
+      : "applied";
 
     const { error: linkError } = await supabase.from("user_cohorts").upsert(
       {
         user_id: userId,
         cohort_id: cohortId,
         status: nextStatus,
-        applied_at: new Date().toISOString(),
+        applied_at: existingLink?.applied_at ?? new Date().toISOString(),
         qualifier_score:
           nextStatus === "applied"
             ? null
