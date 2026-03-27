@@ -34,9 +34,8 @@ interface ProctorExamPayload {
 }
 
 interface GradeResponse {
-  score: number;
-  feedback: string;
-  passed: boolean;
+  status: "submitted" | "passed" | "failed";
+  submittedAt: string;
 }
 
 type PortalState = "loading" | "ready" | "exam" | "results";
@@ -319,12 +318,7 @@ function QualifierPageWithAuth() {
       const message =
         error instanceof Error ? error.message : "Failed to complete grading.";
       setErrorMessage(message);
-      setResult({
-        score: 0,
-        feedback: message,
-        passed: false,
-      });
-      setPortal("results");
+      setPortal("ready");
     } finally {
       setIsScoring(false);
     }
@@ -688,20 +682,29 @@ function QualifierPageWithAuth() {
           {portal === "results" && result && (
             <section className="space-y-6 border border-white/10 bg-black/60 p-8 text-center">
               <h2 className="text-5xl font-black italic text-cyan-400">
-                Performance
+                Submission Recorded
               </h2>
-              <div className="text-8xl font-black leading-none italic">
-                {result.score}
-              </div>
               <p
                 className={`text-xs font-black uppercase tracking-[0.3em] ${
-                  result.passed ? "text-emerald-300" : "text-amber-200"
+                  result.status === "passed"
+                    ? "text-emerald-300"
+                    : result.status === "failed"
+                      ? "text-amber-200"
+                      : "text-cyan-200"
                 }`}
               >
-                {result.passed ? "Qualifier Passed" : "Qualifier Not Cleared"}
+                {result.status === "passed"
+                  ? "Qualifier Cleared"
+                  : result.status === "failed"
+                    ? "Qualifier Submitted"
+                    : "Submission Received"}
               </p>
               <p className="border-y border-white/10 py-5 text-sm font-bold uppercase tracking-widest text-white/70">
-                {result.feedback}
+                Your attempt has been saved. Detailed scores stay internal and
+                are not shown in the candidate interface.
+              </p>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/50">
+                Submitted {formatDateTime(result.submittedAt)}
               </p>
 
               <div className="flex flex-wrap justify-center gap-3">

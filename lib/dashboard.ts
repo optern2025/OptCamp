@@ -1,13 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { normalizeAssessmentQuestions } from "@/lib/assessment";
+import { buildSprintDayProgress } from "@/lib/sprintDays";
 import type {
   Cohort,
   CohortMembership,
-  CohortStage,
-  CohortStageProgress,
   DashboardPayload,
   QualifierAttempt,
-  UserCohortStageAttempt,
+  SprintDaySubmission,
+  SprintDayTask,
   UserCohortStatus,
   UserProfile,
 } from "@/lib/types";
@@ -56,25 +55,26 @@ interface DbQualifierAttemptRow {
   submitted_at: string;
 }
 
-interface DbStageRow {
+interface DbSprintDayTaskRow {
   id: string;
   cohort_id: string;
-  stage_number: number;
+  day_number: number;
   title: string;
   description: string;
-  duration_minutes: number;
-  questions: unknown;
+  brief: string;
   created_at: string;
+  updated_at: string;
 }
 
-interface DbStageAttemptRow {
+interface DbSprintDaySubmissionRow {
   id: string;
-  stage_id: string;
+  sprint_day_id: string;
   cohort_id: string;
-  score: number;
-  feedback: string;
-  passed: boolean;
+  github_url: string;
   submitted_at: string;
+  score: number | null;
+  evaluator_notes: string | null;
+  reviewed_at: string | null;
 }
 
 function fallbackNameFromEmail(email: string): string {
@@ -103,31 +103,6 @@ function buildUserProfile(
   };
 }
 
-function buildStageProgress(
-  stages: CohortStage[],
-  attemptsByStageId: Map<string, UserCohortStageAttempt>,
-  membershipStatus: UserCohortStatus,
-): CohortStageProgress[] {
-  const hasQualifierAccess =
-    membershipStatus === "enrolled" || membershipStatus === "completed";
-  let previousPassed = hasQualifierAccess;
-
-  return stages.map((stage) => {
-    const attempt = attemptsByStageId.get(stage.id) ?? null;
-    const passed = attempt?.passed ?? false;
-    const unlocked = previousPassed;
-
-    const progress: CohortStageProgress = {
-      ...stage,
-      status: passed ? "passed" : unlocked ? "unlocked" : "locked",
-      attempt,
-    };
-
-    previousPassed = previousPassed && passed;
-    return progress;
-  });
-}
-
 export async function getProfileByClerkUserId(
   supabase: SupabaseClient,
   clerkUserId: string,
@@ -145,6 +120,48 @@ export async function getProfileByClerkUserId(
   }
 
   return (data as DbProfileRow | null) ?? null;
+}
+
+function groupSprintDays(
+  rows: DbSprintDayTaskRow[],
+): Map<string, SprintDayTask[]> {
+  const sprintDaysByCohort = new Map<string, SprintDayTask[]>();
+
+  for (const row of rows) {
+    const current = sprintDaysByCohort.get(row.cohort_id) ?? [];
+    current.push(row);
+    sprintDaysByCohort.set(row.cohort_id, current);
+  }
+
+  for (const [cohortId, sprintDays] of sprintDaysByCohort.entries()) {
+    sprintDaysByCohort.set(
+      cohortId,
+      sprintDays
+        .slice()
+        .sort((left, right) => left.day_number - right.day_number),
+    );
+  }
+
+  return sprintDaysByCohort;
+}
+
+function groupSprintSubmissions(
+  rows: DbSprintDaySubmissionRow[],
+): Map<string, Map<string, SprintDaySubmission>> {
+  const submissionsByCohort = new Map<
+    string,
+    Map<string, SprintDaySubmission>
+  >();
+
+  for (const row of rows) {
+    const current = submissionsByCohort.get(row.cohort_id) ?? new Map();
+    if (!current.has(row.sprint_day_id)) {
+      current.set(row.sprint_day_id, row);
+    }
+    submissionsByCohort.set(row.cohort_id, current);
+  }
+
+  return submissionsByCohort;
 }
 
 export async function loadDashboardData(
@@ -184,8 +201,8 @@ export async function loadDashboardData(
   const [
     { data: membershipRows, error: membershipsError },
     { data: qualifierRows, error: qualifierError },
-    { data: stageRows, error: stageError },
-    { data: stageAttemptRows, error: stageAttemptError },
+    { data: sprintDayRows, error: sprintDayError },
+    { data: sprintSubmissionRows, error: sprintSubmissionError },
   ] = await Promise.all([
     supabase
       .from("user_cohorts")
@@ -202,19 +219,26 @@ export async function loadDashboardData(
       .eq("user_id", profile.id)
       .order("submitted_at", { ascending: false }),
     supabase
-      .from("cohort_stages")
+      .from("sprint_day_tasks")
       .select(
-        "id, cohort_id, stage_number, title, description, duration_minutes, questions, created_at",
+        "id, cohort_id, day_number, title, description, brief, created_at, updated_at",
       )
-      .order("stage_number", { ascending: true }),
+      .order("day_number", { ascending: true }),
     supabase
-      .from("user_cohort_stage_attempts")
-      .select("id, stage_id, cohort_id, score, feedback, passed, submitted_at")
+      .from("sprint_day_submissions")
+      .select(
+        "id, sprint_day_id, cohort_id, github_url, submitted_at, score, evaluator_notes, reviewed_at",
+      )
       .eq("user_id", profile.id)
       .order("submitted_at", { ascending: false }),
   ]);
 
-  if (membershipsError || qualifierError || stageError || stageAttemptError) {
+  if (
+    membershipsError ||
+    qualifierError ||
+    sprintDayError ||
+    sprintSubmissionError
+  ) {
     throw new Error("Unable to load your dashboard progress.");
   }
 
@@ -227,33 +251,12 @@ export async function loadDashboardData(
     }
   }
 
-  const stagesByCohort = new Map<string, CohortStage[]>();
-  for (const row of (stageRows ?? []) as DbStageRow[]) {
-    const current = stagesByCohort.get(row.cohort_id) ?? [];
-    current.push({
-      id: row.id,
-      cohort_id: row.cohort_id,
-      stage_number: row.stage_number,
-      title: row.title,
-      description: row.description,
-      duration_minutes: row.duration_minutes,
-      questions: normalizeAssessmentQuestions(row.questions),
-      created_at: row.created_at,
-    });
-    stagesByCohort.set(row.cohort_id, current);
-  }
-
-  const attemptsByCohort = new Map<
-    string,
-    Map<string, UserCohortStageAttempt>
-  >();
-  for (const row of (stageAttemptRows ?? []) as DbStageAttemptRow[]) {
-    const current = attemptsByCohort.get(row.cohort_id) ?? new Map();
-    if (!current.has(row.stage_id)) {
-      current.set(row.stage_id, row);
-    }
-    attemptsByCohort.set(row.cohort_id, current);
-  }
+  const sprintDaysByCohort = groupSprintDays(
+    (sprintDayRows ?? []) as DbSprintDayTaskRow[],
+  );
+  const sprintSubmissionsByCohort = groupSprintSubmissions(
+    (sprintSubmissionRows ?? []) as DbSprintDaySubmissionRow[],
+  );
 
   const memberships = ((membershipRows ?? []) as DbUserCohortRow[])
     .map((row) => {
@@ -262,11 +265,9 @@ export async function loadDashboardData(
         return null;
       }
 
-      const stages = buildStageProgress(
-        stagesByCohort.get(row.cohort_id) ?? [],
-        attemptsByCohort.get(row.cohort_id) ?? new Map(),
-        row.status,
-      );
+      const sprintDays = sprintDaysByCohort.get(row.cohort_id) ?? [];
+      const sprintSubmissions =
+        sprintSubmissionsByCohort.get(row.cohort_id) ?? new Map();
 
       const membership: CohortMembership = {
         cohort,
@@ -281,12 +282,18 @@ export async function loadDashboardData(
         completed_at: row.completed_at,
         latest_qualifier_attempt:
           latestQualifierByCohort.get(row.cohort_id) ?? null,
-        stages,
+        sprint_days: buildSprintDayProgress(
+          sprintDays,
+          sprintSubmissions,
+          row.status,
+        ),
       };
 
       return membership;
     })
-    .filter((item): item is CohortMembership => Boolean(item));
+    .filter(
+      (membership): membership is CohortMembership => membership !== null,
+    );
 
   return {
     user,
@@ -294,17 +301,16 @@ export async function loadDashboardData(
     cohorts,
     summary: {
       appliedCount: memberships.length,
-      enrolledCount: memberships.filter(
-        (membership) =>
-          membership.status === "enrolled" || membership.status === "completed",
-      ).length,
-      completedCount: memberships.filter(
-        (membership) => membership.status === "completed",
-      ).length,
+      enrolledCount: memberships.filter((item) => item.status === "enrolled")
+        .length,
+      completedCount: memberships.filter((item) => item.status === "completed")
+        .length,
       completedStageCount: memberships.reduce(
         (count, membership) =>
           count +
-          membership.stages.filter((stage) => stage.status === "passed").length,
+          membership.sprint_days.filter(
+            (sprintDay) => sprintDay.submission !== null,
+          ).length,
         0,
       ),
     },

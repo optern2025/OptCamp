@@ -4,13 +4,14 @@ import {
   buildDefaultQualifierTemplate,
   normalizeAssessmentQuestions,
 } from "@/lib/assessment";
+import { buildDefaultSprintDays } from "@/lib/sprintDays";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import type {
   AdminContentPayload,
   AssessmentQuestion,
   Cohort,
-  CohortStage,
   QualifierTemplate,
+  SprintDayTask,
 } from "@/lib/types";
 
 interface QualifierTemplateRow {
@@ -21,15 +22,15 @@ interface QualifierTemplateRow {
   updated_at: string;
 }
 
-interface StageRow {
+interface SprintDayTaskRow {
   id: string;
   cohort_id: string;
-  stage_number: number;
+  day_number: number;
   title: string;
   description: string;
-  duration_minutes: number;
-  questions: unknown;
+  brief: string;
   created_at: string;
+  updated_at: string;
 }
 
 interface SaveContentBody {
@@ -39,12 +40,12 @@ interface SaveContentBody {
     duration_seconds?: number;
     questions?: AssessmentQuestion[];
   };
-  stages?: Array<{
+  sprintDays?: Array<{
     id?: string;
+    day_number?: number;
     title?: string;
     description?: string;
-    duration_minutes?: number;
-    questions?: AssessmentQuestion[];
+    brief?: string;
   }>;
 }
 
@@ -52,16 +53,16 @@ function sanitizeQuestions(raw: unknown): AssessmentQuestion[] {
   return normalizeAssessmentQuestions(raw);
 }
 
-function buildStage(row: StageRow): CohortStage {
+function buildSprintDay(row: SprintDayTaskRow): SprintDayTask {
   return {
     id: row.id,
     cohort_id: row.cohort_id,
-    stage_number: row.stage_number,
+    day_number: row.day_number,
     title: row.title,
     description: row.description,
-    duration_minutes: row.duration_minutes,
-    questions: sanitizeQuestions(row.questions),
+    brief: row.brief,
     created_at: row.created_at,
+    updated_at: row.updated_at,
   };
 }
 
@@ -87,7 +88,7 @@ async function loadAdminContent(): Promise<AdminContentPayload> {
   const [
     { data: cohortsData, error: cohortsError },
     { data: qualifierRows, error: qualifierError },
-    { data: stageRows, error: stageError },
+    { data: sprintDayRows, error: sprintDayError },
   ] = await Promise.all([
     supabase
       .from("cohorts")
@@ -100,15 +101,15 @@ async function loadAdminContent(): Promise<AdminContentPayload> {
       .from("cohort_qualifier_templates")
       .select("id, cohort_id, duration_seconds, questions, updated_at"),
     supabase
-      .from("cohort_stages")
+      .from("sprint_day_tasks")
       .select(
-        "id, cohort_id, stage_number, title, description, duration_minutes, questions, created_at",
+        "id, cohort_id, day_number, title, description, brief, created_at, updated_at",
       )
       .order("cohort_id", { ascending: true })
-      .order("stage_number", { ascending: true }),
+      .order("day_number", { ascending: true }),
   ]);
 
-  if (cohortsError || qualifierError || stageError) {
+  if (cohortsError || qualifierError || sprintDayError) {
     throw new Error("Unable to load admin content.");
   }
 
@@ -118,11 +119,11 @@ async function loadAdminContent(): Promise<AdminContentPayload> {
     qualifierByCohort.set(row.cohort_id, row);
   }
 
-  const stagesByCohort = new Map<string, CohortStage[]>();
-  for (const row of (stageRows ?? []) as StageRow[]) {
-    const current = stagesByCohort.get(row.cohort_id) ?? [];
-    current.push(buildStage(row));
-    stagesByCohort.set(row.cohort_id, current);
+  const sprintDaysByCohort = new Map<string, SprintDayTask[]>();
+  for (const row of (sprintDayRows ?? []) as SprintDayTaskRow[]) {
+    const current = sprintDaysByCohort.get(row.cohort_id) ?? [];
+    current.push(buildSprintDay(row));
+    sprintDaysByCohort.set(row.cohort_id, current);
   }
 
   const contentByCohort = Object.fromEntries(
@@ -133,7 +134,9 @@ async function loadAdminContent(): Promise<AdminContentPayload> {
           qualifierByCohort.get(cohort.id) ?? null,
           cohort,
         ),
-        stages: stagesByCohort.get(cohort.id) ?? [],
+        sprintDays:
+          sprintDaysByCohort.get(cohort.id) ??
+          buildDefaultSprintDays(cohort.id),
       },
     ]),
   );
@@ -176,18 +179,18 @@ export async function PUT(request: Request) {
     }
 
     const qualifierQuestions = sanitizeQuestions(body.qualifier?.questions);
-    const stages = Array.isArray(body.stages) ? body.stages : [];
+    const sprintDays = Array.isArray(body.sprintDays) ? body.sprintDays : [];
     const supabase = getSupabaseAdminClient();
 
-    const { data: existingStageRows, error: existingStageError } =
+    const { data: existingSprintDayRows, error: existingSprintDayError } =
       await supabase
-        .from("cohort_stages")
+        .from("sprint_day_tasks")
         .select("id")
         .eq("cohort_id", cohortId);
 
-    if (existingStageError) {
+    if (existingSprintDayError) {
       return NextResponse.json(
-        { error: "Unable to inspect existing cohort stages." },
+        { error: "Unable to inspect existing sprint day tasks." },
         { status: 500 },
       );
     }
@@ -220,59 +223,64 @@ export async function PUT(request: Request) {
       );
     }
 
-    const nextStageIds = stages
-      .map((stage) => (typeof stage.id === "string" ? stage.id.trim() : ""))
+    const nextSprintDayIds = sprintDays
+      .map((sprintDay) =>
+        typeof sprintDay.id === "string" ? sprintDay.id.trim() : "",
+      )
       .filter((id) => id.length > 0);
-    const existingStageIds = (
-      (existingStageRows ?? []) as Array<{ id: string }>
+    const existingSprintDayIds = (
+      (existingSprintDayRows ?? []) as Array<{ id: string }>
     ).map((row) => row.id);
-    const stageIdsToDelete = existingStageIds.filter(
-      (id) => !nextStageIds.includes(id),
+    const sprintDayIdsToDelete = existingSprintDayIds.filter(
+      (id) => !nextSprintDayIds.includes(id),
     );
 
-    if (stageIdsToDelete.length > 0) {
+    if (sprintDayIdsToDelete.length > 0) {
       const { error: deleteError } = await supabase
-        .from("cohort_stages")
+        .from("sprint_day_tasks")
         .delete()
-        .in("id", stageIdsToDelete);
+        .in("id", sprintDayIdsToDelete);
 
       if (deleteError) {
         return NextResponse.json(
-          { error: "Unable to remove deleted stages." },
+          { error: "Unable to remove deleted sprint day tasks." },
           { status: 500 },
         );
       }
     }
 
-    for (const [index, stage] of stages.entries()) {
+    for (const [index, sprintDay] of sprintDays.entries()) {
       const payload = {
         cohort_id: cohortId,
-        stage_number: index + 1,
+        day_number: index + 1,
         title:
-          typeof stage.title === "string" && stage.title.trim().length > 0
-            ? stage.title.trim()
-            : `Stage ${index + 1}`,
+          typeof sprintDay.title === "string" &&
+          sprintDay.title.trim().length > 0
+            ? sprintDay.title.trim()
+            : `Day ${index + 1}`,
         description:
-          typeof stage.description === "string" ? stage.description.trim() : "",
-        duration_minutes: Math.max(5, Number(stage.duration_minutes) || 45),
-        questions: sanitizeQuestions(stage.questions),
+          typeof sprintDay.description === "string"
+            ? sprintDay.description.trim()
+            : "",
+        brief:
+          typeof sprintDay.brief === "string" ? sprintDay.brief.trim() : "",
       };
 
-      const { error: stageSaveError } = await supabase
-        .from("cohort_stages")
+      const { error: sprintDaySaveError } = await supabase
+        .from("sprint_day_tasks")
         .upsert(
-          stage.id
+          sprintDay.id
             ? {
-                id: stage.id,
+                id: sprintDay.id,
                 ...payload,
               }
             : payload,
           { onConflict: "id" },
         );
 
-      if (stageSaveError) {
+      if (sprintDaySaveError) {
         return NextResponse.json(
-          { error: `Unable to save stage ${index + 1}.` },
+          { error: `Unable to save sprint day ${index + 1}.` },
           { status: 500 },
         );
       }

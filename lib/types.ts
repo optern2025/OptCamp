@@ -111,6 +111,33 @@ export interface CohortStageProgress extends CohortStage {
   attempt: UserCohortStageAttempt | null;
 }
 
+export interface SprintDayTask {
+  id: string;
+  cohort_id: string;
+  day_number: number;
+  title: string;
+  description: string;
+  brief: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SprintDaySubmission {
+  id: string;
+  sprint_day_id: string;
+  cohort_id: string;
+  github_url: string;
+  submitted_at: string;
+  score: number | null;
+  evaluator_notes: string | null;
+  reviewed_at: string | null;
+}
+
+export interface SprintDayProgress extends SprintDayTask {
+  status: "locked" | "unlocked" | "submitted" | "reviewed";
+  submission: SprintDaySubmission | null;
+}
+
 export interface QualifierTemplate {
   id: string;
   cohort_id: string;
@@ -121,7 +148,7 @@ export interface QualifierTemplate {
 
 export interface CohortContentBundle {
   qualifier: QualifierTemplate | null;
-  stages: CohortStage[];
+  sprintDays: SprintDayTask[];
 }
 
 export interface CohortMembership {
@@ -136,7 +163,7 @@ export interface CohortMembership {
   enrolled_at: string | null;
   completed_at: string | null;
   latest_qualifier_attempt: QualifierAttempt | null;
-  stages: CohortStageProgress[];
+  sprint_days: SprintDayProgress[];
 }
 
 export interface DashboardSummary {
@@ -169,9 +196,44 @@ export interface AdminUserCohortMembership {
   qualified_at: string | null;
   enrolled_at: string | null;
   completed_at: string | null;
-  stages_passed_count: number;
-  total_stage_count: number;
+  sprint_days_submitted_count: number;
+  total_sprint_day_count: number;
   latest_activity_at: string | null;
+}
+
+export interface AdminAssessmentResultRow {
+  id: string;
+  user_id: string;
+  cohort_id: string;
+  cohort_slug: string;
+  cohort_type: string;
+  candidate_name: string;
+  candidate_email: string;
+  candidate_university: string;
+  test_type: "qualifier" | "sprint_day";
+  test_label: string;
+  submitted_at: string;
+  score: number | null;
+  status: "submitted" | "reviewed" | "passed" | "failed";
+  passed: boolean | null;
+  feedback: string | null;
+}
+
+export interface AdminSprintSubmissionReview {
+  submission_id: string;
+  sprint_day_id: string;
+  cohort_id: string;
+  cohort_slug: string;
+  cohort_type: string;
+  day_number: number;
+  task_title: string;
+  candidate_name: string;
+  candidate_email: string;
+  github_url: string;
+  submitted_at: string;
+  score: number | null;
+  evaluator_notes: string | null;
+  reviewed_at: string | null;
 }
 
 export interface AdminUserDashboardEntry extends UserProfile {
@@ -193,6 +255,8 @@ export interface AdminUserDashboardSummary {
 export interface AdminUserDashboardPayload {
   users: AdminUserDashboardEntry[];
   summary: AdminUserDashboardSummary;
+  assessmentResults: AdminAssessmentResultRow[];
+  sprintSubmissionReviews: AdminSprintSubmissionReview[];
 }
 
 export interface ApiError {

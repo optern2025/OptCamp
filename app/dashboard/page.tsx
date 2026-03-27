@@ -7,14 +7,7 @@ import {
   SignUpButton,
   useUser,
 } from "@clerk/nextjs";
-import {
-  ArrowLeft,
-  ArrowRight,
-  CheckCircle2,
-  Clock3,
-  Layers3,
-  ShieldCheck,
-} from "lucide-react";
+import { ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { canAccessAdmin } from "@/lib/adminAccess";
@@ -22,8 +15,8 @@ import { hasClerkPublishableKey } from "@/lib/clerkEnv";
 import { getQualifierTiming } from "@/lib/qualifierTiming";
 import type {
   CohortMembership,
-  CohortStageProgress,
   DashboardPayload,
+  SprintDayProgress,
 } from "@/lib/types";
 
 function getMembershipTone(status: CohortMembership["status"]) {
@@ -45,8 +38,13 @@ function formatStatus(status: CohortMembership["status"]) {
   return status.replaceAll("_", " ");
 }
 
-function findCurrentStage(stages: CohortStageProgress[]) {
-  return stages.find((stage) => stage.status === "unlocked") ?? null;
+function findCurrentSprintDay(sprintDays: SprintDayProgress[]) {
+  return (
+    sprintDays.find((sprintDay) => sprintDay.status === "unlocked") ??
+    sprintDays.find((sprintDay) => sprintDay.status === "submitted") ??
+    sprintDays.find((sprintDay) => sprintDay.status === "reviewed") ??
+    null
+  );
 }
 
 function formatDuration(seconds: number) {
@@ -84,11 +82,14 @@ function nextAction(membership: CohortMembership) {
     };
   }
 
-  const stage = findCurrentStage(membership.stages);
-  if (stage) {
+  const sprintDay = findCurrentSprintDay(membership.sprint_days);
+  if (sprintDay) {
     return {
-      label: `Open Stage ${stage.stage_number}`,
-      href: `/dashboard/stage?cohortId=${membership.cohort.id}&stageId=${stage.id}`,
+      label:
+        sprintDay.submission !== null
+          ? `View Day ${sprintDay.day_number}`
+          : `Open Day ${sprintDay.day_number}`,
+      href: `/dashboard/sprint-day?cohortId=${membership.cohort.id}&sprintDayId=${sprintDay.id}`,
     };
   }
 
@@ -97,10 +98,6 @@ function nextAction(membership: CohortMembership) {
 
 function getQualifierGateMessage(membership: CohortMembership) {
   const qualifierState = getQualifierState(membership);
-
-  if (membership.latest_qualifier_attempt?.feedback) {
-    return membership.latest_qualifier_attempt.feedback;
-  }
 
   if (qualifierState.canResume) {
     return `Qualifier in progress. ${formatDuration(
@@ -122,11 +119,15 @@ function getQualifierGateMessage(membership: CohortMembership) {
     return "Your 48-hour qualifier access window has ended.";
   }
 
-  if (membership.qualifier_feedback) {
-    return membership.qualifier_feedback;
+  if (membership.status === "qualifier_failed") {
+    return "Qualifier submitted. Your status has been updated and your result is recorded internally.";
   }
 
-  return "Complete the qualifier to unlock cohort stages.";
+  if (membership.status === "enrolled" || membership.status === "completed") {
+    return "Qualifier cleared. Continue with your sprint submissions.";
+  }
+
+  return "Complete the qualifier to unlock your sprint submission days.";
 }
 
 function DashboardPageWithAuth() {
@@ -251,8 +252,8 @@ function DashboardPageWithAuth() {
                   Your Cohorts. Your Progress.
                 </h1>
                 <p className="max-w-2xl text-sm font-bold uppercase tracking-[0.18em] text-white/55">
-                  Track applications, clear the qualifier, and unlock the sprint
-                  stages one by one.
+                  Track applications, clear the qualifier, and submit your
+                  four-day sprint deliverables one by one.
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">
@@ -328,7 +329,7 @@ function DashboardPageWithAuth() {
                 </div>
                 <div className="rounded-[24px] border border-white/10 bg-white/[0.03] p-6">
                   <p className="text-[10px] font-black uppercase tracking-[0.28em] text-white/45">
-                    Stages Cleared
+                    Sprint Days Submitted
                   </p>
                   <p className="mt-3 text-4xl font-black tracking-tight">
                     {payload.summary.completedStageCount}
@@ -369,66 +370,55 @@ function DashboardPageWithAuth() {
                 >
                   {memberships.map((membership) => {
                     const action = nextAction(membership);
-                    const stageProgressionBlock = (
+                    const sprintProgressionBlock = (
                       <div
                         className={`rounded-[24px] border border-white/10 bg-black/20 p-5 ${
                           isSingleMembership ? "mt-0 lg:mt-0 lg:h-full" : "mt-6"
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <Layers3 className="text-cyan-300" size={18} />
                           <h4 className="text-sm font-black uppercase tracking-[0.22em]">
-                            Stage Progression
+                            Sprint Progression
                           </h4>
                         </div>
                         <div className="mt-5 grid gap-3">
-                          {membership.stages.map((stage) => (
+                          {membership.sprint_days.map((sprintDay) => (
                             <div
-                              key={stage.id}
+                              key={sprintDay.id}
                               className={`rounded-2xl border p-4 ${
-                                stage.status === "passed"
+                                sprintDay.status === "reviewed"
                                   ? "border-emerald-400/40 bg-emerald-400/10"
-                                  : stage.status === "unlocked"
-                                    ? "border-cyan-400/40 bg-cyan-400/10"
-                                    : "border-white/10 bg-white/[0.03]"
+                                  : sprintDay.status === "submitted"
+                                    ? "border-amber-400/40 bg-amber-400/10"
+                                    : sprintDay.status === "unlocked"
+                                      ? "border-cyan-400/40 bg-cyan-400/10"
+                                      : "border-white/10 bg-white/[0.03]"
                               }`}
                             >
                               <div className="flex flex-wrap items-center justify-between gap-3">
                                 <div>
                                   <p className="text-[10px] font-black uppercase tracking-[0.28em] text-white/45">
-                                    Stage {stage.stage_number}
+                                    Day {sprintDay.day_number}
                                   </p>
                                   <p className="mt-2 text-lg font-black uppercase tracking-tight">
-                                    {stage.title}
+                                    {sprintDay.title}
                                   </p>
                                 </div>
                                 <span className="text-[10px] font-black uppercase tracking-[0.24em] text-white/60">
-                                  {stage.status}
+                                  {sprintDay.status}
                                 </span>
                               </div>
                               <p className="mt-3 text-xs font-bold uppercase tracking-[0.16em] text-white/55">
-                                {stage.description}
+                                {sprintDay.description}
                               </p>
-                              <div className="mt-4 flex flex-wrap items-center gap-3 text-[10px] font-black uppercase tracking-[0.2em] text-white/45">
-                                <span className="inline-flex items-center gap-2">
-                                  <Clock3 size={12} /> {stage.duration_minutes}{" "}
-                                  min
-                                </span>
-                                {stage.attempt && (
-                                  <span className="inline-flex items-center gap-2">
-                                    <CheckCircle2 size={12} />{" "}
-                                    {stage.attempt.score}/100
-                                  </span>
-                                )}
-                              </div>
-                              {stage.status !== "locked" && (
+                              {sprintDay.status !== "locked" && (
                                 <Link
-                                  href={`/dashboard/stage?cohortId=${membership.cohort.id}&stageId=${stage.id}`}
+                                  href={`/dashboard/sprint-day?cohortId=${membership.cohort.id}&sprintDayId=${sprintDay.id}`}
                                   className="mt-4 inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.24em] text-cyan-300 transition-colors hover:text-cyan-200"
                                 >
-                                  {stage.status === "passed"
-                                    ? "Review Stage"
-                                    : "Open Stage"}
+                                  {sprintDay.submission
+                                    ? "View Submission"
+                                    : "Open Day"}
                                   <ArrowRight size={14} />
                                 </Link>
                               )}
@@ -482,8 +472,13 @@ function DashboardPageWithAuth() {
                               Qualifier
                             </p>
                             <p className="mt-3 text-sm font-black uppercase tracking-[0.16em] text-white/80">
-                              {membership.latest_qualifier_attempt
-                                ? `${membership.latest_qualifier_attempt.score}/100`
+                              {membership.qualifier_submitted_at
+                                ? membership.status === "enrolled" ||
+                                  membership.status === "completed"
+                                  ? "Passed"
+                                  : membership.status === "qualifier_failed"
+                                    ? "Failed"
+                                    : "Submitted"
                                 : "Pending"}
                             </p>
                           </div>
@@ -509,7 +504,7 @@ function DashboardPageWithAuth() {
                           )}
                         </div>
 
-                        {!isSingleMembership && stageProgressionBlock}
+                        {!isSingleMembership && sprintProgressionBlock}
                       </div>
                     );
 
@@ -525,7 +520,7 @@ function DashboardPageWithAuth() {
                         {isSingleMembership ? (
                           <>
                             {heroColumn}
-                            {stageProgressionBlock}
+                            {sprintProgressionBlock}
                           </>
                         ) : (
                           heroColumn

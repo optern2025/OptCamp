@@ -11,8 +11,13 @@ import { FileUp, Plus, Save, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { canAccessAdmin } from "@/lib/adminAccess";
 import { hasClerkPublishableKey } from "@/lib/clerkEnv";
+import {
+  type AdminAssessmentResultFilters,
+  filterAndSortAssessmentResults,
+} from "@/lib/sprintDays";
 import type {
   AdminContentPayload,
+  AdminSprintSubmissionReview,
   AdminUserDashboardPayload,
   AssessmentQuestion,
   AssessmentQuestionType,
@@ -21,6 +26,7 @@ import type {
   MultipleChoiceQuestion,
   QualifierTemplate,
   ScenarioQuestion,
+  SprintDayTask,
 } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -80,10 +86,28 @@ function createEmptyQualifier(cohortId: string): QualifierTemplate {
   };
 }
 
+function createEmptySprintDay(
+  cohortId: string,
+  dayNumber: number,
+): SprintDayTask {
+  return {
+    id: "",
+    cohort_id: cohortId,
+    day_number: dayNumber,
+    title: `Day ${dayNumber}`,
+    description: "",
+    brief: "",
+    created_at: "",
+    updated_at: "",
+  };
+}
+
 function createEmptyBundle(cohortId: string): CohortContentBundle {
   return {
     qualifier: createEmptyQualifier(cohortId),
-    stages: [],
+    sprintDays: Array.from({ length: 4 }, (_, index) =>
+      createEmptySprintDay(cohortId, index + 1),
+    ),
   };
 }
 
@@ -485,8 +509,8 @@ function QuestionImportPanel({
             Document import
           </p>
           <p className="mt-2 max-w-2xl text-xs uppercase tracking-[0.14em] text-white/50">
-            Upload a structured `.docx` or `.txt` file to generate questions,
-            then keep refining them in the editor below.
+            Upload a structured `.docx` or `.txt` file to generate qualifier
+            questions, then refine them in the editor below.
           </p>
         </div>
         <button
@@ -535,6 +559,121 @@ function QuestionImportPanel({
   );
 }
 
+function SortButton({
+  label,
+  active,
+  direction,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  direction: "asc" | "desc";
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.2em] ${
+        active
+          ? "border-cyan-300/40 bg-cyan-300/10 text-cyan-100"
+          : "border-white/10 text-white/55"
+      }`}
+    >
+      {label} {active ? (direction === "asc" ? "↑" : "↓") : ""}
+    </button>
+  );
+}
+
+function ReviewEditor({
+  review,
+  onSave,
+}: {
+  review: AdminSprintSubmissionReview;
+  onSave: (
+    submissionId: string,
+    score: number | null,
+    evaluatorNotes: string,
+  ) => Promise<void>;
+}) {
+  const [score, setScore] = useState(review.score?.toString() ?? "");
+  const [notes, setNotes] = useState(review.evaluator_notes ?? "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  return (
+    <div className="rounded-[22px] border border-white/10 bg-[#08111a] p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300/75">
+            {review.cohort_type} · Day {review.day_number}
+          </p>
+          <h4 className="mt-2 text-lg font-black uppercase tracking-tight text-white">
+            {review.task_title}
+          </h4>
+          <p className="mt-2 text-xs font-bold uppercase tracking-[0.16em] text-white/55">
+            {review.candidate_name} · {review.candidate_email}
+          </p>
+        </div>
+        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/45">
+          Submitted {formatAdminDateTime(review.submitted_at)}
+        </p>
+      </div>
+
+      <a
+        href={review.github_url}
+        target="_blank"
+        rel="noreferrer"
+        className="mt-4 block break-all text-sm text-cyan-200 underline decoration-cyan-400/40 underline-offset-4"
+      >
+        {review.github_url}
+      </a>
+
+      <div className="mt-5 grid gap-4 md:grid-cols-[140px_minmax(0,1fr)_auto]">
+        <Field label="Score">
+          <input
+            type="number"
+            min={0}
+            max={100}
+            value={score}
+            onChange={(event) => setScore(event.target.value)}
+            className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"
+          />
+        </Field>
+        <Field label="Evaluator notes">
+          <textarea
+            rows={3}
+            value={notes}
+            onChange={(event) => setNotes(event.target.value)}
+            className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"
+          />
+        </Field>
+        <div className="flex items-end">
+          <button
+            type="button"
+            onClick={async () => {
+              setIsSaving(true);
+              try {
+                await onSave(
+                  review.submission_id,
+                  score.trim() ? Number(score) : null,
+                  notes,
+                );
+              } finally {
+                setIsSaving(false);
+              }
+            }}
+            disabled={isSaving}
+            className="inline-flex items-center gap-2 rounded-full bg-cyan-300 px-4 py-3 text-xs font-black uppercase tracking-[0.22em] text-black transition-colors hover:bg-cyan-200 disabled:opacity-60"
+          >
+            <Save size={14} />
+            {isSaving ? "Saving..." : "Save"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AdminPageContent() {
   const { isLoaded, user } = useUser();
   const [payload, setPayload] = useState<AdminContentPayload | null>(null);
@@ -550,6 +689,18 @@ function AdminPageContent() {
     null,
   );
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [adminView, setAdminView] = useState<"operations" | "content">(
+    "operations",
+  );
+  const [resultFilters, setResultFilters] =
+    useState<AdminAssessmentResultFilters>({
+      query: "",
+      cohortId: "",
+      testType: "all",
+      status: "all",
+      sortField: "submitted_at",
+      sortDirection: "desc",
+    });
   const canManageContent = canAccessAdmin(
     user?.primaryEmailAddress?.emailAddress ?? "",
   );
@@ -651,10 +802,29 @@ function AdminPageContent() {
       return null;
     }
 
-    return (
-      selectedBundle.qualifier ?? createEmptyBundle(selectedCohortId).qualifier
-    );
+    return selectedBundle.qualifier ?? createEmptyQualifier(selectedCohortId);
   }, [selectedBundle, selectedCohortId]);
+
+  const selectedSprintReviews = useMemo(() => {
+    if (!userDashboard) {
+      return [];
+    }
+
+    return userDashboard.sprintSubmissionReviews.filter(
+      (review) => !selectedCohortId || review.cohort_id === selectedCohortId,
+    );
+  }, [selectedCohortId, userDashboard]);
+
+  const filteredResults = useMemo(() => {
+    if (!userDashboard) {
+      return [];
+    }
+
+    return filterAndSortAssessmentResults(
+      userDashboard.assessmentResults,
+      resultFilters,
+    );
+  }, [resultFilters, userDashboard]);
 
   const updateSelectedBundle = (
     updater: (bundle: CohortContentBundle) => CohortContentBundle,
@@ -691,7 +861,7 @@ function AdminPageContent() {
         body: JSON.stringify({
           cohortId: selectedCohortId,
           qualifier: selectedQualifier,
-          stages: selectedBundle.stages,
+          sprintDays: selectedBundle.sprintDays,
         }),
       });
       const data = await readJsonResponse<
@@ -725,26 +895,68 @@ function AdminPageContent() {
     }
   };
 
+  const saveSprintReview = useCallback(
+    async (
+      submissionId: string,
+      score: number | null,
+      evaluatorNotes: string,
+    ) => {
+      setUserDashboardError(null);
+
+      const response = await fetch("/api/admin/sprint-submissions", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          submissionId,
+          score,
+          evaluatorNotes,
+        }),
+      });
+      const data = await readJsonResponse<{ error?: string }>(response);
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Unable to save sprint review.");
+      }
+
+      await loadAdminUsers();
+      setSuccessMessage("Sprint review saved.");
+    },
+    [loadAdminUsers],
+  );
+
+  const toggleSort = (field: AdminAssessmentResultFilters["sortField"]) => {
+    setResultFilters((current) => ({
+      ...current,
+      sortField: field,
+      sortDirection:
+        current.sortField === field && current.sortDirection === "desc"
+          ? "asc"
+          : "desc",
+    }));
+  };
+
   return (
     <main className="min-h-screen bg-[#071018] px-4 py-10 text-white">
       <div className="mx-auto max-w-7xl space-y-6">
         <header className="rounded-[30px] border border-white/10 bg-[radial-gradient(circle_at_top_right,_rgba(34,211,238,0.22),_transparent_30%),linear-gradient(140deg,#09131d_0%,#04080d_100%)] p-8">
           <p className="text-[10px] font-black uppercase tracking-[0.35em] text-cyan-300/80">
-            Admin Studio
+            Admin Console
           </p>
           <h1 className="mt-3 text-4xl font-black uppercase tracking-tight md:text-5xl">
-            Cohort Content Dashboard
+            Cohort Operations and Content
           </h1>
           <p className="mt-4 max-w-3xl text-sm font-bold uppercase tracking-[0.16em] text-white/55">
-            Add qualifier content and sprint-stage questions with MCQs,
-            debugging snippets, and scenario implementation prompts.
+            Review cross-cohort assessment results, score sprint submissions,
+            and manage qualifier plus sprint-day content.
           </p>
         </header>
 
         <SignedOut>
           <section className="rounded-[24px] border border-white/10 bg-black/30 p-8">
             <h2 className="text-2xl font-black uppercase tracking-tight">
-              Sign in to manage cohort content
+              Sign in to manage cohorts
             </h2>
             <div className="mt-6 flex flex-wrap gap-3">
               <SignInButton mode="modal">
@@ -779,10 +991,10 @@ function AdminPageContent() {
             </section>
           )}
 
-          {isLoading && (
+          {(isLoading || isLoadingUsers) && canManageContent && (
             <section className="rounded-[24px] border border-white/10 bg-black/30 p-8">
               <p className="text-sm font-bold uppercase tracking-[0.22em] text-white/55">
-                Loading admin content studio...
+                Loading admin console...
               </p>
             </section>
           )}
@@ -795,6 +1007,14 @@ function AdminPageContent() {
             </section>
           )}
 
+          {canManageContent && userDashboardError && (
+            <section className="rounded-[24px] border border-red-500/30 bg-red-500/10 p-6">
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-red-200">
+                {userDashboardError}
+              </p>
+            </section>
+          )}
+
           {canManageContent && successMessage && (
             <section className="rounded-[24px] border border-emerald-400/30 bg-emerald-400/10 p-6">
               <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-100">
@@ -803,486 +1023,261 @@ function AdminPageContent() {
             </section>
           )}
 
-          {canManageContent && (
-            <section className="rounded-[28px] border border-white/10 bg-black/20 p-6">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300/80">
-                    Registrations
-                  </p>
-                  <h2 className="mt-2 text-3xl font-black uppercase tracking-tight">
-                    User and cohort dashboard
-                  </h2>
-                </div>
+          {canManageContent && payload && userDashboard && (
+            <>
+              <section className="flex flex-wrap gap-3">
                 <button
                   type="button"
-                  onClick={loadAdminUsers}
-                  disabled={isLoadingUsers}
-                  className="rounded-full border border-cyan-300/30 px-4 py-2 text-[10px] font-black uppercase tracking-[0.22em] text-cyan-100 transition-colors hover:bg-cyan-300/10 disabled:opacity-60"
+                  onClick={() => setAdminView("operations")}
+                  className={`rounded-full border px-5 py-3 text-xs font-black uppercase tracking-[0.24em] ${
+                    adminView === "operations"
+                      ? "border-cyan-300/40 bg-cyan-300/10 text-cyan-100"
+                      : "border-white/10 text-white/60"
+                  }`}
                 >
-                  {isLoadingUsers ? "Refreshing..." : "Refresh table"}
+                  Operations
                 </button>
-              </div>
+                <button
+                  type="button"
+                  onClick={() => setAdminView("content")}
+                  className={`rounded-full border px-5 py-3 text-xs font-black uppercase tracking-[0.24em] ${
+                    adminView === "content"
+                      ? "border-cyan-300/40 bg-cyan-300/10 text-cyan-100"
+                      : "border-white/10 text-white/60"
+                  }`}
+                >
+                  Content
+                </button>
+              </section>
 
-              {isLoadingUsers && (
-                <div className="mt-6 rounded-[24px] border border-white/10 bg-[#09131d] p-6">
-                  <p className="text-sm font-bold uppercase tracking-[0.22em] text-white/55">
-                    Loading user registrations...
-                  </p>
-                </div>
-              )}
-
-              {!isLoadingUsers && userDashboardError && (
-                <div className="mt-6 rounded-[24px] border border-red-500/30 bg-red-500/10 p-6">
-                  <p className="text-xs font-black uppercase tracking-[0.22em] text-red-200">
-                    {userDashboardError}
-                  </p>
-                </div>
-              )}
-
-              {!isLoadingUsers && userDashboard && (
-                <div className="mt-6 space-y-6">
-                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-                    <SummaryCard
-                      label="Total Users"
-                      value={userDashboard.summary.totalUsers}
-                    />
-                    <SummaryCard
-                      label="Registered Users"
-                      value={userDashboard.summary.registeredUsers}
-                    />
-                    <SummaryCard
-                      label="Applications"
-                      value={userDashboard.summary.totalApplications}
-                    />
-                    <SummaryCard
-                      label="Active Cohorts"
-                      value={userDashboard.summary.activeCohorts}
-                    />
-                    <SummaryCard
-                      label="Enrolled Users"
-                      value={userDashboard.summary.enrolledUsers}
-                    />
-                    <SummaryCard
-                      label="Completed Users"
-                      value={userDashboard.summary.completedUsers}
-                    />
-                  </div>
-
-                  <div className="overflow-x-auto rounded-[24px] border border-white/10 bg-[#08111a]">
-                    <table className="min-w-full divide-y divide-white/10 text-left">
-                      <thead className="bg-white/[0.03]">
-                        <tr className="text-[10px] font-black uppercase tracking-[0.22em] text-white/45">
-                          <th className="px-4 py-4">Candidate</th>
-                          <th className="px-4 py-4">Profile</th>
-                          <th className="px-4 py-4">Registered Cohorts</th>
-                          <th className="px-4 py-4">Progress</th>
-                          <th className="px-4 py-4">Activity</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/10 align-top">
-                        {userDashboard.users.map((dashboardUser) => (
-                          <tr key={dashboardUser.id} className="text-sm">
-                            <td className="px-4 py-4">
-                              <p className="font-black uppercase tracking-[0.08em] text-white">
-                                {dashboardUser.name || "Unnamed user"}
-                              </p>
-                              <p className="mt-2 text-xs font-bold text-cyan-100/90">
-                                {dashboardUser.email}
-                              </p>
-                              <p className="mt-2 text-xs text-white/65">
-                                {dashboardUser.university ||
-                                  "University not provided"}
-                              </p>
-                              <p className="mt-3 text-[11px] text-white/55">
-                                {dashboardUser.intent ||
-                                  "No application intent provided."}
-                              </p>
-                            </td>
-                            <td className="px-4 py-4">
-                              <div className="space-y-2 text-xs text-white/70">
-                                <p>
-                                  <span className="font-black uppercase tracking-[0.14em] text-white/45">
-                                    Stack
-                                  </span>
-                                  <br />
-                                  {dashboardUser.stack || "—"}
-                                </p>
-                                <p>
-                                  <span className="font-black uppercase tracking-[0.14em] text-white/45">
-                                    Github
-                                  </span>
-                                  <br />
-                                  {dashboardUser.github ? (
-                                    <a
-                                      href={dashboardUser.github}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="text-cyan-200 underline decoration-cyan-400/40 underline-offset-4"
-                                    >
-                                      {dashboardUser.github}
-                                    </a>
-                                  ) : (
-                                    "—"
-                                  )}
-                                </p>
-                                <p>
-                                  <span className="font-black uppercase tracking-[0.14em] text-white/45">
-                                    Availability
-                                  </span>
-                                  <br />
-                                  {dashboardUser.availability
-                                    ? "Confirmed"
-                                    : "Not confirmed"}
-                                </p>
-                                <p>
-                                  <span className="font-black uppercase tracking-[0.14em] text-white/45">
-                                    Clerk ID
-                                  </span>
-                                  <br />
-                                  <span className="break-all">
-                                    {dashboardUser.clerk_user_id}
-                                  </span>
-                                </p>
-                              </div>
-                            </td>
-                            <td className="px-4 py-4">
-                              {dashboardUser.memberships.length === 0 ? (
-                                <p className="text-xs text-white/45">
-                                  No cohort registrations yet.
-                                </p>
-                              ) : (
-                                <div className="space-y-3">
-                                  {dashboardUser.memberships.map(
-                                    (membership) => (
-                                      <div
-                                        key={`${dashboardUser.id}-${membership.cohort.id}`}
-                                        className="rounded-[18px] border border-white/10 bg-white/[0.03] p-3"
-                                      >
-                                        <p className="font-black uppercase tracking-[0.12em] text-white">
-                                          {membership.cohort.type}
-                                        </p>
-                                        <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.16em] text-white/45">
-                                          {membership.cohort.slug}
-                                        </p>
-                                        <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.16em]">
-                                          <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-2 py-1 text-cyan-100">
-                                            {membership.status.replaceAll(
-                                              "_",
-                                              " ",
-                                            )}
-                                          </span>
-                                          <span className="rounded-full border border-white/10 px-2 py-1 text-white/55">
-                                            Apply by{" "}
-                                            {membership.cohort.apply_by}
-                                          </span>
-                                          <span className="rounded-full border border-white/10 px-2 py-1 text-white/55">
-                                            {membership.cohort.is_active
-                                              ? "Active"
-                                              : "Inactive"}
-                                          </span>
-                                        </div>
-                                        <p className="mt-3 text-[11px] text-white/55">
-                                          Applied{" "}
-                                          {formatAdminDateTime(
-                                            membership.applied_at,
-                                          )}
-                                        </p>
-                                      </div>
-                                    ),
-                                  )}
-                                </div>
-                              )}
-                            </td>
-                            <td className="px-4 py-4">
-                              {dashboardUser.memberships.length === 0 ? (
-                                <p className="text-xs text-white/45">—</p>
-                              ) : (
-                                <div className="space-y-3">
-                                  {dashboardUser.memberships.map(
-                                    (membership) => (
-                                      <div
-                                        key={`${dashboardUser.id}-${membership.cohort.id}-progress`}
-                                        className="rounded-[18px] border border-white/10 bg-white/[0.03] p-3 text-xs text-white/70"
-                                      >
-                                        <p className="font-black uppercase tracking-[0.14em] text-white/45">
-                                          {membership.cohort.type}
-                                        </p>
-                                        <p className="mt-2">
-                                          Qualifier:{" "}
-                                          {membership.qualifier_score === null
-                                            ? "Not submitted"
-                                            : `${membership.qualifier_score}% ${
-                                                membership.qualifier_passed ===
-                                                true
-                                                  ? "(passed)"
-                                                  : membership.qualifier_passed ===
-                                                      false
-                                                    ? "(failed)"
-                                                    : ""
-                                              }`}
-                                        </p>
-                                        <p className="mt-1">
-                                          Stages:{" "}
-                                          {membership.stages_passed_count}/
-                                          {membership.total_stage_count}
-                                        </p>
-                                        <p className="mt-1">
-                                          Qualifier submitted:{" "}
-                                          {formatAdminDateTime(
-                                            membership.qualifier_submitted_at,
-                                          )}
-                                        </p>
-                                        <p className="mt-1">
-                                          Enrolled:{" "}
-                                          {formatAdminDateTime(
-                                            membership.enrolled_at,
-                                          )}
-                                        </p>
-                                        <p className="mt-1">
-                                          Completed:{" "}
-                                          {formatAdminDateTime(
-                                            membership.completed_at,
-                                          )}
-                                        </p>
-                                      </div>
-                                    ),
-                                  )}
-                                </div>
-                              )}
-                            </td>
-                            <td className="px-4 py-4">
-                              <div className="space-y-2 text-xs text-white/70">
-                                <p>
-                                  <span className="font-black uppercase tracking-[0.14em] text-white/45">
-                                    Latest
-                                  </span>
-                                  <br />
-                                  {formatAdminDateTime(
-                                    dashboardUser.latest_activity_at,
-                                  )}
-                                </p>
-                                <p>
-                                  <span className="font-black uppercase tracking-[0.14em] text-white/45">
-                                    Created
-                                  </span>
-                                  <br />
-                                  {formatAdminDateTime(
-                                    dashboardUser.created_at,
-                                  )}
-                                </p>
-                                <p>
-                                  <span className="font-black uppercase tracking-[0.14em] text-white/45">
-                                    Updated
-                                  </span>
-                                  <br />
-                                  {formatAdminDateTime(
-                                    dashboardUser.updated_at,
-                                  )}
-                                </p>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </section>
-          )}
-
-          {canManageContent &&
-            payload &&
-            selectedBundle &&
-            selectedQualifier && (
-              <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
-                <aside className="rounded-[28px] border border-white/10 bg-black/20 p-5">
-                  <p className="text-[10px] font-black uppercase tracking-[0.28em] text-white/45">
-                    Cohorts
-                  </p>
-                  <div className="mt-4 space-y-3">
-                    {payload.cohorts.map((cohort) => (
-                      <button
-                        key={cohort.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedCohortId(cohort.id);
-                          setSuccessMessage(null);
-                        }}
-                        className={`w-full rounded-[20px] border px-4 py-4 text-left transition-colors ${
-                          cohort.id === selectedCohortId
-                            ? "border-cyan-300/40 bg-cyan-300/10"
-                            : "border-white/10 bg-white/[0.03] hover:border-white/20"
-                        }`}
-                      >
-                        <p className="text-sm font-black uppercase tracking-[0.16em] text-white">
-                          {cohort.type}
-                        </p>
-                        <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-white/45">
-                          {cohort.slug}
-                        </p>
-                      </button>
-                    ))}
-                  </div>
-                </aside>
-
+              {adminView === "operations" && (
                 <div className="space-y-6">
                   <section className="rounded-[28px] border border-white/10 bg-black/20 p-6">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300/80">
-                          Selected Cohort
+                          Registrations
                         </p>
                         <h2 className="mt-2 text-3xl font-black uppercase tracking-tight">
-                          {selectedCohort?.type}
+                          User and cohort dashboard
                         </h2>
                       </div>
                       <button
                         type="button"
-                        onClick={saveContent}
-                        disabled={isSaving}
-                        className="inline-flex items-center gap-2 rounded-full bg-cyan-300 px-5 py-3 text-xs font-black uppercase tracking-[0.24em] text-black transition-colors hover:bg-cyan-200 disabled:opacity-60"
+                        onClick={loadAdminUsers}
+                        disabled={isLoadingUsers}
+                        className="rounded-full border border-cyan-300/30 px-4 py-2 text-[10px] font-black uppercase tracking-[0.22em] text-cyan-100 transition-colors hover:bg-cyan-300/10 disabled:opacity-60"
                       >
-                        <Save size={16} />
-                        {isSaving ? "Saving..." : "Save Content"}
-                      </button>
-                    </div>
-                  </section>
-
-                  <section className="rounded-[28px] border border-white/10 bg-black/20 p-6">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300/80">
-                          Qualifier
-                        </p>
-                        <h3 className="mt-2 text-2xl font-black uppercase tracking-tight">
-                          Timed entry assessment
-                        </h3>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          updateSelectedBundle((bundle) => {
-                            const qualifier = ensureQualifier(
-                              bundle,
-                              selectedCohortId,
-                            );
-
-                            return {
-                              ...bundle,
-                              qualifier: {
-                                ...qualifier,
-                                questions: [
-                                  ...qualifier.questions,
-                                  createQuestion("scenario"),
-                                ],
-                              },
-                            };
-                          })
-                        }
-                        className="inline-flex items-center gap-2 rounded-full border border-cyan-300/30 px-4 py-2 text-[10px] font-black uppercase tracking-[0.24em] text-cyan-100 transition-colors hover:bg-cyan-300/10"
-                      >
-                        <Plus size={14} />
-                        Add qualifier question
+                        {isLoadingUsers ? "Refreshing..." : "Refresh table"}
                       </button>
                     </div>
 
-                    <div className="mt-5">
-                      <Field label="Duration (seconds)">
-                        <input
-                          type="number"
-                          min={300}
-                          value={selectedQualifier.duration_seconds}
-                          onChange={(event) =>
-                            updateSelectedBundle((bundle) => {
-                              const qualifier = ensureQualifier(
-                                bundle,
-                                selectedCohortId,
-                              );
-
-                              return {
-                                ...bundle,
-                                qualifier: {
-                                  ...qualifier,
-                                  duration_seconds:
-                                    Number(event.target.value) || 300,
-                                },
-                              };
-                            })
-                          }
-                          className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"
-                        />
-                      </Field>
-                    </div>
-
-                    <div className="mt-6">
-                      <QuestionImportPanel
-                        onImported={(questions, replaceExisting) =>
-                          updateSelectedBundle((bundle) => {
-                            const qualifier = ensureQualifier(
-                              bundle,
-                              selectedCohortId,
-                            );
-
-                            return {
-                              ...bundle,
-                              qualifier: {
-                                ...qualifier,
-                                questions: replaceExisting
-                                  ? questions
-                                  : [...qualifier.questions, ...questions],
-                              },
-                            };
-                          })
-                        }
+                    <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+                      <SummaryCard
+                        label="Total Users"
+                        value={userDashboard.summary.totalUsers}
+                      />
+                      <SummaryCard
+                        label="Registered Users"
+                        value={userDashboard.summary.registeredUsers}
+                      />
+                      <SummaryCard
+                        label="Applications"
+                        value={userDashboard.summary.totalApplications}
+                      />
+                      <SummaryCard
+                        label="Active Cohorts"
+                        value={userDashboard.summary.activeCohorts}
+                      />
+                      <SummaryCard
+                        label="Enrolled Users"
+                        value={userDashboard.summary.enrolledUsers}
+                      />
+                      <SummaryCard
+                        label="Completed Users"
+                        value={userDashboard.summary.completedUsers}
                       />
                     </div>
 
-                    <div className="mt-6 space-y-5">
-                      {selectedQualifier.questions.map((question, index) => (
-                        <QuestionEditor
-                          key={question.id}
-                          question={question}
-                          onChange={(nextQuestion) =>
-                            updateSelectedBundle((bundle) => {
-                              const qualifier = ensureQualifier(
-                                bundle,
-                                selectedCohortId,
-                              );
-
-                              return {
-                                ...bundle,
-                                qualifier: {
-                                  ...qualifier,
-                                  questions: qualifier.questions.map(
-                                    (item, itemIndex) =>
-                                      itemIndex === index ? nextQuestion : item,
-                                  ),
-                                },
-                              };
-                            })
-                          }
-                          onRemove={() =>
-                            updateSelectedBundle((bundle) => {
-                              const qualifier = ensureQualifier(
-                                bundle,
-                                selectedCohortId,
-                              );
-
-                              return {
-                                ...bundle,
-                                qualifier: {
-                                  ...qualifier,
-                                  questions: qualifier.questions.filter(
-                                    (_, itemIndex) => itemIndex !== index,
-                                  ),
-                                },
-                              };
-                            })
-                          }
-                        />
-                      ))}
+                    <div className="mt-6 overflow-x-auto rounded-[24px] border border-white/10 bg-[#08111a]">
+                      <table className="min-w-full divide-y divide-white/10 text-left">
+                        <thead className="bg-white/[0.03]">
+                          <tr className="text-[10px] font-black uppercase tracking-[0.22em] text-white/45">
+                            <th className="px-4 py-4">Candidate</th>
+                            <th className="px-4 py-4">Profile</th>
+                            <th className="px-4 py-4">Registered Cohorts</th>
+                            <th className="px-4 py-4">Progress</th>
+                            <th className="px-4 py-4">Activity</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/10 align-top">
+                          {userDashboard.users.map((dashboardUser) => (
+                            <tr key={dashboardUser.id} className="text-sm">
+                              <td className="px-4 py-4">
+                                <p className="font-black uppercase tracking-[0.08em] text-white">
+                                  {dashboardUser.name || "Unnamed user"}
+                                </p>
+                                <p className="mt-2 text-xs font-bold text-cyan-100/90">
+                                  {dashboardUser.email}
+                                </p>
+                                <p className="mt-2 text-xs text-white/65">
+                                  {dashboardUser.university ||
+                                    "University not provided"}
+                                </p>
+                                <p className="mt-3 text-[11px] text-white/55">
+                                  {dashboardUser.intent ||
+                                    "No application intent provided."}
+                                </p>
+                              </td>
+                              <td className="px-4 py-4">
+                                <div className="space-y-2 text-xs text-white/70">
+                                  <p>
+                                    <span className="font-black uppercase tracking-[0.14em] text-white/45">
+                                      Stack
+                                    </span>
+                                    <br />
+                                    {dashboardUser.stack || "—"}
+                                  </p>
+                                  <p>
+                                    <span className="font-black uppercase tracking-[0.14em] text-white/45">
+                                      Github
+                                    </span>
+                                    <br />
+                                    {dashboardUser.github ? (
+                                      <a
+                                        href={dashboardUser.github}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="text-cyan-200 underline decoration-cyan-400/40 underline-offset-4"
+                                      >
+                                        {dashboardUser.github}
+                                      </a>
+                                    ) : (
+                                      "—"
+                                    )}
+                                  </p>
+                                  <p>
+                                    <span className="font-black uppercase tracking-[0.14em] text-white/45">
+                                      Availability
+                                    </span>
+                                    <br />
+                                    {dashboardUser.availability
+                                      ? "Confirmed"
+                                      : "Not confirmed"}
+                                  </p>
+                                </div>
+                              </td>
+                              <td className="px-4 py-4">
+                                {dashboardUser.memberships.length === 0 ? (
+                                  <p className="text-xs text-white/45">
+                                    No cohort registrations yet.
+                                  </p>
+                                ) : (
+                                  <div className="space-y-3">
+                                    {dashboardUser.memberships.map(
+                                      (membership) => (
+                                        <div
+                                          key={`${dashboardUser.id}-${membership.cohort.id}`}
+                                          className="rounded-[18px] border border-white/10 bg-white/[0.03] p-3"
+                                        >
+                                          <p className="font-black uppercase tracking-[0.12em] text-white">
+                                            {membership.cohort.type}
+                                          </p>
+                                          <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.16em] text-white/45">
+                                            {membership.cohort.slug}
+                                          </p>
+                                          <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.16em]">
+                                            <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-2 py-1 text-cyan-100">
+                                              {membership.status.replaceAll(
+                                                "_",
+                                                " ",
+                                              )}
+                                            </span>
+                                            <span className="rounded-full border border-white/10 px-2 py-1 text-white/55">
+                                              Apply by{" "}
+                                              {membership.cohort.apply_by}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      ),
+                                    )}
+                                  </div>
+                                )}
+                              </td>
+                              <td className="px-4 py-4">
+                                {dashboardUser.memberships.length === 0 ? (
+                                  <p className="text-xs text-white/45">—</p>
+                                ) : (
+                                  <div className="space-y-3">
+                                    {dashboardUser.memberships.map(
+                                      (membership) => (
+                                        <div
+                                          key={`${dashboardUser.id}-${membership.cohort.id}-progress`}
+                                          className="rounded-[18px] border border-white/10 bg-white/[0.03] p-3 text-xs text-white/70"
+                                        >
+                                          <p className="font-black uppercase tracking-[0.14em] text-white/45">
+                                            {membership.cohort.type}
+                                          </p>
+                                          <p className="mt-2">
+                                            Qualifier:{" "}
+                                            {membership.qualifier_score === null
+                                              ? "Not submitted"
+                                              : membership.qualifier_passed ===
+                                                  true
+                                                ? "Passed"
+                                                : "Failed"}
+                                          </p>
+                                          <p className="mt-1">
+                                            Sprint days:{" "}
+                                            {
+                                              membership.sprint_days_submitted_count
+                                            }
+                                            /{membership.total_sprint_day_count}
+                                          </p>
+                                          <p className="mt-1">
+                                            Qualifier submitted:{" "}
+                                            {formatAdminDateTime(
+                                              membership.qualifier_submitted_at,
+                                            )}
+                                          </p>
+                                          <p className="mt-1">
+                                            Completed:{" "}
+                                            {formatAdminDateTime(
+                                              membership.completed_at,
+                                            )}
+                                          </p>
+                                        </div>
+                                      ),
+                                    )}
+                                  </div>
+                                )}
+                              </td>
+                              <td className="px-4 py-4">
+                                <div className="space-y-2 text-xs text-white/70">
+                                  <p>
+                                    <span className="font-black uppercase tracking-[0.14em] text-white/45">
+                                      Latest
+                                    </span>
+                                    <br />
+                                    {formatAdminDateTime(
+                                      dashboardUser.latest_activity_at,
+                                    )}
+                                  </p>
+                                  <p>
+                                    <span className="font-black uppercase tracking-[0.14em] text-white/45">
+                                      Created
+                                    </span>
+                                    <br />
+                                    {formatAdminDateTime(
+                                      dashboardUser.created_at,
+                                    )}
+                                  </p>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </section>
 
@@ -1290,246 +1285,526 @@ function AdminPageContent() {
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300/80">
-                          Sprint Stages
+                          Results
                         </p>
-                        <h3 className="mt-2 text-2xl font-black uppercase tracking-tight">
-                          Progressive assessments
-                        </h3>
+                        <h2 className="mt-2 text-3xl font-black uppercase tracking-tight">
+                          Cross-cohort assessments
+                        </h2>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          updateSelectedBundle((bundle) => ({
-                            ...bundle,
-                            stages: [
-                              ...bundle.stages,
-                              {
-                                id: "",
-                                cohort_id: selectedCohortId,
-                                stage_number: bundle.stages.length + 1,
-                                title: "",
-                                description: "",
-                                duration_minutes: 45,
-                                questions: [],
-                                created_at: "",
-                              },
-                            ],
-                          }))
-                        }
-                        className="inline-flex items-center gap-2 rounded-full border border-cyan-300/30 px-4 py-2 text-[10px] font-black uppercase tracking-[0.24em] text-cyan-100 transition-colors hover:bg-cyan-300/10"
-                      >
-                        <Plus size={14} />
-                        Add stage
-                      </button>
                     </div>
 
-                    <div className="mt-6 space-y-6">
-                      {selectedBundle.stages.map((stage, stageIndex) => (
-                        <div
-                          key={`${stage.id || "new"}-${stageIndex}`}
-                          className="rounded-[24px] border border-white/10 bg-[#08111a] p-5"
+                    <div className="mt-6 grid gap-4 xl:grid-cols-[1.4fr_repeat(3,minmax(0,0.7fr))]">
+                      <Field label="Search">
+                        <input
+                          value={resultFilters.query}
+                          onChange={(event) =>
+                            setResultFilters((current) => ({
+                              ...current,
+                              query: event.target.value,
+                            }))
+                          }
+                          placeholder="Name, email, university, cohort..."
+                          className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"
+                        />
+                      </Field>
+                      <Field label="Cohort">
+                        <select
+                          value={resultFilters.cohortId}
+                          onChange={(event) =>
+                            setResultFilters((current) => ({
+                              ...current,
+                              cohortId: event.target.value,
+                            }))
+                          }
+                          className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"
                         >
-                          <div className="flex flex-wrap items-center justify-between gap-3">
-                            <p className="text-sm font-black uppercase tracking-[0.18em] text-white">
-                              Stage {stageIndex + 1}
+                          <option value="">All cohorts</option>
+                          {payload.cohorts.map((cohort) => (
+                            <option key={cohort.id} value={cohort.id}>
+                              {cohort.type}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                      <Field label="Test type">
+                        <select
+                          value={resultFilters.testType}
+                          onChange={(event) =>
+                            setResultFilters((current) => ({
+                              ...current,
+                              testType: event.target.value as
+                                | "all"
+                                | "qualifier"
+                                | "sprint_day",
+                            }))
+                          }
+                          className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"
+                        >
+                          <option value="all">All tests</option>
+                          <option value="qualifier">Qualifier</option>
+                          <option value="sprint_day">Sprint days</option>
+                        </select>
+                      </Field>
+                      <Field label="Status">
+                        <select
+                          value={resultFilters.status}
+                          onChange={(event) =>
+                            setResultFilters((current) => ({
+                              ...current,
+                              status: event.target.value as
+                                | "all"
+                                | "submitted"
+                                | "reviewed"
+                                | "passed"
+                                | "failed",
+                            }))
+                          }
+                          className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"
+                        >
+                          <option value="all">All statuses</option>
+                          <option value="submitted">Submitted</option>
+                          <option value="reviewed">Reviewed</option>
+                          <option value="passed">Passed</option>
+                          <option value="failed">Failed</option>
+                        </select>
+                      </Field>
+                    </div>
+
+                    <div className="mt-5 flex flex-wrap gap-2">
+                      <SortButton
+                        label="Submitted"
+                        active={resultFilters.sortField === "submitted_at"}
+                        direction={resultFilters.sortDirection}
+                        onClick={() => toggleSort("submitted_at")}
+                      />
+                      <SortButton
+                        label="Score"
+                        active={resultFilters.sortField === "score"}
+                        direction={resultFilters.sortDirection}
+                        onClick={() => toggleSort("score")}
+                      />
+                      <SortButton
+                        label="Candidate"
+                        active={resultFilters.sortField === "candidate_name"}
+                        direction={resultFilters.sortDirection}
+                        onClick={() => toggleSort("candidate_name")}
+                      />
+                      <SortButton
+                        label="Cohort"
+                        active={resultFilters.sortField === "cohort_type"}
+                        direction={resultFilters.sortDirection}
+                        onClick={() => toggleSort("cohort_type")}
+                      />
+                      <SortButton
+                        label="Status"
+                        active={resultFilters.sortField === "status"}
+                        direction={resultFilters.sortDirection}
+                        onClick={() => toggleSort("status")}
+                      />
+                    </div>
+
+                    <div className="mt-6 overflow-x-auto rounded-[24px] border border-white/10 bg-[#08111a]">
+                      <table className="min-w-full divide-y divide-white/10 text-left">
+                        <thead className="bg-white/[0.03]">
+                          <tr className="text-[10px] font-black uppercase tracking-[0.22em] text-white/45">
+                            <th className="px-4 py-4">Candidate</th>
+                            <th className="px-4 py-4">Cohort</th>
+                            <th className="px-4 py-4">Test</th>
+                            <th className="px-4 py-4">Status</th>
+                            <th className="px-4 py-4">Score</th>
+                            <th className="px-4 py-4">Submitted</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/10">
+                          {filteredResults.map((row) => (
+                            <tr key={row.id} className="text-sm">
+                              <td className="px-4 py-4">
+                                <p className="font-black uppercase tracking-[0.08em] text-white">
+                                  {row.candidate_name}
+                                </p>
+                                <p className="mt-2 text-xs text-cyan-100/90">
+                                  {row.candidate_email}
+                                </p>
+                                <p className="mt-2 text-xs text-white/55">
+                                  {row.candidate_university || "—"}
+                                </p>
+                              </td>
+                              <td className="px-4 py-4">
+                                <p className="font-black uppercase tracking-[0.08em] text-white">
+                                  {row.cohort_type}
+                                </p>
+                                <p className="mt-2 text-xs text-white/55">
+                                  {row.cohort_slug}
+                                </p>
+                              </td>
+                              <td className="px-4 py-4 text-white/75">
+                                {row.test_label}
+                              </td>
+                              <td className="px-4 py-4">
+                                <span className="rounded-full border border-white/10 px-2 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-white/70">
+                                  {row.status}
+                                </span>
+                              </td>
+                              <td className="px-4 py-4 text-white/75">
+                                {row.score ?? "—"}
+                              </td>
+                              <td className="px-4 py-4 text-white/55">
+                                {formatAdminDateTime(row.submitted_at)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+
+                  <section className="rounded-[28px] border border-white/10 bg-black/20 p-6">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300/80">
+                          Sprint Review
+                        </p>
+                        <h2 className="mt-2 text-3xl font-black uppercase tracking-tight">
+                          GitHub submissions
+                        </h2>
+                      </div>
+                    </div>
+
+                    <div className="mt-6 space-y-4">
+                      {selectedSprintReviews.length === 0 ? (
+                        <div className="rounded-[20px] border border-white/10 bg-[#08111a] p-5 text-sm text-white/55">
+                          No sprint submissions available for the current
+                          filter.
+                        </div>
+                      ) : (
+                        selectedSprintReviews.map((review) => (
+                          <ReviewEditor
+                            key={review.submission_id}
+                            review={review}
+                            onSave={saveSprintReview}
+                          />
+                        ))
+                      )}
+                    </div>
+                  </section>
+                </div>
+              )}
+
+              {adminView === "content" &&
+                selectedBundle &&
+                selectedQualifier && (
+                  <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
+                    <aside className="rounded-[28px] border border-white/10 bg-black/20 p-5">
+                      <p className="text-[10px] font-black uppercase tracking-[0.28em] text-white/45">
+                        Cohorts
+                      </p>
+                      <div className="mt-4 space-y-3">
+                        {payload.cohorts.map((cohort) => (
+                          <button
+                            key={cohort.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedCohortId(cohort.id);
+                              setSuccessMessage(null);
+                            }}
+                            className={`w-full rounded-[20px] border px-4 py-4 text-left transition-colors ${
+                              cohort.id === selectedCohortId
+                                ? "border-cyan-300/40 bg-cyan-300/10"
+                                : "border-white/10 bg-white/[0.03] hover:border-white/20"
+                            }`}
+                          >
+                            <p className="text-sm font-black uppercase tracking-[0.16em] text-white">
+                              {cohort.type}
                             </p>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                updateSelectedBundle((bundle) => ({
-                                  ...bundle,
-                                  stages: bundle.stages.filter(
-                                    (_, itemIndex) => itemIndex !== stageIndex,
-                                  ),
-                                }))
-                              }
-                              className="inline-flex items-center gap-2 rounded-full border border-red-400/30 px-3 py-2 text-[10px] font-black uppercase tracking-[0.22em] text-red-200 transition-colors hover:bg-red-400/10"
-                            >
-                              <Trash2 size={14} />
-                              Remove stage
-                            </button>
-                          </div>
+                            <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-white/45">
+                              {cohort.slug}
+                            </p>
+                          </button>
+                        ))}
+                      </div>
+                    </aside>
 
-                          <div className="mt-5 grid gap-4 md:grid-cols-2">
-                            <Field label="Title">
-                              <input
-                                value={stage.title}
-                                onChange={(event) =>
-                                  updateSelectedBundle((bundle) => ({
-                                    ...bundle,
-                                    stages: bundle.stages.map(
-                                      (item, itemIndex) =>
-                                        itemIndex === stageIndex
-                                          ? {
-                                              ...item,
-                                              title: event.target.value,
-                                            }
-                                          : item,
-                                    ),
-                                  }))
-                                }
-                                className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"
-                              />
-                            </Field>
-                            <Field label="Duration (minutes)">
-                              <input
-                                type="number"
-                                min={5}
-                                value={stage.duration_minutes}
-                                onChange={(event) =>
-                                  updateSelectedBundle((bundle) => ({
-                                    ...bundle,
-                                    stages: bundle.stages.map(
-                                      (item, itemIndex) =>
-                                        itemIndex === stageIndex
-                                          ? {
-                                              ...item,
-                                              duration_minutes:
-                                                Number(event.target.value) || 5,
-                                            }
-                                          : item,
-                                    ),
-                                  }))
-                                }
-                                className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"
-                              />
-                            </Field>
-                            <div className="md:col-span-2">
-                              <Field label="Description">
-                                <textarea
-                                  rows={4}
-                                  value={stage.description}
-                                  onChange={(event) =>
-                                    updateSelectedBundle((bundle) => ({
-                                      ...bundle,
-                                      stages: bundle.stages.map(
-                                        (item, itemIndex) =>
-                                          itemIndex === stageIndex
-                                            ? {
-                                                ...item,
-                                                description: event.target.value,
-                                              }
-                                            : item,
-                                      ),
-                                    }))
-                                  }
-                                  className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"
-                                />
-                              </Field>
-                            </div>
+                    <div className="space-y-6">
+                      <section className="rounded-[28px] border border-white/10 bg-black/20 p-6">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300/80">
+                              Selected Cohort
+                            </p>
+                            <h2 className="mt-2 text-3xl font-black uppercase tracking-tight">
+                              {selectedCohort?.type}
+                            </h2>
                           </div>
+                          <button
+                            type="button"
+                            onClick={saveContent}
+                            disabled={isSaving}
+                            className="inline-flex items-center gap-2 rounded-full bg-cyan-300 px-5 py-3 text-xs font-black uppercase tracking-[0.24em] text-black transition-colors hover:bg-cyan-200 disabled:opacity-60"
+                          >
+                            <Save size={16} />
+                            {isSaving ? "Saving..." : "Save Content"}
+                          </button>
+                        </div>
+                      </section>
 
-                          <div className="mt-6">
-                            <QuestionImportPanel
-                              onImported={(questions, replaceExisting) =>
-                                updateSelectedBundle((bundle) => ({
+                      <section className="rounded-[28px] border border-white/10 bg-black/20 p-6">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300/80">
+                              Qualifier
+                            </p>
+                            <h3 className="mt-2 text-2xl font-black uppercase tracking-tight">
+                              Timed entry assessment
+                            </h3>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateSelectedBundle((bundle) => {
+                                const qualifier = ensureQualifier(
+                                  bundle,
+                                  selectedCohortId,
+                                );
+
+                                return {
                                   ...bundle,
-                                  stages: bundle.stages.map(
-                                    (item, itemIndex) =>
-                                      itemIndex === stageIndex
-                                        ? {
-                                            ...item,
-                                            questions: replaceExisting
-                                              ? questions
-                                              : [
-                                                  ...item.questions,
-                                                  ...questions,
-                                                ],
-                                          }
-                                        : item,
-                                  ),
-                                }))
+                                  qualifier: {
+                                    ...qualifier,
+                                    questions: [
+                                      ...qualifier.questions,
+                                      createQuestion("scenario"),
+                                    ],
+                                  },
+                                };
+                              })
+                            }
+                            className="inline-flex items-center gap-2 rounded-full border border-cyan-300/30 px-4 py-2 text-[10px] font-black uppercase tracking-[0.24em] text-cyan-100 transition-colors hover:bg-cyan-300/10"
+                          >
+                            <Plus size={14} />
+                            Add qualifier question
+                          </button>
+                        </div>
+
+                        <div className="mt-5">
+                          <Field label="Duration (seconds)">
+                            <input
+                              type="number"
+                              min={300}
+                              value={selectedQualifier.duration_seconds}
+                              onChange={(event) =>
+                                updateSelectedBundle((bundle) => {
+                                  const qualifier = ensureQualifier(
+                                    bundle,
+                                    selectedCohortId,
+                                  );
+
+                                  return {
+                                    ...bundle,
+                                    qualifier: {
+                                      ...qualifier,
+                                      duration_seconds:
+                                        Number(event.target.value) || 300,
+                                    },
+                                  };
+                                })
                               }
+                              className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"
                             />
-                          </div>
+                          </Field>
+                        </div>
 
-                          <div className="mt-6 flex flex-wrap gap-2">
-                            {(
-                              [
-                                "mcq",
-                                "debug",
-                                "scenario",
-                              ] as AssessmentQuestionType[]
-                            ).map((type) => (
-                              <button
-                                key={type}
-                                type="button"
-                                onClick={() =>
-                                  updateSelectedBundle((bundle) => ({
-                                    ...bundle,
-                                    stages: bundle.stages.map(
-                                      (item, itemIndex) =>
-                                        itemIndex === stageIndex
-                                          ? {
-                                              ...item,
-                                              questions: [
-                                                ...item.questions,
-                                                createQuestion(type),
-                                              ],
-                                            }
-                                          : item,
-                                    ),
-                                  }))
-                                }
-                                className="rounded-full border border-cyan-300/25 px-4 py-2 text-[10px] font-black uppercase tracking-[0.22em] text-cyan-100 transition-colors hover:bg-cyan-300/10"
-                              >
-                                <Plus size={12} className="mr-1 inline" />
-                                Add {type}
-                              </button>
-                            ))}
-                          </div>
+                        <div className="mt-6">
+                          <QuestionImportPanel
+                            onImported={(questions, replaceExisting) =>
+                              updateSelectedBundle((bundle) => {
+                                const qualifier = ensureQualifier(
+                                  bundle,
+                                  selectedCohortId,
+                                );
 
-                          <div className="mt-6 space-y-5">
-                            {stage.questions.map((question, questionIndex) => (
+                                return {
+                                  ...bundle,
+                                  qualifier: {
+                                    ...qualifier,
+                                    questions: replaceExisting
+                                      ? questions
+                                      : [...qualifier.questions, ...questions],
+                                  },
+                                };
+                              })
+                            }
+                          />
+                        </div>
+
+                        <div className="mt-6 space-y-5">
+                          {selectedQualifier.questions.map(
+                            (question, index) => (
                               <QuestionEditor
                                 key={question.id}
                                 question={question}
                                 onChange={(nextQuestion) =>
-                                  updateSelectedBundle((bundle) => ({
-                                    ...bundle,
-                                    stages: bundle.stages.map(
-                                      (item, itemIndex) =>
-                                        itemIndex === stageIndex
-                                          ? {
-                                              ...item,
-                                              questions: item.questions.map(
-                                                (stageQuestion, itemQIndex) =>
-                                                  itemQIndex === questionIndex
-                                                    ? nextQuestion
-                                                    : stageQuestion,
-                                              ),
-                                            }
-                                          : item,
-                                    ),
-                                  }))
+                                  updateSelectedBundle((bundle) => {
+                                    const qualifier = ensureQualifier(
+                                      bundle,
+                                      selectedCohortId,
+                                    );
+
+                                    return {
+                                      ...bundle,
+                                      qualifier: {
+                                        ...qualifier,
+                                        questions: qualifier.questions.map(
+                                          (item, itemIndex) =>
+                                            itemIndex === index
+                                              ? nextQuestion
+                                              : item,
+                                        ),
+                                      },
+                                    };
+                                  })
                                 }
                                 onRemove={() =>
-                                  updateSelectedBundle((bundle) => ({
-                                    ...bundle,
-                                    stages: bundle.stages.map(
-                                      (item, itemIndex) =>
-                                        itemIndex === stageIndex
-                                          ? {
-                                              ...item,
-                                              questions: item.questions.filter(
-                                                (_, itemQIndex) =>
-                                                  itemQIndex !== questionIndex,
-                                              ),
-                                            }
-                                          : item,
-                                    ),
-                                  }))
+                                  updateSelectedBundle((bundle) => {
+                                    const qualifier = ensureQualifier(
+                                      bundle,
+                                      selectedCohortId,
+                                    );
+
+                                    return {
+                                      ...bundle,
+                                      qualifier: {
+                                        ...qualifier,
+                                        questions: qualifier.questions.filter(
+                                          (_, itemIndex) => itemIndex !== index,
+                                        ),
+                                      },
+                                    };
+                                  })
                                 }
                               />
-                            ))}
-                          </div>
+                            ),
+                          )}
                         </div>
-                      ))}
+                      </section>
+
+                      <section className="rounded-[28px] border border-white/10 bg-black/20 p-6">
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300/80">
+                            Sprint Days
+                          </p>
+                          <h3 className="mt-2 text-2xl font-black uppercase tracking-tight">
+                            Day-by-day GitHub tasks
+                          </h3>
+                        </div>
+
+                        <div className="mt-6 space-y-6">
+                          {selectedBundle.sprintDays.map((sprintDay, index) => (
+                            <div
+                              key={`${sprintDay.id || "new"}-${index}`}
+                              className="rounded-[24px] border border-white/10 bg-[#08111a] p-5"
+                            >
+                              <div className="flex flex-wrap items-center justify-between gap-3">
+                                <p className="text-sm font-black uppercase tracking-[0.18em] text-white">
+                                  Day {index + 1}
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    updateSelectedBundle((bundle) => ({
+                                      ...bundle,
+                                      sprintDays: bundle.sprintDays.map(
+                                        (item, itemIndex) =>
+                                          itemIndex === index
+                                            ? createEmptySprintDay(
+                                                selectedCohortId,
+                                                index + 1,
+                                              )
+                                            : item,
+                                      ),
+                                    }))
+                                  }
+                                  className="inline-flex items-center gap-2 rounded-full border border-red-400/30 px-3 py-2 text-[10px] font-black uppercase tracking-[0.22em] text-red-200 transition-colors hover:bg-red-400/10"
+                                >
+                                  <Trash2 size={14} />
+                                  Reset day
+                                </button>
+                              </div>
+
+                              <div className="mt-5 grid gap-4 md:grid-cols-2">
+                                <Field label="Title">
+                                  <input
+                                    value={sprintDay.title}
+                                    onChange={(event) =>
+                                      updateSelectedBundle((bundle) => ({
+                                        ...bundle,
+                                        sprintDays: bundle.sprintDays.map(
+                                          (item, itemIndex) =>
+                                            itemIndex === index
+                                              ? {
+                                                  ...item,
+                                                  title: event.target.value,
+                                                }
+                                              : item,
+                                        ),
+                                      }))
+                                    }
+                                    className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"
+                                  />
+                                </Field>
+                                <Field label="Description">
+                                  <input
+                                    value={sprintDay.description}
+                                    onChange={(event) =>
+                                      updateSelectedBundle((bundle) => ({
+                                        ...bundle,
+                                        sprintDays: bundle.sprintDays.map(
+                                          (item, itemIndex) =>
+                                            itemIndex === index
+                                              ? {
+                                                  ...item,
+                                                  description:
+                                                    event.target.value,
+                                                }
+                                              : item,
+                                        ),
+                                      }))
+                                    }
+                                    className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"
+                                  />
+                                </Field>
+                                <div className="md:col-span-2">
+                                  <Field label="Task brief">
+                                    <textarea
+                                      rows={5}
+                                      value={sprintDay.brief}
+                                      onChange={(event) =>
+                                        updateSelectedBundle((bundle) => ({
+                                          ...bundle,
+                                          sprintDays: bundle.sprintDays.map(
+                                            (item, itemIndex) =>
+                                              itemIndex === index
+                                                ? {
+                                                    ...item,
+                                                    brief: event.target.value,
+                                                  }
+                                                : item,
+                                          ),
+                                        }))
+                                      }
+                                      className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"
+                                    />
+                                  </Field>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </section>
                     </div>
-                  </section>
-                </div>
-              </div>
-            )}
+                  </div>
+                )}
+            </>
+          )}
         </SignedIn>
       </div>
     </main>
@@ -1546,7 +1821,7 @@ export default function AdminPage() {
           </h1>
           <p className="mt-4 text-sm font-bold uppercase tracking-[0.16em] text-white/65">
             Add <code>NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY</code> to use the admin
-            content studio.
+            console.
           </p>
         </section>
       </main>

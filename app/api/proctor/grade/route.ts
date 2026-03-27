@@ -22,6 +22,11 @@ interface GradeRequestBody {
   answers?: SubmissionAnswer[];
 }
 
+interface CandidateSubmissionStatus {
+  status: "submitted" | "passed" | "failed";
+  submittedAt: string;
+}
+
 export async function POST(request: Request) {
   try {
     const authUser = await getAuthenticatedClerkUser();
@@ -234,7 +239,12 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json(grade);
+    const response: CandidateSubmissionStatus = {
+      status: grade.passed ? "passed" : "failed",
+      submittedAt,
+    };
+
+    return NextResponse.json(response);
   } catch (error) {
     return NextResponse.json(
       {

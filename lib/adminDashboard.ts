@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
+  AdminAssessmentResultRow,
+  AdminSprintSubmissionReview,
   AdminUserCohortMembership,
   AdminUserDashboardEntry,
   AdminUserDashboardPayload,
@@ -35,25 +37,33 @@ interface DbMembershipRow {
 }
 
 interface DbQualifierAttemptRow {
+  id: string;
   user_id: string;
   cohort_id: string;
   score: number;
+  feedback: string;
   passed: boolean;
   started_at: string | null;
   submitted_at: string;
 }
 
-interface DbStageAttemptRow {
-  user_id: string;
-  cohort_id: string;
-  stage_id: string;
-  passed: boolean;
-  submitted_at: string;
-}
-
-interface DbStageRow {
+interface DbSprintDayTaskRow {
   id: string;
   cohort_id: string;
+  day_number: number;
+  title: string;
+}
+
+interface DbSprintDaySubmissionRow {
+  id: string;
+  user_id: string;
+  cohort_id: string;
+  sprint_day_id: string;
+  github_url: string;
+  submitted_at: string;
+  score: number | null;
+  evaluator_notes: string | null;
+  reviewed_at: string | null;
 }
 
 function getMembershipCohort(
@@ -86,8 +96,8 @@ export async function loadAdminUserDashboard(
     { data: userRows, error: usersError },
     { data: membershipRows, error: membershipsError },
     { data: qualifierRows, error: qualifierError },
-    { data: stageAttemptRows, error: stageAttemptError },
-    { data: stageRows, error: stageError },
+    { data: sprintDayRows, error: sprintDayError },
+    { data: sprintSubmissionRows, error: sprintSubmissionError },
     { data: cohortRows, error: cohortError },
   ] = await Promise.all([
     supabase
@@ -104,13 +114,20 @@ export async function loadAdminUserDashboard(
       .order("applied_at", { ascending: false }),
     supabase
       .from("qualifier_attempts")
-      .select("user_id, cohort_id, score, passed, started_at, submitted_at")
+      .select(
+        "id, user_id, cohort_id, score, feedback, passed, started_at, submitted_at",
+      )
       .order("submitted_at", { ascending: false }),
     supabase
-      .from("user_cohort_stage_attempts")
-      .select("user_id, cohort_id, stage_id, passed, submitted_at")
+      .from("sprint_day_tasks")
+      .select("id, cohort_id, day_number, title")
+      .order("day_number", { ascending: true }),
+    supabase
+      .from("sprint_day_submissions")
+      .select(
+        "id, user_id, cohort_id, sprint_day_id, github_url, submitted_at, score, evaluator_notes, reviewed_at",
+      )
       .order("submitted_at", { ascending: false }),
-    supabase.from("cohort_stages").select("id, cohort_id"),
     supabase.from("cohorts").select("id, is_active"),
   ]);
 
@@ -118,19 +135,20 @@ export async function loadAdminUserDashboard(
     usersError ||
     membershipsError ||
     qualifierError ||
-    stageAttemptError ||
-    stageError ||
+    sprintDayError ||
+    sprintSubmissionError ||
     cohortError
   ) {
     throw new Error("Unable to load the admin user dashboard.");
   }
 
-  const totalStageCountByCohort = new Map<string, number>();
-  for (const row of (stageRows ?? []) as DbStageRow[]) {
-    totalStageCountByCohort.set(
-      row.cohort_id,
-      (totalStageCountByCohort.get(row.cohort_id) ?? 0) + 1,
-    );
+  const sprintDaysByCohort = new Map<string, DbSprintDayTaskRow[]>();
+  const sprintDayById = new Map<string, DbSprintDayTaskRow>();
+  for (const row of (sprintDayRows ?? []) as DbSprintDayTaskRow[]) {
+    sprintDayById.set(row.id, row);
+    const current = sprintDaysByCohort.get(row.cohort_id) ?? [];
+    current.push(row);
+    sprintDaysByCohort.set(row.cohort_id, current);
   }
 
   const latestQualifierByMembership = new Map<string, DbQualifierAttemptRow>();
@@ -141,19 +159,35 @@ export async function loadAdminUserDashboard(
     }
   }
 
-  const passedStagesByMembership = new Map<string, Set<string>>();
-  const latestStageActivityByMembership = new Map<string, string>();
-  for (const row of (stageAttemptRows ?? []) as DbStageAttemptRow[]) {
+  const sprintSubmissionCountByMembership = new Map<string, number>();
+  const latestSprintActivityByMembership = new Map<string, string>();
+  for (const row of (sprintSubmissionRows ??
+    []) as DbSprintDaySubmissionRow[]) {
     const key = `${row.user_id}:${row.cohort_id}`;
+    sprintSubmissionCountByMembership.set(
+      key,
+      (sprintSubmissionCountByMembership.get(key) ?? 0) + 1,
+    );
 
-    if (row.passed) {
-      const current = passedStagesByMembership.get(key) ?? new Set<string>();
-      current.add(row.stage_id);
-      passedStagesByMembership.set(key, current);
+    if (!latestSprintActivityByMembership.has(key)) {
+      latestSprintActivityByMembership.set(key, row.submitted_at);
     }
+  }
 
-    if (!latestStageActivityByMembership.has(key)) {
-      latestStageActivityByMembership.set(key, row.submitted_at);
+  const userById = new Map(
+    ((userRows ?? []) as DbAdminUserRow[]).map((row) => [row.id, row]),
+  );
+  const membershipCohortByUserAndCohort = new Map<
+    string,
+    MembershipCohortRow
+  >();
+  for (const row of (membershipRows ?? []) as DbMembershipRow[]) {
+    const cohort = getMembershipCohort(row.cohorts);
+    if (cohort) {
+      membershipCohortByUserAndCohort.set(
+        `${row.user_id}:${row.cohort_id}`,
+        cohort,
+      );
     }
   }
 
@@ -166,8 +200,6 @@ export async function loadAdminUserDashboard(
 
     const key = `${row.user_id}:${row.cohort_id}`;
     const latestQualifier = latestQualifierByMembership.get(key) ?? null;
-    const latestStageActivity =
-      latestStageActivityByMembership.get(key) ?? null;
 
     const membership: AdminUserCohortMembership = {
       cohort,
@@ -182,8 +214,10 @@ export async function loadAdminUserDashboard(
       qualified_at: row.qualified_at,
       enrolled_at: row.enrolled_at,
       completed_at: row.completed_at,
-      stages_passed_count: passedStagesByMembership.get(key)?.size ?? 0,
-      total_stage_count: totalStageCountByCohort.get(row.cohort_id) ?? 0,
+      sprint_days_submitted_count:
+        sprintSubmissionCountByMembership.get(key) ?? 0,
+      total_sprint_day_count:
+        sprintDaysByCohort.get(row.cohort_id)?.length ?? 0,
       latest_activity_at: getLatestTimestamp([
         row.completed_at,
         row.enrolled_at,
@@ -191,7 +225,7 @@ export async function loadAdminUserDashboard(
         row.qualifier_submitted_at,
         row.qualifier_started_at,
         latestQualifier?.submitted_at ?? null,
-        latestStageActivity,
+        latestSprintActivityByMembership.get(key) ?? null,
         row.applied_at,
       ]),
     };
@@ -217,6 +251,85 @@ export async function loadAdminUserDashboard(
 
     return user;
   });
+
+  const assessmentResults: AdminAssessmentResultRow[] = [];
+  for (const row of (qualifierRows ?? []) as DbQualifierAttemptRow[]) {
+    const user = userById.get(row.user_id);
+    const cohort = membershipCohortByUserAndCohort.get(
+      `${row.user_id}:${row.cohort_id}`,
+    );
+
+    if (!user || !cohort) {
+      continue;
+    }
+
+    assessmentResults.push({
+      id: `qualifier:${row.id}`,
+      user_id: row.user_id,
+      cohort_id: row.cohort_id,
+      cohort_slug: cohort.slug,
+      cohort_type: cohort.type,
+      candidate_name: user.name,
+      candidate_email: user.email,
+      candidate_university: user.university,
+      test_type: "qualifier",
+      test_label: "Qualifier",
+      submitted_at: row.submitted_at,
+      score: row.score,
+      status: row.passed ? "passed" : "failed",
+      passed: row.passed,
+      feedback: row.feedback,
+    });
+  }
+
+  const sprintSubmissionReviews: AdminSprintSubmissionReview[] = [];
+  for (const row of (sprintSubmissionRows ??
+    []) as DbSprintDaySubmissionRow[]) {
+    const user = userById.get(row.user_id);
+    const cohort = membershipCohortByUserAndCohort.get(
+      `${row.user_id}:${row.cohort_id}`,
+    );
+    const sprintDay = sprintDayById.get(row.sprint_day_id);
+
+    if (!user || !cohort || !sprintDay) {
+      continue;
+    }
+
+    assessmentResults.push({
+      id: `sprint:${row.id}`,
+      user_id: row.user_id,
+      cohort_id: row.cohort_id,
+      cohort_slug: cohort.slug,
+      cohort_type: cohort.type,
+      candidate_name: user.name,
+      candidate_email: user.email,
+      candidate_university: user.university,
+      test_type: "sprint_day",
+      test_label: `Day ${sprintDay.day_number}: ${sprintDay.title}`,
+      submitted_at: row.submitted_at,
+      score: row.score,
+      status: row.score === null ? "submitted" : "reviewed",
+      passed: null,
+      feedback: row.evaluator_notes,
+    });
+
+    sprintSubmissionReviews.push({
+      submission_id: row.id,
+      sprint_day_id: row.sprint_day_id,
+      cohort_id: row.cohort_id,
+      cohort_slug: cohort.slug,
+      cohort_type: cohort.type,
+      day_number: sprintDay.day_number,
+      task_title: sprintDay.title,
+      candidate_name: user.name,
+      candidate_email: user.email,
+      github_url: row.github_url,
+      submitted_at: row.submitted_at,
+      score: row.score,
+      evaluator_notes: row.evaluator_notes,
+      reviewed_at: row.reviewed_at,
+    });
+  }
 
   const registeredUsers = users.filter((user) => user.cohort_count > 0).length;
   const enrolledUsers = users.filter((user) =>
@@ -244,5 +357,7 @@ export async function loadAdminUserDashboard(
       enrolledUsers,
       completedUsers,
     },
+    assessmentResults,
+    sprintSubmissionReviews,
   };
 }
