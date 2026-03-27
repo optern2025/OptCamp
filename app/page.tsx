@@ -4,6 +4,7 @@ import {
   AlertCircle,
   ChevronRight,
   Clock,
+  MessageCircle,
   ShieldAlert,
   Target,
   Terminal,
@@ -378,6 +379,15 @@ function HomePage() {
                 >
                   Apply Now
                 </GlowButton>
+                <a
+                  href="https://chat.whatsapp.com/ISCBcw1PFTIFqjD0zOTjk4"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-sm font-bold text-cyan-500/70 hover:text-cyan-400 transition-colors"
+                >
+                  <MessageCircle size={16} />
+                  Join WhatsApp Community
+                </a>
               </div>
             </div>
           </header>

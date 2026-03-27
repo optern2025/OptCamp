@@ -7,7 +7,13 @@ import {
   SignUpButton,
   useUser,
 } from "@clerk/nextjs";
-import { ArrowLeft, CheckCircle2, Github, ShieldCheck } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Github,
+  MessageCircle,
+  ShieldCheck,
+} from "lucide-react";
 import Link from "next/link";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { hasClerkPublishableKey } from "@/lib/clerkEnv";
@@ -35,6 +41,13 @@ const blankForm: FormData = {
   github: "",
   availability: false,
   intent: "",
+};
+
+const whatsappLinks: Record<string, string> = {
+  "Full Stack": "https://chat.whatsapp.com/BhOe3bzAxnmGbI0jTJzBGX?mode=gi_t",
+  "AI / ML": "https://chat.whatsapp.com/BhOe3bzAxnmGbI0jTJzBGX?mode=gi_t",
+  "Cyber Security":
+    "https://chat.whatsapp.com/IpQpt6mVNdwEFsrhiT3ygm?mode=gi_t",
 };
 
 function RegistrationPageWithAuth({
@@ -115,6 +128,12 @@ function RegistrationPageWithAuth({
   const activeCohortLabel = useMemo(() => {
     const cohort = cohorts.find((item) => item.id === formData.cohortId);
     return cohort?.type ?? "your selected cohort";
+  }, [cohorts, formData.cohortId]);
+
+  const selectedCohortWhatsappLink = useMemo(() => {
+    const cohort = cohorts.find((item) => item.id === formData.cohortId);
+    if (!cohort) return null;
+    return whatsappLinks[cohort.type] ?? null;
   }, [cohorts, formData.cohortId]);
 
   const persistProfile = async () => {
@@ -442,6 +461,17 @@ function RegistrationPageWithAuth({
               Your cohort application is now live in the dashboard. From there
               you can launch the qualifier and track progressive unlocks.
             </p>
+            {selectedCohortWhatsappLink && (
+              <a
+                href={selectedCohortWhatsappLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-cyan-500 hover:text-cyan-400 transition-colors"
+              >
+                <MessageCircle size={18} />
+                Join Your Cohort WhatsApp Group
+              </a>
+            )}
             <div className="mt-8 flex flex-wrap justify-center gap-3">
               <Link
                 href="/dashboard"
