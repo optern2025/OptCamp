@@ -1,6 +1,6 @@
 import type { WebhookEvent } from "@clerk/nextjs/server";
 import { verifyWebhook } from "@clerk/nextjs/webhooks";
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
 async function handleUserDeleted(event: WebhookEvent) {
@@ -19,7 +19,7 @@ async function handleUserDeleted(event: WebhookEvent) {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const event = await verifyWebhook(request);
 
