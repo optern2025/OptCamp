@@ -18,6 +18,11 @@ interface ExistingEmailProfile {
   clerk_user_id: string;
 }
 
+interface DebugPayload {
+  branch: string;
+  details: Record<string, unknown>;
+}
+
 class ValidationError extends Error {}
 
 function logRegisterProfileEvent(
@@ -25,6 +30,25 @@ function logRegisterProfileEvent(
   details: Record<string, unknown>,
 ) {
   console.error(`[register/profile] ${label}`, details);
+}
+
+function buildErrorResponse(
+  request: NextRequest,
+  status: number,
+  error: string,
+  debugPayload?: DebugPayload,
+) {
+  const includeDebug = request.nextUrl.searchParams.get("debug") === "1";
+
+  return NextResponse.json(
+    includeDebug && debugPayload
+      ? {
+          error,
+          debug: debugPayload,
+        }
+      : { error },
+    { status },
+  );
 }
 
 function requireNonEmptyString(value: unknown, fieldName: string): string {
@@ -207,7 +231,7 @@ export async function POST(request: NextRequest) {
   try {
     const authUser = await getAuthenticatedClerkUser();
     if (!authUser) {
-      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+      return buildErrorResponse(request, 401, "Unauthorized.");
     }
 
     const body = (await request.json()) as RegisterProfileBody;
@@ -220,9 +244,10 @@ export async function POST(request: NextRequest) {
     const github = typeof body.github === "string" ? body.github.trim() : "";
 
     if (body.availability !== true) {
-      return NextResponse.json(
-        { error: "Sprint availability confirmation is required." },
-        { status: 400 },
+      return buildErrorResponse(
+        request,
+        400,
+        "Sprint availability confirmation is required.",
       );
     }
 
@@ -234,9 +259,10 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     if (cohortError || !cohort) {
-      return NextResponse.json(
-        { error: "Selected cohort could not be found." },
-        { status: 400 },
+      return buildErrorResponse(
+        request,
+        400,
+        "Selected cohort could not be found.",
       );
     }
 
@@ -255,16 +281,17 @@ export async function POST(request: NextRequest) {
       );
 
       if (reclaimResult.error) {
-        logRegisterProfileEvent("update reclaim failed", {
+        const details = {
           clerkUserId: authUser.userId,
           email: authUser.email,
           userId,
           error: reclaimResult.error,
+        };
+        logRegisterProfileEvent("update reclaim failed", details);
+        return buildErrorResponse(request, 500, "Unable to save your profile.", {
+          branch: "update reclaim failed",
+          details,
         });
-        return NextResponse.json(
-          { error: "Unable to save your profile." },
-          { status: 500 },
-        );
       }
 
       let { error: updateError } = await supabase
@@ -281,25 +308,37 @@ export async function POST(request: NextRequest) {
         .eq("id", userId);
 
       if (updateError) {
-        console.error("[register/profile] update profile failed", updateError);
-        return NextResponse.json(
-          { error: "Unable to save your profile." },
-          { status: 500 },
-        );
+        const details = {
+          clerkUserId: authUser.userId,
+          email: authUser.email,
+          userId,
+          error: updateError,
+        };
+        logRegisterProfileEvent("update profile failed", details);
+        return buildErrorResponse(request, 500, "Unable to save your profile.", {
+          branch: "update profile failed",
+          details,
+        });
       }
     } else {
       const { data: emailProfiles, error: emailProfilesError } =
         await listProfilesByEmail(supabase, authUser.email);
 
       if (emailProfilesError) {
-        logRegisterProfileEvent("list profiles by email failed", {
+        const details = {
           clerkUserId: authUser.userId,
           email: authUser.email,
           error: emailProfilesError,
-        });
-        return NextResponse.json(
-          { error: "Unable to create your profile." },
-          { status: 500 },
+        };
+        logRegisterProfileEvent("list profiles by email failed", details);
+        return buildErrorResponse(
+          request,
+          500,
+          "Unable to create your profile.",
+          {
+            branch: "list profiles by email failed",
+            details,
+          },
         );
       }
 
@@ -313,17 +352,23 @@ export async function POST(request: NextRequest) {
         );
 
         if (reclaimResult.error) {
-          logRegisterProfileEvent("create reclaim failed", {
+          const details = {
             clerkUserId: authUser.userId,
             email: authUser.email,
             canonicalUserId: canonicalEmailProfile.id,
             duplicateEmailProfileCount: emailProfiles.length,
             duplicateEmailProfileIds: emailProfiles.map((profile) => profile.id),
             error: reclaimResult.error,
-          });
-          return NextResponse.json(
-            { error: "Unable to create your profile." },
-            { status: 500 },
+          };
+          logRegisterProfileEvent("create reclaim failed", details);
+          return buildErrorResponse(
+            request,
+            500,
+            "Unable to create your profile.",
+            {
+              branch: "create reclaim failed",
+              details,
+            },
           );
         }
 
@@ -342,17 +387,23 @@ export async function POST(request: NextRequest) {
           .eq("id", canonicalEmailProfile.id);
 
         if (updateError) {
-          logRegisterProfileEvent("claim profile failed", {
+          const details = {
             clerkUserId: authUser.userId,
             email: authUser.email,
             canonicalUserId: canonicalEmailProfile.id,
             duplicateEmailProfileCount: emailProfiles.length,
             duplicateEmailProfileIds: emailProfiles.map((profile) => profile.id),
             error: updateError,
-          });
-          return NextResponse.json(
-            { error: "Unable to create your profile." },
-            { status: 500 },
+          };
+          logRegisterProfileEvent("claim profile failed", details);
+          return buildErrorResponse(
+            request,
+            500,
+            "Unable to create your profile.",
+            {
+              branch: "claim profile failed",
+              details,
+            },
           );
         }
 
@@ -372,17 +423,23 @@ export async function POST(request: NextRequest) {
             insertedProfile as { id?: string } | null | undefined
           )?.id ?? null;
 
-          logRegisterProfileEvent("create profile failed", {
+          const details = {
             clerkUserId: authUser.userId,
             email: authUser.email,
             duplicateEmailProfileCount: emailProfiles.length,
             duplicateEmailProfileIds: emailProfiles.map((profile) => profile.id),
             insertedProfileId,
             error: insertError,
-          });
-          return NextResponse.json(
-            { error: "Unable to create your profile." },
-            { status: 500 },
+          };
+          logRegisterProfileEvent("create profile failed", details);
+          return buildErrorResponse(
+            request,
+            500,
+            "Unable to create your profile.",
+            {
+              branch: "create profile failed",
+              details,
+            },
           );
         }
 
@@ -391,10 +448,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!userId) {
-      return NextResponse.json(
-        { error: "Unable to resolve your profile." },
-        { status: 500 },
-      );
+      return buildErrorResponse(request, 500, "Unable to resolve your profile.");
     }
 
     const { data: existingLink, error: existingLinkError } = await supabase
@@ -407,9 +461,10 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     if (existingLinkError) {
-      return NextResponse.json(
-        { error: "Unable to check your cohort application." },
-        { status: 500 },
+      return buildErrorResponse(
+        request,
+        500,
+        "Unable to check your cohort application.",
       );
     }
 
@@ -454,24 +509,23 @@ export async function POST(request: NextRequest) {
     );
 
     if (linkError) {
-      return NextResponse.json(
-        { error: "Unable to link your cohort application." },
-        { status: 500 },
+      return buildErrorResponse(
+        request,
+        500,
+        "Unable to link your cohort application.",
       );
     }
 
     return NextResponse.json({ ok: true });
   } catch (error) {
     if (error instanceof ValidationError) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      return buildErrorResponse(request, 400, error.message);
     }
 
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : "Unexpected server error.",
-      },
-      { status: 500 },
+    return buildErrorResponse(
+      request,
+      500,
+      error instanceof Error ? error.message : "Unexpected server error.",
     );
   }
 }

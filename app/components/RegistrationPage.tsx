@@ -137,7 +137,7 @@ function RegistrationPageWithAuth({
   }, [cohorts, formData.cohortId]);
 
   const persistProfile = async () => {
-    const profileResponse = await fetch("/api/register/profile", {
+    const profileResponse = await fetch("/api/register/profile?debug=1", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -152,9 +152,15 @@ function RegistrationPageWithAuth({
       }),
     });
 
-    const profilePayload = (await profileResponse.json()) as { error?: string };
+    const profilePayload = (await profileResponse.json()) as {
+      error?: string;
+      debug?: unknown;
+    };
 
     if (!profileResponse.ok) {
+      if (profilePayload.debug) {
+        console.error("[register/profile][debug]", profilePayload.debug);
+      }
       throw new Error(profilePayload.error ?? "Failed to save your profile.");
     }
   };
