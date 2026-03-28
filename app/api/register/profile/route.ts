@@ -20,6 +20,13 @@ interface ExistingEmailProfile {
 
 class ValidationError extends Error {}
 
+function logRegisterProfileEvent(
+  label: string,
+  details: Record<string, unknown>,
+) {
+  console.error(`[register/profile] ${label}`, details);
+}
+
 function requireNonEmptyString(value: unknown, fieldName: string): string {
   if (typeof value !== "string" || value.trim().length === 0) {
     throw new ValidationError(`${fieldName} is required.`);
@@ -248,6 +255,12 @@ export async function POST(request: NextRequest) {
       );
 
       if (reclaimResult.error) {
+        logRegisterProfileEvent("update reclaim failed", {
+          clerkUserId: authUser.userId,
+          email: authUser.email,
+          userId,
+          error: reclaimResult.error,
+        });
         return NextResponse.json(
           { error: "Unable to save your profile." },
           { status: 500 },
@@ -279,6 +292,11 @@ export async function POST(request: NextRequest) {
         await listProfilesByEmail(supabase, authUser.email);
 
       if (emailProfilesError) {
+        logRegisterProfileEvent("list profiles by email failed", {
+          clerkUserId: authUser.userId,
+          email: authUser.email,
+          error: emailProfilesError,
+        });
         return NextResponse.json(
           { error: "Unable to create your profile." },
           { status: 500 },
@@ -295,6 +313,14 @@ export async function POST(request: NextRequest) {
         );
 
         if (reclaimResult.error) {
+          logRegisterProfileEvent("create reclaim failed", {
+            clerkUserId: authUser.userId,
+            email: authUser.email,
+            canonicalUserId: canonicalEmailProfile.id,
+            duplicateEmailProfileCount: emailProfiles.length,
+            duplicateEmailProfileIds: emailProfiles.map((profile) => profile.id),
+            error: reclaimResult.error,
+          });
           return NextResponse.json(
             { error: "Unable to create your profile." },
             { status: 500 },
@@ -316,7 +342,14 @@ export async function POST(request: NextRequest) {
           .eq("id", canonicalEmailProfile.id);
 
         if (updateError) {
-          console.error("[register/profile] claim profile failed", updateError);
+          logRegisterProfileEvent("claim profile failed", {
+            clerkUserId: authUser.userId,
+            email: authUser.email,
+            canonicalUserId: canonicalEmailProfile.id,
+            duplicateEmailProfileCount: emailProfiles.length,
+            duplicateEmailProfileIds: emailProfiles.map((profile) => profile.id),
+            error: updateError,
+          });
           return NextResponse.json(
             { error: "Unable to create your profile." },
             { status: 500 },
@@ -335,7 +368,14 @@ export async function POST(request: NextRequest) {
           });
 
         if (insertError || !insertedProfile) {
-          console.error("[register/profile] create profile failed", insertError);
+          logRegisterProfileEvent("create profile failed", {
+            clerkUserId: authUser.userId,
+            email: authUser.email,
+            duplicateEmailProfileCount: emailProfiles.length,
+            duplicateEmailProfileIds: emailProfiles.map((profile) => profile.id),
+            insertedProfileId: insertedProfile?.id ?? null,
+            error: insertError,
+          });
           return NextResponse.json(
             { error: "Unable to create your profile." },
             { status: 500 },
