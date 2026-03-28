@@ -64,6 +64,59 @@ async function insertUserProfile(
     .single();
 }
 
+async function getExistingEmailProfile(
+  supabase: ReturnType<typeof getSupabaseAdminClient>,
+  email: string,
+) {
+  const { data, error } = await supabase
+    .from("users")
+    .select("id, clerk_user_id")
+    .eq("email", email)
+    .maybeSingle();
+
+  return {
+    data: (data as ExistingEmailProfile | null) ?? null,
+    error,
+  };
+}
+
+async function reclaimStaleEmailProfile(
+  supabase: ReturnType<typeof getSupabaseAdminClient>,
+  authUser: { userId: string; email: string },
+  currentUserId?: string | null,
+) {
+  const { data: existingEmailProfile, error: existingEmailProfileError } =
+    await getExistingEmailProfile(supabase, authUser.email);
+
+  if (existingEmailProfileError) {
+    return {
+      reclaimed: false,
+      error: existingEmailProfileError,
+    };
+  }
+
+  if (
+    !existingEmailProfile ||
+    existingEmailProfile.clerk_user_id === authUser.userId ||
+    existingEmailProfile.id === currentUserId
+  ) {
+    return {
+      reclaimed: false,
+      error: null,
+    };
+  }
+
+  const { error: staleProfileDeleteError } = await supabase
+    .from("users")
+    .delete()
+    .eq("id", existingEmailProfile.id);
+
+  return {
+    reclaimed: !staleProfileDeleteError,
+    error: staleProfileDeleteError,
+  };
+}
+
 export async function POST(request: NextRequest) {
   try {
     const authUser = await getAuthenticatedClerkUser();
@@ -109,7 +162,7 @@ export async function POST(request: NextRequest) {
     let userId = existingProfile?.id ?? null;
 
     if (userId) {
-      const { error: updateError } = await supabase
+      let { error: updateError } = await supabase
         .from("users")
         .update({
           email: authUser.email,
@@ -122,7 +175,40 @@ export async function POST(request: NextRequest) {
         })
         .eq("id", userId);
 
+      if (updateError && isUniqueViolation(updateError)) {
+        const reclaimResult = await reclaimStaleEmailProfile(
+          supabase,
+          authUser,
+          userId,
+        );
+
+        if (reclaimResult.error) {
+          return NextResponse.json(
+            { error: "Unable to save your profile." },
+            { status: 500 },
+          );
+        }
+
+        if (reclaimResult.reclaimed) {
+          const retryResult = await supabase
+            .from("users")
+            .update({
+              email: authUser.email,
+              name: authUser.name,
+              university,
+              stack,
+              github: github.length > 0 ? github : null,
+              availability: true,
+              intent,
+            })
+            .eq("id", userId);
+
+          updateError = retryResult.error;
+        }
+      }
+
       if (updateError) {
+        console.error("[register/profile] update profile failed", updateError);
         return NextResponse.json(
           { error: "Unable to save your profile." },
           { status: 500 },
@@ -139,36 +225,19 @@ export async function POST(request: NextRequest) {
         });
 
       if (insertError && isUniqueViolation(insertError)) {
-        const { data: existingEmailProfile, error: existingEmailProfileError } =
-          await supabase
-            .from("users")
-            .select("id, clerk_user_id")
-            .eq("email", authUser.email)
-            .maybeSingle();
+        const reclaimResult = await reclaimStaleEmailProfile(
+          supabase,
+          authUser,
+        );
 
-        if (existingEmailProfileError) {
+        if (reclaimResult.error) {
           return NextResponse.json(
             { error: "Unable to create your profile." },
             { status: 500 },
           );
         }
 
-        const staleProfile =
-          existingEmailProfile as ExistingEmailProfile | null;
-
-        if (staleProfile && staleProfile.clerk_user_id !== authUser.userId) {
-          const { error: staleProfileDeleteError } = await supabase
-            .from("users")
-            .delete()
-            .eq("id", staleProfile.id);
-
-          if (staleProfileDeleteError) {
-            return NextResponse.json(
-              { error: "Unable to create your profile." },
-              { status: 500 },
-            );
-          }
-
+        if (reclaimResult.reclaimed) {
           const retryResult = await insertUserProfile(supabase, authUser, {
             university,
             stack,

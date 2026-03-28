@@ -7,6 +7,7 @@ const cohortsMaybeSingle = vi.fn();
 const insertSingle = vi.fn();
 const emailMaybeSingle = vi.fn();
 const deleteEq = vi.fn();
+const updateEq = vi.fn();
 const userCohortsMaybeSingle = vi.fn();
 const upsertUserCohorts = vi.fn();
 
@@ -16,6 +17,10 @@ const insertSelect = vi.fn(() => ({
 
 const usersDelete = vi.fn(() => ({
   eq: deleteEq,
+}));
+
+const usersUpdate = vi.fn(() => ({
+  eq: updateEq,
 }));
 
 const usersSelect = vi.fn((query: string) => {
@@ -47,6 +52,7 @@ const mockSupabase = {
         insert: vi.fn(() => ({
           select: insertSelect,
         })),
+        update: usersUpdate,
         select: usersSelect,
         delete: usersDelete,
       };
@@ -102,6 +108,7 @@ describe("POST /api/register/profile", () => {
     });
     upsertUserCohorts.mockResolvedValue({ error: null });
     deleteEq.mockResolvedValue({ error: null });
+    updateEq.mockResolvedValue({ error: null });
   });
 
   it("reclaims a stale deleted-account row by email and retries the insert", async () => {
@@ -142,6 +149,57 @@ describe("POST /api/register/profile", () => {
     expect(usersDelete).toHaveBeenCalled();
     expect(deleteEq).toHaveBeenCalledWith("id", "user-old");
     expect(insertSingle).toHaveBeenCalledTimes(2);
+    expect(upsertUserCohorts).toHaveBeenCalled();
+  });
+
+  it("reclaims a stale duplicate-email row during profile update and retries the save", async () => {
+    mockGetProfileByClerkUserId.mockResolvedValue({
+      id: "user-current",
+      email: "old@example.com",
+      name: "Candidate",
+      university: "IIT Delhi",
+      stack: "Full Stack",
+      github: null,
+      availability: true,
+      intent: "Build.",
+      created_at: "2026-03-01T00:00:00.000Z",
+      updated_at: "2026-03-01T00:00:00.000Z",
+    });
+
+    updateEq
+      .mockResolvedValueOnce({
+        error: { code: "23505", message: "duplicate key value" },
+      })
+      .mockResolvedValueOnce({
+        error: null,
+      });
+
+    emailMaybeSingle.mockResolvedValue({
+      data: { id: "user-stale", clerk_user_id: "clerk-user-old" },
+      error: null,
+    });
+
+    const { POST } = await import("@/app/api/register/profile/route");
+    const response = await POST(
+      new Request("http://localhost/api/register/profile", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          university: "IIT Delhi",
+          cohortId: "cohort-1",
+          stack: "Full Stack",
+          github: "https://github.com/example",
+          availability: true,
+          intent: "Build.",
+        }),
+      }) as never,
+    );
+
+    expect(response.status).toBe(200);
+    expect(usersUpdate).toHaveBeenCalledTimes(2);
+    expect(deleteEq).toHaveBeenCalledWith("id", "user-stale");
     expect(upsertUserCohorts).toHaveBeenCalled();
   });
 });
