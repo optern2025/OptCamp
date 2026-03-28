@@ -31,6 +31,7 @@ describe("SprintDayPage", () => {
           type: "AI / ML",
         },
         membershipStatus: "enrolled",
+        isFinalSprintDay: false,
         sprintDay: {
           id: "day-1",
           day_number: 1,

@@ -24,7 +24,17 @@ function resolveSprintDay(
 
   const sprintDay =
     membership.sprint_days.find((item) => item.id === sprintDayId) ?? null;
-  return { membership, sprintDay };
+  const lastDayNumber = membership.sprint_days.reduce(
+    (max, item) => Math.max(max, item.day_number),
+    0,
+  );
+
+  return {
+    membership,
+    sprintDay,
+    isFinalSprintDay:
+      sprintDay !== null && sprintDay.day_number === lastDayNumber,
+  };
 }
 
 export async function GET(request: NextRequest) {
@@ -46,7 +56,7 @@ export async function GET(request: NextRequest) {
 
     const supabase = getSupabaseAdminClient();
     const payload = await loadDashboardData(supabase, authUser);
-    const { membership, sprintDay } = resolveSprintDay(
+    const { membership, sprintDay, isFinalSprintDay } = resolveSprintDay(
       payload,
       cohortId,
       sprintDayId,
@@ -70,6 +80,7 @@ export async function GET(request: NextRequest) {
       cohort: membership.cohort,
       membershipStatus: membership.status,
       sprintDay,
+      isFinalSprintDay,
     });
   } catch (error) {
     return NextResponse.json(

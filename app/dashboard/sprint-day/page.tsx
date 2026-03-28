@@ -4,6 +4,7 @@ import { SignedIn, SignedOut, SignInButton, SignUpButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
+import { ConfettiBurst } from "@/app/components/ConfettiBurst";
 import { hasClerkPublishableKey } from "@/lib/clerkEnv";
 import type { Cohort, SprintDayProgress } from "@/lib/types";
 
@@ -11,6 +12,7 @@ interface SprintDayPayload {
   cohort: Cohort;
   membershipStatus: string;
   sprintDay: SprintDayProgress;
+  isFinalSprintDay: boolean;
 }
 
 interface SubmissionResponse {
@@ -30,6 +32,7 @@ function SprintDayPageWithAuth() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   const loadSprintDay = useCallback(async () => {
     if (!cohortId || !sprintDayId) {
@@ -81,6 +84,29 @@ function SprintDayPageWithAuth() {
     loadSprintDay();
   }, [loadSprintDay]);
 
+  useEffect(() => {
+    if (!payload) {
+      return;
+    }
+
+    const shouldCelebrate =
+      payload.isFinalSprintDay &&
+      payload.membershipStatus === "completed" &&
+      payload.sprintDay.submission !== null;
+
+    if (!shouldCelebrate) {
+      setShowConfetti(false);
+      return;
+    }
+
+    setShowConfetti(true);
+    const timeoutId = window.setTimeout(() => {
+      setShowConfetti(false);
+    }, 5200);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [payload]);
+
   const handleSubmit = async () => {
     if (!payload || payload.sprintDay.submission) {
       return;
@@ -123,6 +149,7 @@ function SprintDayPageWithAuth() {
 
   return (
     <main className="min-h-screen bg-[#071018] px-4 py-10 text-white">
+      <ConfettiBurst active={showConfetti} />
       <div className="mx-auto max-w-5xl space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -250,6 +277,12 @@ function SprintDayPageWithAuth() {
                           submissionStatus.submittedAt,
                         ).toLocaleString()}
                       </p>
+                      {payload.isFinalSprintDay &&
+                        payload.membershipStatus === "completed" && (
+                          <p className="mt-3 text-xs font-black uppercase tracking-[0.2em] text-cyan-200">
+                            Final sprint day complete
+                          </p>
+                        )}
                     </div>
                   )}
 
