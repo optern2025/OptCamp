@@ -116,6 +116,7 @@ export async function getProfileByClerkUserId(
     .maybeSingle();
 
   if (error) {
+    logSupabaseQueryError("users lookup failed", error);
     throw new Error("Unable to load your profile.");
   }
 
@@ -164,6 +165,14 @@ function groupSprintSubmissions(
   return submissionsByCohort;
 }
 
+function logSupabaseQueryError(label: string, error: unknown) {
+  if (!error) {
+    return;
+  }
+
+  console.error(`[dashboard] ${label}`, error);
+}
+
 export async function loadDashboardData(
   supabase: SupabaseClient,
   authUser: AuthenticatedUserIdentity,
@@ -180,6 +189,7 @@ export async function loadDashboardData(
     .order("created_at", { ascending: true });
 
   if (cohortsError) {
+    logSupabaseQueryError("cohorts lookup failed", cohortsError);
     throw new Error("Unable to load cohorts.");
   }
 
@@ -239,6 +249,13 @@ export async function loadDashboardData(
     sprintDayError ||
     sprintSubmissionError
   ) {
+    logSupabaseQueryError("user_cohorts lookup failed", membershipsError);
+    logSupabaseQueryError("qualifier_attempts lookup failed", qualifierError);
+    logSupabaseQueryError("sprint_day_tasks lookup failed", sprintDayError);
+    logSupabaseQueryError(
+      "sprint_day_submissions lookup failed",
+      sprintSubmissionError,
+    );
     throw new Error("Unable to load your dashboard progress.");
   }
 

@@ -381,6 +381,7 @@ cp .env.example .env.local
 - `supabase/20260228_clerk_auth_migration.sql`
 - `supabase/20260318_dashboard_progression.sql`
 - `supabase/20260319_admin_content_studio.sql`
+- `supabase/20260327_sprint_day_workflow.sql`
 
 4. Start dev server:
 ```bash

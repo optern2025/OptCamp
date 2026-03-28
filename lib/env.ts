@@ -1,9 +1,10 @@
 function readEnv(name: string): string {
   const value = process.env[name];
-  if (!value || !value.trim()) {
+  const normalized = value?.trim();
+  if (!normalized) {
     throw new Error(`Missing required environment variable: ${name}`);
   }
-  return value;
+  return normalized;
 }
 
 export function getSupabaseUrl(): string {
