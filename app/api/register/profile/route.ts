@@ -368,12 +368,16 @@ export async function POST(request: NextRequest) {
           });
 
         if (insertError || !insertedProfile) {
+          const insertedProfileId = (
+            insertedProfile as { id?: string } | null | undefined
+          )?.id ?? null;
+
           logRegisterProfileEvent("create profile failed", {
             clerkUserId: authUser.userId,
             email: authUser.email,
             duplicateEmailProfileCount: emailProfiles.length,
             duplicateEmailProfileIds: emailProfiles.map((profile) => profile.id),
-            insertedProfileId: insertedProfile?.id ?? null,
+            insertedProfileId,
             error: insertError,
           });
           return NextResponse.json(
