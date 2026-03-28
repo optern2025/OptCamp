@@ -5,9 +5,11 @@ const mockGetProfileByClerkUserId = vi.fn();
 
 const cohortsMaybeSingle = vi.fn();
 const insertSingle = vi.fn();
-const emailMaybeSingle = vi.fn();
+const emailEq = vi.fn();
 const deleteEq = vi.fn();
 const updateEq = vi.fn();
+const userCohortsByUserEq = vi.fn();
+const userCohortsByTargetEq = vi.fn();
 const userCohortsMaybeSingle = vi.fn();
 const upsertUserCohorts = vi.fn();
 
@@ -26,13 +28,36 @@ const usersUpdate = vi.fn(() => ({
 const usersSelect = vi.fn((query: string) => {
   if (query === "id, clerk_user_id") {
     return {
-      eq: vi.fn(() => ({
-        maybeSingle: emailMaybeSingle,
-      })),
+      eq: emailEq,
     };
   }
 
   throw new Error(`Unexpected users select query: ${query}`);
+});
+
+const userCohortsSelect = vi.fn((query: string) => {
+  if (
+    query ===
+    "cohort_id, status, applied_at, qualified_at, enrolled_at, completed_at, qualifier_score, qualifier_feedback, qualifier_started_at, qualifier_submitted_at"
+  ) {
+    return {
+      eq: userCohortsByUserEq,
+    };
+  }
+
+  if (query === "cohort_id") {
+    return {
+      eq: userCohortsByTargetEq,
+    };
+  }
+
+  return {
+    eq: vi.fn(() => ({
+      eq: vi.fn(() => ({
+        maybeSingle: userCohortsMaybeSingle,
+      })),
+    })),
+  };
 });
 
 const mockSupabase = {
@@ -60,13 +85,7 @@ const mockSupabase = {
 
     if (table === "user_cohorts") {
       return {
-        select: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              maybeSingle: userCohortsMaybeSingle,
-            })),
-          })),
-        })),
+        select: userCohortsSelect,
         upsert: upsertUserCohorts,
       };
     }
@@ -106,24 +125,52 @@ describe("POST /api/register/profile", () => {
       data: null,
       error: null,
     });
+    emailEq.mockResolvedValue({
+      data: [],
+      error: null,
+    });
+    userCohortsByUserEq.mockResolvedValue({
+      data: [],
+      error: null,
+    });
+    userCohortsByTargetEq.mockResolvedValue({
+      data: [],
+      error: null,
+    });
     upsertUserCohorts.mockResolvedValue({ error: null });
     deleteEq.mockResolvedValue({ error: null });
     updateEq.mockResolvedValue({ error: null });
   });
 
-  it("reclaims a stale deleted-account row by email and retries the insert", async () => {
-    insertSingle
-      .mockResolvedValueOnce({
-        data: null,
-        error: { code: "23505", message: "duplicate key value" },
-      })
-      .mockResolvedValueOnce({
-        data: { id: "user-new" },
-        error: null,
-      });
+  it("claims an existing email profile and deletes duplicate stale rows before linking the cohort", async () => {
+    emailEq.mockResolvedValue({
+      data: [
+        { id: "user-old", clerk_user_id: "clerk-user-old" },
+        { id: "user-older", clerk_user_id: "clerk-user-older" },
+      ],
+      error: null,
+    });
 
-    emailMaybeSingle.mockResolvedValue({
-      data: { id: "user-old", clerk_user_id: "clerk-user-old" },
+    userCohortsByUserEq.mockResolvedValue({
+      data: [
+        {
+          cohort_id: "cohort-old",
+          status: "applied",
+          applied_at: "2026-03-01T00:00:00.000Z",
+          qualified_at: null,
+          enrolled_at: null,
+          completed_at: null,
+          qualifier_score: null,
+          qualifier_feedback: null,
+          qualifier_started_at: null,
+          qualifier_submitted_at: null,
+        },
+      ],
+      error: null,
+    });
+
+    userCohortsByTargetEq.mockResolvedValue({
+      data: [],
       error: null,
     });
 
@@ -146,13 +193,13 @@ describe("POST /api/register/profile", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(usersDelete).toHaveBeenCalled();
-    expect(deleteEq).toHaveBeenCalledWith("id", "user-old");
-    expect(insertSingle).toHaveBeenCalledTimes(2);
+    expect(insertSingle).not.toHaveBeenCalled();
+    expect(usersUpdate).toHaveBeenCalledTimes(1);
+    expect(deleteEq).toHaveBeenCalledWith("id", "user-older");
     expect(upsertUserCohorts).toHaveBeenCalled();
   });
 
-  it("reclaims a stale duplicate-email row during profile update and retries the save", async () => {
+  it("reclaims stale duplicate-email rows during profile update before saving", async () => {
     mockGetProfileByClerkUserId.mockResolvedValue({
       id: "user-current",
       email: "old@example.com",
@@ -166,16 +213,11 @@ describe("POST /api/register/profile", () => {
       updated_at: "2026-03-01T00:00:00.000Z",
     });
 
-    updateEq
-      .mockResolvedValueOnce({
-        error: { code: "23505", message: "duplicate key value" },
-      })
-      .mockResolvedValueOnce({
-        error: null,
-      });
-
-    emailMaybeSingle.mockResolvedValue({
-      data: { id: "user-stale", clerk_user_id: "clerk-user-old" },
+    emailEq.mockResolvedValue({
+      data: [
+        { id: "user-current", clerk_user_id: "clerk-user-new" },
+        { id: "user-stale", clerk_user_id: "clerk-user-old" },
+      ],
       error: null,
     });
 
@@ -198,7 +240,7 @@ describe("POST /api/register/profile", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(usersUpdate).toHaveBeenCalledTimes(2);
+    expect(usersUpdate).toHaveBeenCalledTimes(1);
     expect(deleteEq).toHaveBeenCalledWith("id", "user-stale");
     expect(upsertUserCohorts).toHaveBeenCalled();
   });

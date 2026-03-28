@@ -28,15 +28,6 @@ function requireNonEmptyString(value: unknown, fieldName: string): string {
   return value.trim();
 }
 
-function isUniqueViolation(error: unknown): error is { code?: string } {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code?: string }).code === "23505"
-  );
-}
-
 async function insertUserProfile(
   supabase: ReturnType<typeof getSupabaseAdminClient>,
   authUser: { userId: string; email: string; name: string },
@@ -64,56 +55,144 @@ async function insertUserProfile(
     .single();
 }
 
-async function getExistingEmailProfile(
+interface ExistingUserCohortLink {
+  cohort_id: string;
+  status: UserCohortStatus;
+  applied_at: string;
+  qualified_at: string | null;
+  enrolled_at: string | null;
+  completed_at: string | null;
+  qualifier_score: number | null;
+  qualifier_feedback: string | null;
+  qualifier_started_at: string | null;
+  qualifier_submitted_at: string | null;
+}
+
+async function listProfilesByEmail(
   supabase: ReturnType<typeof getSupabaseAdminClient>,
   email: string,
 ) {
   const { data, error } = await supabase
     .from("users")
     .select("id, clerk_user_id")
-    .eq("email", email)
-    .maybeSingle();
+    .eq("email", email);
 
   return {
-    data: (data as ExistingEmailProfile | null) ?? null,
+    data: (data as ExistingEmailProfile[] | null) ?? [],
     error,
   };
 }
 
-async function reclaimStaleEmailProfile(
+async function copyMissingCohortLinks(
+  supabase: ReturnType<typeof getSupabaseAdminClient>,
+  sourceUserId: string,
+  targetUserId: string,
+) {
+  const { data: sourceLinks, error: sourceLinksError } = await supabase
+    .from("user_cohorts")
+    .select(
+      "cohort_id, status, applied_at, qualified_at, enrolled_at, completed_at, qualifier_score, qualifier_feedback, qualifier_started_at, qualifier_submitted_at",
+    )
+    .eq("user_id", sourceUserId);
+
+  if (sourceLinksError) {
+    return sourceLinksError;
+  }
+
+  const staleLinks = (sourceLinks as ExistingUserCohortLink[] | null) ?? [];
+
+  if (staleLinks.length === 0) {
+    return null;
+  }
+
+  const { data: targetLinks, error: targetLinksError } = await supabase
+    .from("user_cohorts")
+    .select("cohort_id")
+    .eq("user_id", targetUserId);
+
+  if (targetLinksError) {
+    return targetLinksError;
+  }
+
+  const targetCohortIds = new Set(
+    ((targetLinks as Array<{ cohort_id: string }> | null) ?? []).map(
+      (link) => link.cohort_id,
+    ),
+  );
+
+  const linksToCopy = staleLinks
+    .filter((link) => !targetCohortIds.has(link.cohort_id))
+    .map((link) => ({
+      user_id: targetUserId,
+      cohort_id: link.cohort_id,
+      status: link.status,
+      applied_at: link.applied_at,
+      qualified_at: link.qualified_at,
+      enrolled_at: link.enrolled_at,
+      completed_at: link.completed_at,
+      qualifier_score: link.qualifier_score,
+      qualifier_feedback: link.qualifier_feedback,
+      qualifier_started_at: link.qualifier_started_at,
+      qualifier_submitted_at: link.qualifier_submitted_at,
+    }));
+
+  if (linksToCopy.length === 0) {
+    return null;
+  }
+
+  const { error: upsertError } = await supabase
+    .from("user_cohorts")
+    .upsert(linksToCopy, { onConflict: "user_id,cohort_id" });
+
+  return upsertError;
+}
+
+async function reclaimStaleEmailProfiles(
   supabase: ReturnType<typeof getSupabaseAdminClient>,
   authUser: { userId: string; email: string },
-  currentUserId?: string | null,
+  canonicalUserId: string,
 ) {
-  const { data: existingEmailProfile, error: existingEmailProfileError } =
-    await getExistingEmailProfile(supabase, authUser.email);
+  const { data: emailProfiles, error: emailProfilesError } =
+    await listProfilesByEmail(supabase, authUser.email);
 
-  if (existingEmailProfileError) {
+  if (emailProfilesError) {
     return {
-      reclaimed: false,
-      error: existingEmailProfileError,
+      error: emailProfilesError,
     };
   }
 
-  if (
-    !existingEmailProfile ||
-    existingEmailProfile.clerk_user_id === authUser.userId ||
-    existingEmailProfile.id === currentUserId
-  ) {
-    return {
-      reclaimed: false,
-      error: null,
-    };
-  }
+  const staleProfiles = emailProfiles.filter(
+    (profile) =>
+      profile.id !== canonicalUserId && profile.clerk_user_id !== authUser.userId,
+  );
 
-  const { error: staleProfileDeleteError } = await supabase
-    .from("users")
-    .delete()
-    .eq("id", existingEmailProfile.id);
+  for (const staleProfile of staleProfiles) {
+    const membershipCopyError = await copyMissingCohortLinks(
+      supabase,
+      staleProfile.id,
+      canonicalUserId,
+    );
+
+    if (membershipCopyError) {
+      return {
+        error: membershipCopyError,
+      };
+    }
+
+    const { error: staleProfileDeleteError } = await supabase
+      .from("users")
+      .delete()
+      .eq("id", staleProfile.id);
+
+    if (staleProfileDeleteError) {
+      return {
+        error: staleProfileDeleteError,
+      };
+    }
+  }
 
   return {
-    reclaimed: !staleProfileDeleteError,
-    error: staleProfileDeleteError,
+    error: null,
   };
 }
 
@@ -162,6 +241,19 @@ export async function POST(request: NextRequest) {
     let userId = existingProfile?.id ?? null;
 
     if (userId) {
+      const reclaimResult = await reclaimStaleEmailProfiles(
+        supabase,
+        authUser,
+        userId,
+      );
+
+      if (reclaimResult.error) {
+        return NextResponse.json(
+          { error: "Unable to save your profile." },
+          { status: 500 },
+        );
+      }
+
       let { error: updateError } = await supabase
         .from("users")
         .update({
@@ -175,38 +267,6 @@ export async function POST(request: NextRequest) {
         })
         .eq("id", userId);
 
-      if (updateError && isUniqueViolation(updateError)) {
-        const reclaimResult = await reclaimStaleEmailProfile(
-          supabase,
-          authUser,
-          userId,
-        );
-
-        if (reclaimResult.error) {
-          return NextResponse.json(
-            { error: "Unable to save your profile." },
-            { status: 500 },
-          );
-        }
-
-        if (reclaimResult.reclaimed) {
-          const retryResult = await supabase
-            .from("users")
-            .update({
-              email: authUser.email,
-              name: authUser.name,
-              university,
-              stack,
-              github: github.length > 0 ? github : null,
-              availability: true,
-              intent,
-            })
-            .eq("id", userId);
-
-          updateError = retryResult.error;
-        }
-      }
-
       if (updateError) {
         console.error("[register/profile] update profile failed", updateError);
         return NextResponse.json(
@@ -215,19 +275,23 @@ export async function POST(request: NextRequest) {
         );
       }
     } else {
-      let { data: insertedProfile, error: insertError } =
-        await insertUserProfile(supabase, authUser, {
-          university,
-          stack,
-          github: github.length > 0 ? github : null,
-          availability: true,
-          intent,
-        });
+      const { data: emailProfiles, error: emailProfilesError } =
+        await listProfilesByEmail(supabase, authUser.email);
 
-      if (insertError && isUniqueViolation(insertError)) {
-        const reclaimResult = await reclaimStaleEmailProfile(
+      if (emailProfilesError) {
+        return NextResponse.json(
+          { error: "Unable to create your profile." },
+          { status: 500 },
+        );
+      }
+
+      const canonicalEmailProfile = emailProfiles[0] ?? null;
+
+      if (canonicalEmailProfile) {
+        const reclaimResult = await reclaimStaleEmailProfiles(
           supabase,
           authUser,
+          canonicalEmailProfile.id,
         );
 
         if (reclaimResult.error) {
@@ -237,8 +301,32 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        if (reclaimResult.reclaimed) {
-          const retryResult = await insertUserProfile(supabase, authUser, {
+        const { error: updateError } = await supabase
+          .from("users")
+          .update({
+            clerk_user_id: authUser.userId,
+            email: authUser.email,
+            name: authUser.name,
+            university,
+            stack,
+            github: github.length > 0 ? github : null,
+            availability: true,
+            intent,
+          })
+          .eq("id", canonicalEmailProfile.id);
+
+        if (updateError) {
+          console.error("[register/profile] claim profile failed", updateError);
+          return NextResponse.json(
+            { error: "Unable to create your profile." },
+            { status: 500 },
+          );
+        }
+
+        userId = canonicalEmailProfile.id;
+      } else {
+        const { data: insertedProfile, error: insertError } =
+          await insertUserProfile(supabase, authUser, {
             university,
             stack,
             github: github.length > 0 ? github : null,
@@ -246,20 +334,16 @@ export async function POST(request: NextRequest) {
             intent,
           });
 
-          insertedProfile = retryResult.data;
-          insertError = retryResult.error;
+        if (insertError || !insertedProfile) {
+          console.error("[register/profile] create profile failed", insertError);
+          return NextResponse.json(
+            { error: "Unable to create your profile." },
+            { status: 500 },
+          );
         }
-      }
 
-      if (insertError || !insertedProfile) {
-        console.error("[register/profile] create profile failed", insertError);
-        return NextResponse.json(
-          { error: "Unable to create your profile." },
-          { status: 500 },
-        );
+        userId = insertedProfile.id;
       }
-
-      userId = insertedProfile.id;
     }
 
     if (!userId) {
