@@ -7,10 +7,15 @@ import {
   SignUpButton,
   useUser,
 } from "@clerk/nextjs";
-import { FileUp, Plus, Save, Trash2 } from "lucide-react";
+import { FileUp, Github, Plus, Save, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { canAccessAdmin } from "@/lib/adminAccess";
 import { hasClerkPublishableKey } from "@/lib/clerkEnv";
+import {
+  DEFAULT_COHORT_TIMEZONE,
+  getSprintDayCountForCohort,
+  validateCohortSchedule,
+} from "@/lib/cohortSchedule";
 import {
   type AdminAssessmentResultFilters,
   filterAndSortAssessmentResults,
@@ -21,6 +26,7 @@ import type {
   AdminUserDashboardPayload,
   AssessmentQuestion,
   AssessmentQuestionType,
+  Cohort,
   CohortContentBundle,
   DebugQuestion,
   MultipleChoiceQuestion,
@@ -111,6 +117,10 @@ function createEmptyBundle(cohortId: string): CohortContentBundle {
   };
 }
 
+function cloneCohort(cohort: Cohort): Cohort {
+  return structuredClone(cohort);
+}
+
 function ensureQualifier(
   bundle: CohortContentBundle,
   cohortId: string,
@@ -168,6 +178,38 @@ function SummaryCard({
       <p className="mt-3 text-3xl font-black tracking-tight text-white">
         {value}
       </p>
+    </div>
+  );
+}
+
+function GitHubLink({
+  href,
+  label,
+  className = "",
+}: {
+  href: string;
+  label?: string;
+  className?: string;
+}) {
+  return (
+    <div className={`flex items-start gap-2 ${className}`.trim()}>
+      <a
+        href={href}
+        target="_blank"
+        rel="noreferrer"
+        aria-label="Open GitHub link"
+        className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-cyan-200 transition-colors hover:border-cyan-300/40 hover:bg-cyan-300/10 hover:text-cyan-100"
+      >
+        <Github size={14} />
+      </a>
+      <a
+        href={href}
+        target="_blank"
+        rel="noreferrer"
+        className="min-w-0 break-all text-sm text-cyan-200 underline decoration-cyan-400/40 underline-offset-4"
+      >
+        {label ?? href}
+      </a>
     </div>
   );
 }
@@ -619,14 +661,7 @@ function ReviewEditor({
         </p>
       </div>
 
-      <a
-        href={review.github_url}
-        target="_blank"
-        rel="noreferrer"
-        className="mt-4 block break-all text-sm text-cyan-200 underline decoration-cyan-400/40 underline-offset-4"
-      >
-        {review.github_url}
-      </a>
+      <GitHubLink href={review.github_url} className="mt-4" />
 
       <div className="mt-5 grid gap-4 md:grid-cols-[140px_minmax(0,1fr)_auto]">
         <Field label="Score">
@@ -681,6 +716,7 @@ function AdminPageContent() {
     useState<AdminUserDashboardPayload | null>(null);
   const [selectedCohortId, setSelectedCohortId] = useState("");
   const [drafts, setDrafts] = useState<Record<string, CohortContentBundle>>({});
+  const [cohortDrafts, setCohortDrafts] = useState<Record<string, Cohort>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -728,6 +764,11 @@ function AdminPageContent() {
             cohortId,
             cloneBundle(bundle),
           ]),
+        ),
+      );
+      setCohortDrafts(
+        Object.fromEntries(
+          data.cohorts.map((cohort) => [cohort.id, cloneCohort(cohort)]),
         ),
       );
       setSelectedCohortId((current) => current || data.cohorts[0]?.id || "");
@@ -789,6 +830,14 @@ function AdminPageContent() {
     [payload, selectedCohortId],
   );
 
+  const selectedCohortDraft = useMemo(() => {
+    if (!selectedCohort) {
+      return null;
+    }
+
+    return cohortDrafts[selectedCohort.id] ?? cloneCohort(selectedCohort);
+  }, [cohortDrafts, selectedCohort]);
+
   const selectedBundle = useMemo(() => {
     if (!selectedCohortId) {
       return null;
@@ -814,6 +863,34 @@ function AdminPageContent() {
       (review) => !selectedCohortId || review.cohort_id === selectedCohortId,
     );
   }, [selectedCohortId, userDashboard]);
+
+  const requiredSprintDayCount = useMemo(() => {
+    if (!selectedCohortDraft) {
+      return 0;
+    }
+
+    return getSprintDayCountForCohort(selectedCohortDraft);
+  }, [selectedCohortDraft]);
+
+  const scheduleValidationErrors = useMemo(() => {
+    if (!selectedCohortDraft || !selectedBundle) {
+      return [];
+    }
+
+    return validateCohortSchedule(
+      {
+        application_open_date: selectedCohortDraft.application_open_date,
+        application_close_date: selectedCohortDraft.application_close_date,
+        qualifier_open_date: selectedCohortDraft.qualifier_open_date,
+        qualifier_close_date: selectedCohortDraft.qualifier_close_date,
+        sprint_start_date: selectedCohortDraft.sprint_start_date,
+        sprint_end_date: selectedCohortDraft.sprint_end_date,
+        schedule_timezone:
+          selectedCohortDraft.schedule_timezone || DEFAULT_COHORT_TIMEZONE,
+      },
+      selectedBundle.sprintDays.length,
+    );
+  }, [selectedBundle, selectedCohortDraft]);
 
   const filteredResults = useMemo(() => {
     if (!userDashboard) {
@@ -843,8 +920,34 @@ function AdminPageContent() {
     });
   };
 
+  const updateSelectedCohortDraft = (updater: (cohort: Cohort) => Cohort) => {
+    if (!selectedCohortId || !selectedCohort) {
+      return;
+    }
+
+    setCohortDrafts((current) => {
+      const existing = current[selectedCohortId] ?? cloneCohort(selectedCohort);
+      return {
+        ...current,
+        [selectedCohortId]: updater(cloneCohort(existing)),
+      };
+    });
+  };
+
   const saveContent = async () => {
-    if (!selectedCohortId || !selectedBundle || !selectedQualifier) {
+    if (
+      !selectedCohortId ||
+      !selectedBundle ||
+      !selectedQualifier ||
+      !selectedCohortDraft
+    ) {
+      return;
+    }
+
+    if (scheduleValidationErrors.length > 0) {
+      setErrorMessage(
+        scheduleValidationErrors[0] ?? "Invalid cohort schedule.",
+      );
       return;
     }
 
@@ -860,6 +963,15 @@ function AdminPageContent() {
         },
         body: JSON.stringify({
           cohortId: selectedCohortId,
+          cohort: {
+            application_open_date: selectedCohortDraft.application_open_date,
+            application_close_date: selectedCohortDraft.application_close_date,
+            qualifier_open_date: selectedCohortDraft.qualifier_open_date,
+            qualifier_close_date: selectedCohortDraft.qualifier_close_date,
+            sprint_start_date: selectedCohortDraft.sprint_start_date,
+            sprint_end_date: selectedCohortDraft.sprint_end_date,
+            schedule_timezone: selectedCohortDraft.schedule_timezone,
+          },
           qualifier: selectedQualifier,
           sprintDays: selectedBundle.sprintDays,
         }),
@@ -881,6 +993,11 @@ function AdminPageContent() {
             cohortId,
             cloneBundle(bundle),
           ]),
+        ),
+      );
+      setCohortDrafts(
+        Object.fromEntries(
+          data.cohorts.map((cohort) => [cohort.id, cloneCohort(cohort)]),
         ),
       );
       setSuccessMessage("Cohort content saved.");
@@ -1234,6 +1351,37 @@ function AdminPageContent() {
                                             }
                                             /{membership.total_sprint_day_count}
                                           </p>
+                                          <div className="mt-3 space-y-2">
+                                            <p className="font-black uppercase tracking-[0.14em] text-white/45">
+                                              GitHub uploads
+                                            </p>
+                                            {membership.sprint_submissions
+                                              .length === 0 ? (
+                                              <p className="text-white/45">—</p>
+                                            ) : (
+                                              membership.sprint_submissions.map(
+                                                (submission) => (
+                                                  <div
+                                                    key={
+                                                      submission.submission_id
+                                                    }
+                                                  >
+                                                    <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/45">
+                                                      Day{" "}
+                                                      {submission.day_number}:{" "}
+                                                      {submission.task_title}
+                                                    </p>
+                                                    <GitHubLink
+                                                      href={
+                                                        submission.github_url
+                                                      }
+                                                      className="mt-1"
+                                                    />
+                                                  </div>
+                                                ),
+                                              )
+                                            )}
+                                          </div>
                                           <p className="mt-1">
                                             Qualifier submitted:{" "}
                                             {formatAdminDateTime(
@@ -1410,6 +1558,7 @@ function AdminPageContent() {
                             <th className="px-4 py-4">Candidate</th>
                             <th className="px-4 py-4">Cohort</th>
                             <th className="px-4 py-4">Test</th>
+                            <th className="px-4 py-4">GitHub</th>
                             <th className="px-4 py-4">Status</th>
                             <th className="px-4 py-4">Score</th>
                             <th className="px-4 py-4">Submitted</th>
@@ -1439,6 +1588,13 @@ function AdminPageContent() {
                               </td>
                               <td className="px-4 py-4 text-white/75">
                                 {row.test_label}
+                              </td>
+                              <td className="px-4 py-4">
+                                {row.github_url ? (
+                                  <GitHubLink href={row.github_url} />
+                                ) : (
+                                  <span className="text-white/35">—</span>
+                                )}
                               </td>
                               <td className="px-4 py-4">
                                 <span className="rounded-full border border-white/10 px-2 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-white/70">
@@ -1546,6 +1702,135 @@ function AdminPageContent() {
                           </button>
                         </div>
                       </section>
+
+                      {selectedCohortDraft && (
+                        <section className="rounded-[28px] border border-white/10 bg-black/20 p-6">
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300/80">
+                                Timeline Control
+                              </p>
+                              <h3 className="mt-2 text-2xl font-black uppercase tracking-tight">
+                                Cohort Schedule and Unlock Rules
+                              </h3>
+                            </div>
+                            <div className="rounded-full border border-white/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.22em] text-white/55">
+                              {selectedBundle?.sprintDays.length ?? 0}{" "}
+                              configured day
+                              {(selectedBundle?.sprintDays.length ?? 0) === 1
+                                ? ""
+                                : "s"}{" "}
+                              · {requiredSprintDayCount} required
+                            </div>
+                          </div>
+
+                          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                            <Field label="Application opens">
+                              <input
+                                type="date"
+                                value={
+                                  selectedCohortDraft.application_open_date
+                                }
+                                onChange={(event) =>
+                                  updateSelectedCohortDraft((cohort) => ({
+                                    ...cohort,
+                                    application_open_date: event.target.value,
+                                  }))
+                                }
+                                className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"
+                              />
+                            </Field>
+                            <Field label="Application closes">
+                              <input
+                                type="date"
+                                value={
+                                  selectedCohortDraft.application_close_date
+                                }
+                                onChange={(event) =>
+                                  updateSelectedCohortDraft((cohort) => ({
+                                    ...cohort,
+                                    application_close_date: event.target.value,
+                                  }))
+                                }
+                                className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"
+                              />
+                            </Field>
+                            <Field label="Schedule timezone">
+                              <input
+                                value={selectedCohortDraft.schedule_timezone}
+                                onChange={(event) =>
+                                  updateSelectedCohortDraft((cohort) => ({
+                                    ...cohort,
+                                    schedule_timezone:
+                                      event.target.value ||
+                                      DEFAULT_COHORT_TIMEZONE,
+                                  }))
+                                }
+                                className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"
+                              />
+                            </Field>
+                            <Field label="Qualifier opens">
+                              <input
+                                type="date"
+                                value={selectedCohortDraft.qualifier_open_date}
+                                onChange={(event) =>
+                                  updateSelectedCohortDraft((cohort) => ({
+                                    ...cohort,
+                                    qualifier_open_date: event.target.value,
+                                  }))
+                                }
+                                className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"
+                              />
+                            </Field>
+                            <Field label="Qualifier closes">
+                              <input
+                                type="date"
+                                value={selectedCohortDraft.qualifier_close_date}
+                                onChange={(event) =>
+                                  updateSelectedCohortDraft((cohort) => ({
+                                    ...cohort,
+                                    qualifier_close_date: event.target.value,
+                                  }))
+                                }
+                                className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"
+                              />
+                            </Field>
+                            <div />
+                            <Field label="Sprint starts">
+                              <input
+                                type="date"
+                                value={selectedCohortDraft.sprint_start_date}
+                                onChange={(event) =>
+                                  updateSelectedCohortDraft((cohort) => ({
+                                    ...cohort,
+                                    sprint_start_date: event.target.value,
+                                  }))
+                                }
+                                className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"
+                              />
+                            </Field>
+                            <Field label="Sprint ends">
+                              <input
+                                type="date"
+                                value={selectedCohortDraft.sprint_end_date}
+                                onChange={(event) =>
+                                  updateSelectedCohortDraft((cohort) => ({
+                                    ...cohort,
+                                    sprint_end_date: event.target.value,
+                                  }))
+                                }
+                                className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"
+                              />
+                            </Field>
+                          </div>
+
+                          {scheduleValidationErrors.length > 0 && (
+                            <p className="mt-5 text-xs font-black uppercase tracking-[0.18em] text-red-200">
+                              {scheduleValidationErrors[0]}
+                            </p>
+                          )}
+                        </section>
+                      )}
 
                       <section className="rounded-[28px] border border-white/10 bg-black/20 p-6">
                         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1688,13 +1973,52 @@ function AdminPageContent() {
                       </section>
 
                       <section className="rounded-[28px] border border-white/10 bg-black/20 p-6">
-                        <div>
-                          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300/80">
-                            Sprint Days
-                          </p>
-                          <h3 className="mt-2 text-2xl font-black uppercase tracking-tight">
-                            Day-by-day GitHub tasks
-                          </h3>
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300/80">
+                              Sprint Days
+                            </p>
+                            <h3 className="mt-2 text-2xl font-black uppercase tracking-tight">
+                              Day-by-day GitHub tasks
+                            </h3>
+                          </div>
+                          <div className="flex flex-wrap gap-3">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                updateSelectedBundle((bundle) => ({
+                                  ...bundle,
+                                  sprintDays: [
+                                    ...bundle.sprintDays,
+                                    createEmptySprintDay(
+                                      selectedCohortId,
+                                      bundle.sprintDays.length + 1,
+                                    ),
+                                  ],
+                                }))
+                              }
+                              className="inline-flex items-center gap-2 rounded-full border border-cyan-300/30 px-4 py-2 text-[10px] font-black uppercase tracking-[0.24em] text-cyan-100 transition-colors hover:bg-cyan-300/10"
+                            >
+                              <Plus size={14} />
+                              Add day
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                updateSelectedBundle((bundle) => ({
+                                  ...bundle,
+                                  sprintDays: bundle.sprintDays.slice(0, -1),
+                                }))
+                              }
+                              disabled={
+                                (selectedBundle?.sprintDays.length ?? 0) <= 1
+                              }
+                              className="inline-flex items-center gap-2 rounded-full border border-red-400/30 px-4 py-2 text-[10px] font-black uppercase tracking-[0.24em] text-red-200 transition-colors hover:bg-red-400/10 disabled:opacity-50"
+                            >
+                              <Trash2 size={14} />
+                              Remove last day
+                            </button>
+                          </div>
                         </div>
 
                         <div className="mt-6 space-y-6">

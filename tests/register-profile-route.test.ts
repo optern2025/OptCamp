@@ -118,7 +118,16 @@ describe("POST /api/register/profile", () => {
     });
     mockGetProfileByClerkUserId.mockResolvedValue(null);
     cohortsMaybeSingle.mockResolvedValue({
-      data: { id: "cohort-1" },
+      data: {
+        id: "cohort-1",
+        application_open_date: "2026-03-26",
+        application_close_date: "2026-03-29",
+        qualifier_open_date: "2026-03-30",
+        qualifier_close_date: "2026-03-31",
+        sprint_start_date: "2026-04-01",
+        sprint_end_date: "2026-04-04",
+        schedule_timezone: "Asia/Kolkata",
+      },
       error: null,
     });
     userCohortsMaybeSingle.mockResolvedValue({

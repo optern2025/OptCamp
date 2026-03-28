@@ -3,8 +3,16 @@ export interface Cohort {
   slug: string;
   type: string;
   apply_window: string;
+  qualifier_window: string;
   sprint_window: string;
   apply_by: string;
+  application_open_date: string;
+  application_close_date: string;
+  qualifier_open_date: string;
+  qualifier_close_date: string;
+  sprint_start_date: string;
+  sprint_end_date: string;
+  schedule_timezone: string;
   qualifier_test_url: string | null;
   is_active: boolean;
   created_at: string;
@@ -136,6 +144,9 @@ export interface SprintDaySubmission {
 export interface SprintDayProgress extends SprintDayTask {
   status: "locked" | "unlocked" | "submitted" | "reviewed";
   submission: SprintDaySubmission | null;
+  scheduled_date: string | null;
+  availability: "upcoming" | "open" | "closed";
+  access_message: string | null;
 }
 
 export interface QualifierTemplate {
@@ -199,6 +210,7 @@ export interface AdminUserCohortMembership {
   sprint_days_submitted_count: number;
   total_sprint_day_count: number;
   latest_activity_at: string | null;
+  sprint_submissions: AdminSprintSubmissionLink[];
 }
 
 export interface AdminAssessmentResultRow {
@@ -217,6 +229,16 @@ export interface AdminAssessmentResultRow {
   status: "submitted" | "reviewed" | "passed" | "failed";
   passed: boolean | null;
   feedback: string | null;
+  github_url?: string | null;
+}
+
+export interface AdminSprintSubmissionLink {
+  submission_id: string;
+  sprint_day_id: string;
+  day_number: number;
+  task_title: string;
+  github_url: string;
+  submitted_at: string;
 }
 
 export interface AdminSprintSubmissionReview {

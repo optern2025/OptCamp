@@ -1,5 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedClerkUser } from "@/lib/clerkServer";
+import {
+  formatDateRangeLabel,
+  getCohortTimelineState,
+} from "@/lib/cohortSchedule";
 import { getProfileByClerkUserId } from "@/lib/dashboard";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import type { UserCohortStatus } from "@/lib/types";
@@ -38,7 +42,9 @@ function buildErrorResponse(
   error: string,
   debugPayload?: DebugPayload,
 ) {
-  const includeDebug = request.nextUrl.searchParams.get("debug") === "1";
+  const includeDebug =
+    request.nextUrl?.searchParams.get("debug") === "1" ||
+    new URL(request.url).searchParams.get("debug") === "1";
 
   return NextResponse.json(
     includeDebug && debugPayload
@@ -194,7 +200,8 @@ async function reclaimStaleEmailProfiles(
 
   const staleProfiles = emailProfiles.filter(
     (profile) =>
-      profile.id !== canonicalUserId && profile.clerk_user_id !== authUser.userId,
+      profile.id !== canonicalUserId &&
+      profile.clerk_user_id !== authUser.userId,
   );
 
   for (const staleProfile of staleProfiles) {
@@ -254,7 +261,9 @@ export async function POST(request: NextRequest) {
     const supabase = getSupabaseAdminClient();
     const { data: cohort, error: cohortError } = await supabase
       .from("cohorts")
-      .select("id")
+      .select(
+        "id, application_open_date, application_close_date, qualifier_open_date, qualifier_close_date, sprint_start_date, sprint_end_date, schedule_timezone",
+      )
       .eq("id", cohortId)
       .maybeSingle();
 
@@ -263,6 +272,18 @@ export async function POST(request: NextRequest) {
         request,
         400,
         "Selected cohort could not be found.",
+      );
+    }
+
+    const timeline = getCohortTimelineState(cohort);
+    if (!timeline.isApplicationOpen) {
+      return buildErrorResponse(
+        request,
+        409,
+        `Applications are only open from ${formatDateRangeLabel(
+          cohort.application_open_date,
+          cohort.application_close_date,
+        )}.`,
       );
     }
 
@@ -288,13 +309,18 @@ export async function POST(request: NextRequest) {
           error: reclaimResult.error,
         };
         logRegisterProfileEvent("update reclaim failed", details);
-        return buildErrorResponse(request, 500, "Unable to save your profile.", {
-          branch: "update reclaim failed",
-          details,
-        });
+        return buildErrorResponse(
+          request,
+          500,
+          "Unable to save your profile.",
+          {
+            branch: "update reclaim failed",
+            details,
+          },
+        );
       }
 
-      let { error: updateError } = await supabase
+      const { error: updateError } = await supabase
         .from("users")
         .update({
           email: authUser.email,
@@ -315,10 +341,15 @@ export async function POST(request: NextRequest) {
           error: updateError,
         };
         logRegisterProfileEvent("update profile failed", details);
-        return buildErrorResponse(request, 500, "Unable to save your profile.", {
-          branch: "update profile failed",
-          details,
-        });
+        return buildErrorResponse(
+          request,
+          500,
+          "Unable to save your profile.",
+          {
+            branch: "update profile failed",
+            details,
+          },
+        );
       }
     } else {
       const { data: emailProfiles, error: emailProfilesError } =
@@ -357,7 +388,9 @@ export async function POST(request: NextRequest) {
             email: authUser.email,
             canonicalUserId: canonicalEmailProfile.id,
             duplicateEmailProfileCount: emailProfiles.length,
-            duplicateEmailProfileIds: emailProfiles.map((profile) => profile.id),
+            duplicateEmailProfileIds: emailProfiles.map(
+              (profile) => profile.id,
+            ),
             error: reclaimResult.error,
           };
           logRegisterProfileEvent("create reclaim failed", details);
@@ -392,7 +425,9 @@ export async function POST(request: NextRequest) {
             email: authUser.email,
             canonicalUserId: canonicalEmailProfile.id,
             duplicateEmailProfileCount: emailProfiles.length,
-            duplicateEmailProfileIds: emailProfiles.map((profile) => profile.id),
+            duplicateEmailProfileIds: emailProfiles.map(
+              (profile) => profile.id,
+            ),
             error: updateError,
           };
           logRegisterProfileEvent("claim profile failed", details);
@@ -419,15 +454,16 @@ export async function POST(request: NextRequest) {
           });
 
         if (insertError || !insertedProfile) {
-          const insertedProfileId = (
-            insertedProfile as { id?: string } | null | undefined
-          )?.id ?? null;
+          const insertedProfileId =
+            (insertedProfile as { id?: string } | null | undefined)?.id ?? null;
 
           const details = {
             clerkUserId: authUser.userId,
             email: authUser.email,
             duplicateEmailProfileCount: emailProfiles.length,
-            duplicateEmailProfileIds: emailProfiles.map((profile) => profile.id),
+            duplicateEmailProfileIds: emailProfiles.map(
+              (profile) => profile.id,
+            ),
             insertedProfileId,
             error: insertError,
           };
@@ -448,7 +484,11 @@ export async function POST(request: NextRequest) {
     }
 
     if (!userId) {
-      return buildErrorResponse(request, 500, "Unable to resolve your profile.");
+      return buildErrorResponse(
+        request,
+        500,
+        "Unable to resolve your profile.",
+      );
     }
 
     const { data: existingLink, error: existingLinkError } = await supabase

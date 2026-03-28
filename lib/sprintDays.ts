@@ -1,5 +1,12 @@
+import {
+  addDays,
+  DEFAULT_COHORT_TIMEZONE,
+  formatDateLabel,
+  getCurrentDateInTimeZone,
+} from "@/lib/cohortSchedule";
 import type {
   AdminAssessmentResultRow,
+  Cohort,
   SprintDayProgress,
   SprintDaySubmission,
   SprintDayTask,
@@ -61,9 +68,15 @@ export function buildSprintDayProgress(
   sprintDays: SprintDayTask[],
   submissionsBySprintDayId: Map<string, SprintDaySubmission>,
   membershipStatus: UserCohortStatus,
+  cohort: Pick<Cohort, "sprint_start_date" | "schedule_timezone">,
+  nowMs = Date.now(),
 ): SprintDayProgress[] {
   const hasSprintAccess =
     membershipStatus === "enrolled" || membershipStatus === "completed";
+  const currentDate = getCurrentDateInTimeZone(
+    cohort.schedule_timezone || DEFAULT_COHORT_TIMEZONE,
+    nowMs,
+  );
   let previousDaySatisfied = hasSprintAccess;
 
   return sprintDays
@@ -74,7 +87,31 @@ export function buildSprintDayProgress(
       const reviewed =
         submission !== null &&
         (submission.score !== null || submission.reviewed_at !== null);
-      const isUnlocked = previousDaySatisfied;
+      const scheduledDate = addDays(
+        cohort.sprint_start_date,
+        sprintDay.day_number - 1,
+      );
+      const availability =
+        currentDate < scheduledDate
+          ? "upcoming"
+          : currentDate > scheduledDate
+            ? "closed"
+            : "open";
+      const isUnlocked = previousDaySatisfied && availability === "open";
+      let accessMessage: string | null = null;
+
+      if (!hasSprintAccess) {
+        accessMessage = "Clear the qualifier before sprint submissions open.";
+      } else if (!previousDaySatisfied) {
+        accessMessage =
+          "Submit the previous sprint day before this one unlocks.";
+      } else if (availability === "upcoming") {
+        accessMessage = `Unlocks on ${formatDateLabel(scheduledDate)}.`;
+      } else if (availability === "closed" && submission === null) {
+        accessMessage = `Submission window closed on ${formatDateLabel(
+          scheduledDate,
+        )}.`;
+      }
 
       const progress: SprintDayProgress = {
         ...sprintDay,
@@ -86,6 +123,9 @@ export function buildSprintDayProgress(
               ? "unlocked"
               : "locked",
         submission,
+        scheduled_date: scheduledDate,
+        availability,
+        access_message: accessMessage,
       };
 
       previousDaySatisfied = previousDaySatisfied && submission !== null;

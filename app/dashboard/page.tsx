@@ -12,6 +12,10 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { canAccessAdmin } from "@/lib/adminAccess";
 import { hasClerkPublishableKey } from "@/lib/clerkEnv";
+import {
+  formatDateRangeLabel,
+  getCohortTimelineState,
+} from "@/lib/cohortSchedule";
 import { getQualifierTiming } from "@/lib/qualifierTiming";
 import type {
   CohortMembership,
@@ -68,9 +72,10 @@ function getQualifierState(membership: CohortMembership) {
 
 function nextAction(membership: CohortMembership) {
   const qualifierState = getQualifierState(membership);
+  const timeline = getCohortTimelineState(membership.cohort);
 
   if (
-    qualifierState.canStart ||
+    (timeline.isQualifierOpen && qualifierState.canStart) ||
     (qualifierState.canResume && membership.status === "qualifier_in_progress")
   ) {
     return {
@@ -98,6 +103,7 @@ function nextAction(membership: CohortMembership) {
 
 function getQualifierGateMessage(membership: CohortMembership) {
   const qualifierState = getQualifierState(membership);
+  const timeline = getCohortTimelineState(membership.cohort);
 
   if (qualifierState.canResume) {
     return `Qualifier in progress. ${formatDuration(
@@ -106,6 +112,13 @@ function getQualifierGateMessage(membership: CohortMembership) {
   }
 
   if (qualifierState.canStart) {
+    if (!timeline.isQualifierOpen) {
+      return `Qualifier round runs from ${formatDateRangeLabel(
+        membership.cohort.qualifier_open_date,
+        membership.cohort.qualifier_close_date,
+      )}.`;
+    }
+
     return `Qualifier available for ${formatDuration(
       qualifierState.remainingAvailabilitySeconds,
     )} more from your 48-hour signup window.`;
@@ -253,7 +266,7 @@ function DashboardPageWithAuth() {
                 </h1>
                 <p className="max-w-2xl text-sm font-bold uppercase tracking-[0.18em] text-white/55">
                   Track applications, clear the qualifier, and submit your
-                  four-day sprint deliverables one by one.
+                  sprint deliverables one day at a time.
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">

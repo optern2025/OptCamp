@@ -75,11 +75,12 @@ describe("POST /api/proctor/grade", () => {
       name: "Candidate",
     });
     mockGetProfileByClerkUserId.mockResolvedValue({ id: "user-1" });
+    const startedAt = new Date(Date.now() - 60 * 60 * 1000).toISOString();
     membershipMaybeSingle.mockResolvedValue({
       data: {
         status: "qualifier_in_progress",
         applied_at: "2026-03-27T09:00:00.000Z",
-        qualifier_started_at: "2026-03-27T10:00:00.000Z",
+        qualifier_started_at: startedAt,
         qualifier_submitted_at: null,
       },
       error: null,

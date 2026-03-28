@@ -4,6 +4,10 @@ import {
   normalizeAssessmentQuestions,
 } from "@/lib/assessment";
 import { getAuthenticatedClerkUser } from "@/lib/clerkServer";
+import {
+  formatDateRangeLabel,
+  getCohortTimelineState,
+} from "@/lib/cohortSchedule";
 import { getProfileByClerkUserId } from "@/lib/dashboard";
 import {
   getQualifierTiming,
@@ -16,6 +20,9 @@ interface CohortRecord {
   id: string;
   slug: string;
   type: string;
+  qualifier_open_date: string;
+  qualifier_close_date: string;
+  schedule_timezone: string;
   is_active: boolean;
 }
 
@@ -99,7 +106,7 @@ async function resolveContext(
   const { data: activeCohortLink, error: activeCohortError } = await supabase
     .from("user_cohorts")
     .select(
-      "status, applied_at, qualifier_started_at, qualifier_submitted_at, cohorts (id, slug, type, is_active)",
+      "status, applied_at, qualifier_started_at, qualifier_submitted_at, cohorts (id, slug, type, qualifier_open_date, qualifier_close_date, schedule_timezone, is_active)",
     )
     .eq("user_id", profile.id)
     .eq("cohort_id", cohortId)
@@ -231,6 +238,13 @@ export async function GET(request: NextRequest) {
       startedAt: context.membership.qualifier_started_at,
       submittedAt: context.membership.qualifier_submitted_at,
     });
+    const timeline = getCohortTimelineState({
+      ...context.cohort,
+      application_open_date: context.cohort.qualifier_open_date,
+      application_close_date: context.cohort.qualifier_close_date,
+      sprint_start_date: context.cohort.qualifier_open_date,
+      sprint_end_date: context.cohort.qualifier_close_date,
+    });
 
     if (timing.attemptExpired) {
       await finalizeExpiredQualifier(
@@ -252,6 +266,18 @@ export async function GET(request: NextRequest) {
         {
           error:
             "Your qualifier was only available for 48 hours after signup, and that window has ended.",
+        },
+        { status: 409 },
+      );
+    }
+
+    if (!timeline.isQualifierOpen) {
+      return NextResponse.json(
+        {
+          error: `Qualifier access is only open from ${formatDateRangeLabel(
+            context.cohort.qualifier_open_date,
+            context.cohort.qualifier_close_date,
+          )}.`,
         },
         { status: 409 },
       );
@@ -307,6 +333,13 @@ export async function POST(request: NextRequest) {
       startedAt: context.membership.qualifier_started_at,
       submittedAt: context.membership.qualifier_submitted_at,
     });
+    const timeline = getCohortTimelineState({
+      ...context.cohort,
+      application_open_date: context.cohort.qualifier_open_date,
+      application_close_date: context.cohort.qualifier_close_date,
+      sprint_start_date: context.cohort.qualifier_open_date,
+      sprint_end_date: context.cohort.qualifier_close_date,
+    });
 
     if (timing.attemptExpired) {
       await finalizeExpiredQualifier(
@@ -328,6 +361,18 @@ export async function POST(request: NextRequest) {
         {
           error:
             "Your qualifier was only available for 48 hours after signup, and that window has ended.",
+        },
+        { status: 409 },
+      );
+    }
+
+    if (!timeline.isQualifierOpen) {
+      return NextResponse.json(
+        {
+          error: `Qualifier access is only open from ${formatDateRangeLabel(
+            context.cohort.qualifier_open_date,
+            context.cohort.qualifier_close_date,
+          )}.`,
         },
         { status: 409 },
       );

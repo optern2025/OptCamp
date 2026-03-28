@@ -7,13 +7,24 @@ import {
 import type { AdminAssessmentResultRow } from "@/lib/types";
 
 describe("buildSprintDayProgress", () => {
+  const cohort = {
+    sprint_start_date: "2026-04-01",
+    schedule_timezone: "Asia/Kolkata",
+  };
+
   it("unlocks only the first sprint day initially", () => {
     const sprintDays = buildDefaultSprintDays("cohort-1").map((day, index) => ({
       ...day,
       id: `day-${index + 1}`,
     }));
 
-    const progress = buildSprintDayProgress(sprintDays, new Map(), "enrolled");
+    const progress = buildSprintDayProgress(
+      sprintDays,
+      new Map(),
+      "enrolled",
+      cohort,
+      Date.parse("2026-04-01T06:00:00.000Z"),
+    );
 
     expect(progress[0]?.status).toBe("unlocked");
     expect(progress[1]?.status).toBe("locked");
@@ -43,10 +54,44 @@ describe("buildSprintDayProgress", () => {
         ],
       ]),
       "enrolled",
+      cohort,
+      Date.parse("2026-04-02T06:00:00.000Z"),
     );
 
     expect(progress[0]?.status).toBe("submitted");
     expect(progress[1]?.status).toBe("unlocked");
+  });
+
+  it("keeps the next day locked until its scheduled date even after prior submission", () => {
+    const sprintDays = buildDefaultSprintDays("cohort-1").map((day, index) => ({
+      ...day,
+      id: `day-${index + 1}`,
+    }));
+
+    const progress = buildSprintDayProgress(
+      sprintDays,
+      new Map([
+        [
+          "day-1",
+          {
+            id: "submission-1",
+            sprint_day_id: "day-1",
+            cohort_id: "cohort-1",
+            github_url: "https://github.com/example/day-1",
+            submitted_at: "2026-04-01T12:00:00.000Z",
+            score: null,
+            evaluator_notes: null,
+            reviewed_at: null,
+          },
+        ],
+      ]),
+      "enrolled",
+      cohort,
+      Date.parse("2026-04-01T12:30:00.000Z"),
+    );
+
+    expect(progress[1]?.status).toBe("locked");
+    expect(progress[1]?.availability).toBe("upcoming");
   });
 });
 

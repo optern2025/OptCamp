@@ -4,6 +4,11 @@ import {
   buildDefaultQualifierTemplate,
   normalizeAssessmentQuestions,
 } from "@/lib/assessment";
+import {
+  buildCohortUpdatePayload,
+  DEFAULT_COHORT_TIMEZONE,
+  validateCohortSchedule,
+} from "@/lib/cohortSchedule";
 import { buildDefaultSprintDays } from "@/lib/sprintDays";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import type {
@@ -35,6 +40,15 @@ interface SprintDayTaskRow {
 
 interface SaveContentBody {
   cohortId?: string;
+  cohort?: {
+    application_open_date?: string;
+    application_close_date?: string;
+    qualifier_open_date?: string;
+    qualifier_close_date?: string;
+    sprint_start_date?: string;
+    sprint_end_date?: string;
+    schedule_timezone?: string;
+  };
   qualifier?: {
     id?: string;
     duration_seconds?: number;
@@ -93,7 +107,7 @@ async function loadAdminContent(): Promise<AdminContentPayload> {
     supabase
       .from("cohorts")
       .select(
-        "id, slug, type, apply_window, sprint_window, apply_by, qualifier_test_url, is_active, created_at",
+        "id, slug, type, apply_window, qualifier_window, sprint_window, apply_by, application_open_date, application_close_date, qualifier_open_date, qualifier_close_date, sprint_start_date, sprint_end_date, schedule_timezone, qualifier_test_url, is_active, created_at",
       )
       .order("is_active", { ascending: false })
       .order("created_at", { ascending: true }),
@@ -181,6 +195,71 @@ export async function PUT(request: Request) {
     const qualifierQuestions = sanitizeQuestions(body.qualifier?.questions);
     const sprintDays = Array.isArray(body.sprintDays) ? body.sprintDays : [];
     const supabase = getSupabaseAdminClient();
+    const { data: existingCohort, error: existingCohortError } = await supabase
+      .from("cohorts")
+      .select(
+        "id, application_open_date, application_close_date, qualifier_open_date, qualifier_close_date, sprint_start_date, sprint_end_date, schedule_timezone",
+      )
+      .eq("id", cohortId)
+      .maybeSingle();
+
+    if (existingCohortError || !existingCohort) {
+      return NextResponse.json(
+        { error: "Unable to load the selected cohort." },
+        { status: 404 },
+      );
+    }
+
+    const nextCohortSchedule = {
+      application_open_date:
+        typeof body.cohort?.application_open_date === "string"
+          ? body.cohort.application_open_date
+          : existingCohort.application_open_date,
+      application_close_date:
+        typeof body.cohort?.application_close_date === "string"
+          ? body.cohort.application_close_date
+          : existingCohort.application_close_date,
+      qualifier_open_date:
+        typeof body.cohort?.qualifier_open_date === "string"
+          ? body.cohort.qualifier_open_date
+          : existingCohort.qualifier_open_date,
+      qualifier_close_date:
+        typeof body.cohort?.qualifier_close_date === "string"
+          ? body.cohort.qualifier_close_date
+          : existingCohort.qualifier_close_date,
+      sprint_start_date:
+        typeof body.cohort?.sprint_start_date === "string"
+          ? body.cohort.sprint_start_date
+          : existingCohort.sprint_start_date,
+      sprint_end_date:
+        typeof body.cohort?.sprint_end_date === "string"
+          ? body.cohort.sprint_end_date
+          : existingCohort.sprint_end_date,
+      schedule_timezone:
+        typeof body.cohort?.schedule_timezone === "string"
+          ? body.cohort.schedule_timezone
+          : (existingCohort.schedule_timezone ?? DEFAULT_COHORT_TIMEZONE),
+    };
+    const scheduleErrors = validateCohortSchedule(
+      nextCohortSchedule,
+      sprintDays.length,
+    );
+
+    if (scheduleErrors.length > 0) {
+      return NextResponse.json({ error: scheduleErrors[0] }, { status: 400 });
+    }
+
+    const { error: cohortSaveError } = await supabase
+      .from("cohorts")
+      .update(buildCohortUpdatePayload(nextCohortSchedule))
+      .eq("id", cohortId);
+
+    if (cohortSaveError) {
+      return NextResponse.json(
+        { error: "Unable to save cohort timing." },
+        { status: 500 },
+      );
+    }
 
     const { data: existingSprintDayRows, error: existingSprintDayError } =
       await supabase

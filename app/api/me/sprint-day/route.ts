@@ -71,7 +71,9 @@ export async function GET(request: NextRequest) {
 
     if (sprintDay.status === "locked") {
       return NextResponse.json(
-        { error: "This sprint day is still locked." },
+        {
+          error: sprintDay.access_message ?? "This sprint day is still locked.",
+        },
         { status: 403 },
       );
     }
@@ -139,7 +141,9 @@ export async function POST(request: NextRequest) {
 
     if (sprintDay.status === "locked") {
       return NextResponse.json(
-        { error: "This sprint day is still locked." },
+        {
+          error: sprintDay.access_message ?? "This sprint day is still locked.",
+        },
         { status: 403 },
       );
     }

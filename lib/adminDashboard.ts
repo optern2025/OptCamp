@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   AdminAssessmentResultRow,
+  AdminSprintSubmissionLink,
   AdminSprintSubmissionReview,
   AdminUserCohortMembership,
   AdminUserDashboardEntry,
@@ -161,9 +162,15 @@ export async function loadAdminUserDashboard(
 
   const sprintSubmissionCountByMembership = new Map<string, number>();
   const latestSprintActivityByMembership = new Map<string, string>();
+  const sprintSubmissionsByMembership = new Map<
+    string,
+    AdminSprintSubmissionLink[]
+  >();
   for (const row of (sprintSubmissionRows ??
     []) as DbSprintDaySubmissionRow[]) {
     const key = `${row.user_id}:${row.cohort_id}`;
+    const sprintDay = sprintDayById.get(row.sprint_day_id);
+
     sprintSubmissionCountByMembership.set(
       key,
       (sprintSubmissionCountByMembership.get(key) ?? 0) + 1,
@@ -171,6 +178,19 @@ export async function loadAdminUserDashboard(
 
     if (!latestSprintActivityByMembership.has(key)) {
       latestSprintActivityByMembership.set(key, row.submitted_at);
+    }
+
+    if (sprintDay) {
+      const current = sprintSubmissionsByMembership.get(key) ?? [];
+      current.push({
+        submission_id: row.id,
+        sprint_day_id: row.sprint_day_id,
+        day_number: sprintDay.day_number,
+        task_title: sprintDay.title,
+        github_url: row.github_url,
+        submitted_at: row.submitted_at,
+      });
+      sprintSubmissionsByMembership.set(key, current);
     }
   }
 
@@ -228,6 +248,7 @@ export async function loadAdminUserDashboard(
         latestSprintActivityByMembership.get(key) ?? null,
         row.applied_at,
       ]),
+      sprint_submissions: sprintSubmissionsByMembership.get(key) ?? [],
     };
 
     const current = membershipsByUser.get(row.user_id) ?? [];
@@ -279,6 +300,7 @@ export async function loadAdminUserDashboard(
       status: row.passed ? "passed" : "failed",
       passed: row.passed,
       feedback: row.feedback,
+      github_url: null,
     });
   }
 
@@ -311,6 +333,7 @@ export async function loadAdminUserDashboard(
       status: row.score === null ? "submitted" : "reviewed",
       passed: null,
       feedback: row.evaluator_notes,
+      github_url: row.github_url,
     });
 
     sprintSubmissionReviews.push({

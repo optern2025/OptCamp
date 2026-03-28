@@ -68,46 +68,6 @@ const selectionSteps: SelectionStep[] = [
   { step: "Step 4", title: "Exposure", desc: "Ranked Top 10%" },
 ];
 
-interface CohortDisplayCopy {
-  applicationLabel?: string;
-  qualifierLabel?: string;
-  sprintLabel?: string;
-  qualifierWindow?: string;
-}
-
-const cohortDisplayOverrides: Record<
-  string,
-  Partial<LandingCohort> & CohortDisplayCopy
-> = {
-  "full stack": {
-    apply_window: "26th - 29th March",
-    qualifierWindow: "30 & 31st March",
-    sprint_window: "1st - 4th April",
-    apply_by: "29th March",
-    applicationLabel: "Application Starts",
-    qualifierLabel: "Qualifier Round",
-    sprintLabel: "Cohort Sprint",
-  },
-  "ai / ml": {
-    apply_window: "26th - 29th March",
-    qualifierWindow: "30 & 31st March",
-    sprint_window: "1st - 4th April",
-    apply_by: "29th March",
-    applicationLabel: "Application Starts",
-    qualifierLabel: "Qualifier Round",
-    sprintLabel: "Cohort Sprint",
-  },
-  "cyber security": {
-    apply_window: "26th - 29th March",
-    qualifierWindow: "30 & 31st March",
-    sprint_window: "1st - 4th April",
-    apply_by: "29th March",
-    applicationLabel: "Application Starts",
-    qualifierLabel: "Qualifier Round",
-    sprintLabel: "Cohort Sprint",
-  },
-};
-
 function normalizeCohortType(type: string) {
   return type.trim().toLowerCase();
 }
@@ -130,16 +90,11 @@ function sortCohorts(items: LandingCohort[]) {
 }
 
 function getCohortDisplay(cohort: LandingCohort) {
-  const override =
-    cohortDisplayOverrides[normalizeCohortType(cohort.type)] ?? {};
-
   return {
     ...cohort,
-    ...override,
-    applicationLabel: override.applicationLabel ?? "Applications",
-    qualifierLabel: override.qualifierLabel ?? "Qualifier",
-    sprintLabel: override.sprintLabel ?? "Sprint",
-    qualifierWindow: override.qualifierWindow,
+    applicationLabel: "Application Starts",
+    qualifierLabel: "Qualifier Round",
+    sprintLabel: "Cohort Sprint",
   };
 }
 
@@ -149,8 +104,16 @@ const fallbackCohorts: LandingCohort[] = [
     slug: "fullstack-apr-2026",
     type: "Full Stack",
     apply_window: "26th - 29th March",
+    qualifier_window: "30 & 31st March",
     sprint_window: "1st - 4th April",
     apply_by: "29th March",
+    application_open_date: "2026-03-26",
+    application_close_date: "2026-03-29",
+    qualifier_open_date: "2026-03-30",
+    qualifier_close_date: "2026-03-31",
+    sprint_start_date: "2026-04-01",
+    sprint_end_date: "2026-04-04",
+    schedule_timezone: "Asia/Kolkata",
     qualifier_test_url: null,
     is_active: true,
     created_at: new Date().toISOString(),
@@ -160,8 +123,16 @@ const fallbackCohorts: LandingCohort[] = [
     slug: "aiml-mar-2026",
     type: "AI / ML",
     apply_window: "26th - 29th March",
+    qualifier_window: "30 & 31st March",
     sprint_window: "1st - 4th April",
     apply_by: "29th March",
+    application_open_date: "2026-03-26",
+    application_close_date: "2026-03-29",
+    qualifier_open_date: "2026-03-30",
+    qualifier_close_date: "2026-03-31",
+    sprint_start_date: "2026-04-01",
+    sprint_end_date: "2026-04-04",
+    schedule_timezone: "Asia/Kolkata",
     qualifier_test_url: null,
     is_active: true,
     created_at: new Date().toISOString(),
@@ -171,8 +142,16 @@ const fallbackCohorts: LandingCohort[] = [
     slug: "cyber-security-may-2026",
     type: "Cyber Security",
     apply_window: "26th - 29th March",
+    qualifier_window: "30 & 31st March",
     sprint_window: "1st - 4th April",
     apply_by: "29th March",
+    application_open_date: "2026-03-26",
+    application_close_date: "2026-03-29",
+    qualifier_open_date: "2026-03-30",
+    qualifier_close_date: "2026-03-31",
+    sprint_start_date: "2026-04-01",
+    sprint_end_date: "2026-04-04",
+    schedule_timezone: "Asia/Kolkata",
     qualifier_test_url: null,
     is_active: true,
     created_at: new Date().toISOString(),
@@ -554,11 +533,11 @@ function HomePage() {
                               {displayCohort.apply_window}
                             </span>
                           </div>
-                          {displayCohort.qualifierWindow && (
+                          {displayCohort.qualifier_window && (
                             <div className="flex justify-between text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-white/40">
                               <span>{displayCohort.qualifierLabel}:</span>
                               <span className="text-white">
-                                {displayCohort.qualifierWindow}
+                                {displayCohort.qualifier_window}
                               </span>
                             </div>
                           )}
