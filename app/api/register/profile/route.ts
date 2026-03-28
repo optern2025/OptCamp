@@ -13,6 +13,11 @@ interface RegisterProfileBody {
   intent?: string;
 }
 
+interface ExistingEmailProfile {
+  id: string;
+  clerk_user_id: string;
+}
+
 class ValidationError extends Error {}
 
 function requireNonEmptyString(value: unknown, fieldName: string): string {
@@ -21,6 +26,42 @@ function requireNonEmptyString(value: unknown, fieldName: string): string {
   }
 
   return value.trim();
+}
+
+function isUniqueViolation(error: unknown): error is { code?: string } {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "23505"
+  );
+}
+
+async function insertUserProfile(
+  supabase: ReturnType<typeof getSupabaseAdminClient>,
+  authUser: { userId: string; email: string; name: string },
+  profile: {
+    university: string;
+    stack: string;
+    github: string | null;
+    availability: boolean;
+    intent: string;
+  },
+) {
+  return supabase
+    .from("users")
+    .insert({
+      clerk_user_id: authUser.userId,
+      email: authUser.email,
+      name: authUser.name,
+      university: profile.university,
+      stack: profile.stack,
+      github: profile.github,
+      availability: profile.availability,
+      intent: profile.intent,
+    })
+    .select("id")
+    .single();
 }
 
 export async function POST(request: NextRequest) {
@@ -88,22 +129,61 @@ export async function POST(request: NextRequest) {
         );
       }
     } else {
-      const { data: insertedProfile, error: insertError } = await supabase
-        .from("users")
-        .insert({
-          clerk_user_id: authUser.userId,
-          email: authUser.email,
-          name: authUser.name,
+      let { data: insertedProfile, error: insertError } =
+        await insertUserProfile(supabase, authUser, {
           university,
           stack,
           github: github.length > 0 ? github : null,
           availability: true,
           intent,
-        })
-        .select("id")
-        .single();
+        });
+
+      if (insertError && isUniqueViolation(insertError)) {
+        const { data: existingEmailProfile, error: existingEmailProfileError } =
+          await supabase
+            .from("users")
+            .select("id, clerk_user_id")
+            .eq("email", authUser.email)
+            .maybeSingle();
+
+        if (existingEmailProfileError) {
+          return NextResponse.json(
+            { error: "Unable to create your profile." },
+            { status: 500 },
+          );
+        }
+
+        const staleProfile =
+          existingEmailProfile as ExistingEmailProfile | null;
+
+        if (staleProfile && staleProfile.clerk_user_id !== authUser.userId) {
+          const { error: staleProfileDeleteError } = await supabase
+            .from("users")
+            .delete()
+            .eq("id", staleProfile.id);
+
+          if (staleProfileDeleteError) {
+            return NextResponse.json(
+              { error: "Unable to create your profile." },
+              { status: 500 },
+            );
+          }
+
+          const retryResult = await insertUserProfile(supabase, authUser, {
+            university,
+            stack,
+            github: github.length > 0 ? github : null,
+            availability: true,
+            intent,
+          });
+
+          insertedProfile = retryResult.data;
+          insertError = retryResult.error;
+        }
+      }
 
       if (insertError || !insertedProfile) {
+        console.error("[register/profile] create profile failed", insertError);
         return NextResponse.json(
           { error: "Unable to create your profile." },
           { status: 500 },
