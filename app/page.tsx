@@ -42,22 +42,22 @@ interface NoItem {
 }
 
 const gauntletDays: GauntletDay[] = [
-  { day: "01", title: "Spec + Architecture", desc: "Ambiguity navigation." },
-  { day: "02", title: "Core Build", desc: "Aggressive execution cycles." },
+  { day: "01", title: "Application", desc: "Cohort screening window." },
+  { day: "02", title: "Qualifier Day 1", desc: "Timed pressure test." },
   {
     day: "03",
-    title: "Curveball Requirement",
-    desc: "Instant refactor under pressure.",
+    title: "Qualifier Day 2",
+    desc: "Second timed qualifier slot.",
   },
   {
     day: "04",
-    title: "Optimization + Submission",
-    desc: "Production-grade final delivery.",
+    title: "Sprint Window",
+    desc: "Cohort-specific build days.",
   },
   {
     day: "05",
-    title: "Public Ranking",
-    desc: "The top 10% are identified.",
+    title: "Results",
+    desc: "Final decisions published.",
   },
 ];
 
@@ -95,6 +95,7 @@ function getCohortDisplay(cohort: LandingCohort) {
     applicationLabel: "Application Starts",
     qualifierLabel: "Qualifier Round",
     sprintLabel: "Cohort Sprint",
+    resultsLabel: "Results",
   };
 }
 
@@ -103,16 +104,18 @@ const fallbackCohorts: LandingCohort[] = [
     id: "fallback-fullstack",
     slug: "fullstack-apr-2026",
     type: "Full Stack",
-    apply_window: "26th - 29th March",
+    apply_window: "26th - 30th March",
     qualifier_window: "30 & 31st March",
-    sprint_window: "1st - 4th April",
-    apply_by: "29th March",
+    sprint_window: "1st & 2nd April",
+    apply_by: "30th March",
+    results_on: "10th April",
     application_open_date: "2026-03-26",
-    application_close_date: "2026-03-29",
+    application_close_date: "2026-03-30",
     qualifier_open_date: "2026-03-30",
     qualifier_close_date: "2026-03-31",
     sprint_start_date: "2026-04-01",
-    sprint_end_date: "2026-04-04",
+    sprint_end_date: "2026-04-02",
+    results_announcement_date: "2026-04-10",
     schedule_timezone: "Asia/Kolkata",
     qualifier_test_url: null,
     is_active: true,
@@ -122,16 +125,18 @@ const fallbackCohorts: LandingCohort[] = [
     id: "fallback-aiml",
     slug: "aiml-mar-2026",
     type: "AI / ML",
-    apply_window: "26th - 29th March",
+    apply_window: "26th - 30th March",
     qualifier_window: "30 & 31st March",
-    sprint_window: "1st - 4th April",
-    apply_by: "29th March",
+    sprint_window: "6th & 7th April",
+    apply_by: "30th March",
+    results_on: "10th April",
     application_open_date: "2026-03-26",
-    application_close_date: "2026-03-29",
+    application_close_date: "2026-03-30",
     qualifier_open_date: "2026-03-30",
     qualifier_close_date: "2026-03-31",
-    sprint_start_date: "2026-04-01",
-    sprint_end_date: "2026-04-04",
+    sprint_start_date: "2026-04-06",
+    sprint_end_date: "2026-04-07",
+    results_announcement_date: "2026-04-10",
     schedule_timezone: "Asia/Kolkata",
     qualifier_test_url: null,
     is_active: true,
@@ -141,16 +146,18 @@ const fallbackCohorts: LandingCohort[] = [
     id: "fallback-cyber-security",
     slug: "cyber-security-may-2026",
     type: "Cyber Security",
-    apply_window: "26th - 29th March",
+    apply_window: "26th - 30th March",
     qualifier_window: "30 & 31st March",
-    sprint_window: "1st - 4th April",
-    apply_by: "29th March",
+    sprint_window: "6th & 7th April",
+    apply_by: "30th March",
+    results_on: "10th April",
     application_open_date: "2026-03-26",
-    application_close_date: "2026-03-29",
+    application_close_date: "2026-03-30",
     qualifier_open_date: "2026-03-30",
     qualifier_close_date: "2026-03-31",
-    sprint_start_date: "2026-04-01",
-    sprint_end_date: "2026-04-04",
+    sprint_start_date: "2026-04-06",
+    sprint_end_date: "2026-04-07",
+    results_announcement_date: "2026-04-10",
     schedule_timezone: "Asia/Kolkata",
     qualifier_test_url: null,
     is_active: true,
@@ -340,7 +347,7 @@ function HomePage() {
 
               <div className="max-w-3xl mx-auto mb-8 md:mb-16">
                 <h2 className="text-lg xs:text-xl sm:text-2xl md:text-3xl font-bold text-white/90 mb-3 md:mb-4 uppercase tracking-tight leading-tight">
-                  4-Day Real Startup Simulation{" "}
+                  Timed Startup Simulation{" "}
                   <br className="hidden sm:block" />
                   <span className="text-cyan-500 font-black">
                     Built to Identify the Top 10%
@@ -424,8 +431,8 @@ function HomePage() {
                       })}
                     </div>
                     <p className="text-base sm:text-xl md:text-2xl font-bold tracking-tight text-white/80 border-l-4 border-cyan-500 pl-6 md:pl-8 italic mx-auto lg:mx-0 max-w-xl text-left leading-snug">
-                      This is a 4-day performance sprint simulating real startup
-                      conditions.
+                      This is a timed performance sprint shaped by each
+                      cohort&apos;s schedule.
                     </p>
                   </div>
                   <div className="w-full sm:w-64 md:w-80 aspect-square bg-cyan-500 flex items-center justify-center p-8 md:p-12 relative overflow-hidden shrink-0 mt-8 lg:mt-0">
@@ -448,7 +455,7 @@ function HomePage() {
           >
             <div className="container mx-auto px-4 sm:px-6">
               <SectionTitle className="text-center italic">
-                The 5-Day Gauntlet
+                The Selection Gauntlet
               </SectionTitle>
               <div className="max-w-4xl mx-auto grid gap-3 md:gap-4">
                 {gauntletDays.map((item) => (
@@ -545,6 +552,12 @@ function HomePage() {
                             <span>{displayCohort.sprintLabel}:</span>
                             <span className="text-white">
                               {displayCohort.sprint_window}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-white/40">
+                            <span>{displayCohort.resultsLabel}:</span>
+                            <span className="text-white">
+                              {displayCohort.results_on}
                             </span>
                           </div>
                           <div className="pt-4 md:pt-6 border-t border-white/10 flex justify-between text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-cyan-500">

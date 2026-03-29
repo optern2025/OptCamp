@@ -111,7 +111,7 @@ function createEmptySprintDay(
 function createEmptyBundle(cohortId: string): CohortContentBundle {
   return {
     qualifier: createEmptyQualifier(cohortId),
-    sprintDays: Array.from({ length: 4 }, (_, index) =>
+    sprintDays: Array.from({ length: 2 }, (_, index) =>
       createEmptySprintDay(cohortId, index + 1),
     ),
   };
@@ -885,6 +885,8 @@ function AdminPageContent() {
         qualifier_close_date: selectedCohortDraft.qualifier_close_date,
         sprint_start_date: selectedCohortDraft.sprint_start_date,
         sprint_end_date: selectedCohortDraft.sprint_end_date,
+        results_announcement_date:
+          selectedCohortDraft.results_announcement_date,
         schedule_timezone:
           selectedCohortDraft.schedule_timezone || DEFAULT_COHORT_TIMEZONE,
       },
@@ -970,6 +972,8 @@ function AdminPageContent() {
             qualifier_close_date: selectedCohortDraft.qualifier_close_date,
             sprint_start_date: selectedCohortDraft.sprint_start_date,
             sprint_end_date: selectedCohortDraft.sprint_end_date,
+            results_announcement_date:
+              selectedCohortDraft.results_announcement_date,
             schedule_timezone: selectedCohortDraft.schedule_timezone,
           },
           qualifier: selectedQualifier,
@@ -1817,6 +1821,22 @@ function AdminPageContent() {
                                   updateSelectedCohortDraft((cohort) => ({
                                     ...cohort,
                                     sprint_end_date: event.target.value,
+                                  }))
+                                }
+                                className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"
+                              />
+                            </Field>
+                            <Field label="Results announced">
+                              <input
+                                type="date"
+                                value={
+                                  selectedCohortDraft.results_announcement_date
+                                }
+                                onChange={(event) =>
+                                  updateSelectedCohortDraft((cohort) => ({
+                                    ...cohort,
+                                    results_announcement_date:
+                                      event.target.value,
                                   }))
                                 }
                                 className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"

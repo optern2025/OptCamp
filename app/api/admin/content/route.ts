@@ -47,6 +47,7 @@ interface SaveContentBody {
     qualifier_close_date?: string;
     sprint_start_date?: string;
     sprint_end_date?: string;
+    results_announcement_date?: string;
     schedule_timezone?: string;
   };
   qualifier?: {
@@ -107,7 +108,7 @@ async function loadAdminContent(): Promise<AdminContentPayload> {
     supabase
       .from("cohorts")
       .select(
-        "id, slug, type, apply_window, qualifier_window, sprint_window, apply_by, application_open_date, application_close_date, qualifier_open_date, qualifier_close_date, sprint_start_date, sprint_end_date, schedule_timezone, qualifier_test_url, is_active, created_at",
+        "id, slug, type, apply_window, qualifier_window, sprint_window, apply_by, results_on, application_open_date, application_close_date, qualifier_open_date, qualifier_close_date, sprint_start_date, sprint_end_date, results_announcement_date, schedule_timezone, qualifier_test_url, is_active, created_at",
       )
       .order("is_active", { ascending: false })
       .order("created_at", { ascending: true }),
@@ -198,7 +199,7 @@ export async function PUT(request: Request) {
     const { data: existingCohort, error: existingCohortError } = await supabase
       .from("cohorts")
       .select(
-        "id, application_open_date, application_close_date, qualifier_open_date, qualifier_close_date, sprint_start_date, sprint_end_date, schedule_timezone",
+        "id, application_open_date, application_close_date, qualifier_open_date, qualifier_close_date, sprint_start_date, sprint_end_date, results_announcement_date, schedule_timezone",
       )
       .eq("id", cohortId)
       .maybeSingle();
@@ -235,6 +236,10 @@ export async function PUT(request: Request) {
         typeof body.cohort?.sprint_end_date === "string"
           ? body.cohort.sprint_end_date
           : existingCohort.sprint_end_date,
+      results_announcement_date:
+        typeof body.cohort?.results_announcement_date === "string"
+          ? body.cohort.results_announcement_date
+          : existingCohort.results_announcement_date,
       schedule_timezone:
         typeof body.cohort?.schedule_timezone === "string"
           ? body.cohort.schedule_timezone

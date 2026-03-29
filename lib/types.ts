@@ -6,12 +6,14 @@ export interface Cohort {
   qualifier_window: string;
   sprint_window: string;
   apply_by: string;
+  results_on: string;
   application_open_date: string;
   application_close_date: string;
   qualifier_open_date: string;
   qualifier_close_date: string;
   sprint_start_date: string;
   sprint_end_date: string;
+  results_announcement_date: string;
   schedule_timezone: string;
   qualifier_test_url: string | null;
   is_active: boolean;

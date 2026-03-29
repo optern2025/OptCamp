@@ -564,6 +564,7 @@ function DashboardPageWithAuth() {
                       <div className="mt-4 space-y-2 text-[10px] font-black tracking-[0.2em] text-white/55">
                         <p>Apps {cohort.apply_window}</p>
                         <p>Sprint {cohort.sprint_window}</p>
+                        <p>Results {cohort.results_on}</p>
                         <p>Apply By {cohort.apply_by}</p>
                       </div>
                     </div>

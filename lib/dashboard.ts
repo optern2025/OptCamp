@@ -183,7 +183,7 @@ export async function loadDashboardData(
   const { data: cohortsData, error: cohortsError } = await supabase
     .from("cohorts")
     .select(
-      "id, slug, type, apply_window, qualifier_window, sprint_window, apply_by, application_open_date, application_close_date, qualifier_open_date, qualifier_close_date, sprint_start_date, sprint_end_date, schedule_timezone, qualifier_test_url, is_active, created_at",
+      "id, slug, type, apply_window, qualifier_window, sprint_window, apply_by, results_on, application_open_date, application_close_date, qualifier_open_date, qualifier_close_date, sprint_start_date, sprint_end_date, results_announcement_date, schedule_timezone, qualifier_test_url, is_active, created_at",
     )
     .order("is_active", { ascending: false })
     .order("created_at", { ascending: true });

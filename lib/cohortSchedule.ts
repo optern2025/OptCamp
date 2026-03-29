@@ -17,6 +17,7 @@ export interface CohortScheduleInput {
   qualifier_close_date: string;
   sprint_start_date: string;
   sprint_end_date: string;
+  results_announcement_date: string;
   schedule_timezone?: string | null;
 }
 
@@ -148,6 +149,7 @@ export function buildCohortDisplayFields(schedule: CohortScheduleInput) {
       schedule.sprint_end_date,
     ),
     apply_by: formatDateLabel(schedule.application_close_date),
+    results_on: formatDateLabel(schedule.results_announcement_date),
   };
 }
 
@@ -201,12 +203,18 @@ export function validateCohortSchedule(
     errors.push("Sprint window must end on or after it starts.");
   }
 
-  if (schedule.application_close_date >= schedule.qualifier_open_date) {
-    errors.push("Qualifier round must start after applications close.");
+  if (schedule.application_close_date > schedule.qualifier_open_date) {
+    errors.push(
+      "Qualifier round must start on or after applications close.",
+    );
   }
 
   if (schedule.qualifier_close_date >= schedule.sprint_start_date) {
     errors.push("Sprint must start after the qualifier round ends.");
+  }
+
+  if (schedule.results_announcement_date < schedule.sprint_end_date) {
+    errors.push("Results announcement must be on or after the sprint ends.");
   }
 
   if (
