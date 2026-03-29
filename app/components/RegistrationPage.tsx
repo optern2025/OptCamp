@@ -96,12 +96,19 @@ function RegistrationPageWithAuth({
         setCohorts(nextCohorts);
 
         const active = nextCohorts.find((cohort) => cohort.is_active);
+        const aiMlCohort = nextCohorts.find(
+          (cohort) => cohort.type.toLowerCase() === "ai / ml",
+        );
+
+        // If initialCohortId is explicitly provided, use it
+        // Otherwise, fall back to applied membership, active cohort, AI/ML cohort, or first cohort
         const preferredCohortId =
           initialCohortId ||
           payload.memberships.find(
             (membership) => membership.status === "applied",
           )?.cohort.id ||
           active?.id ||
+          aiMlCohort?.id ||
           nextCohorts[0]?.id ||
           "";
 
