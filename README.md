@@ -358,6 +358,7 @@ Copy `.env.example` to `.env.local` and fill values:
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
+  Alternatively, `SUPABASE_SECRET_KEY` is also supported for newer Supabase projects.
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
 - `CLERK_SECRET_KEY`
 - `NEXT_PUBLIC_APP_URL`
