@@ -118,7 +118,7 @@ function QuestionInput({
                   {option.label}
                 </span>
                 {option.detail && (
-                  <span className="block text-xs uppercase tracking-[0.18em] text-white/45">
+                  <span className="block text-xs tracking-[0.18em] text-white/45">
                     {option.detail}
                   </span>
                 )}
@@ -174,13 +174,13 @@ export function AssessmentRunner({
   return (
     <section className="grid gap-6 select-none lg:grid-cols-[300px_minmax(0,1fr)]">
       <aside className="rounded-[28px] border border-white/10 bg-[#07131e]/90 p-5">
-        <p className="text-[10px] font-black uppercase tracking-[0.35em] text-cyan-300/75">
+        <p className="text-[10px] font-black tracking-[0.35em] text-cyan-300/75">
           {eyebrow}
         </p>
         <h2 className="mt-3 text-2xl font-black uppercase tracking-tight text-white">
           {title}
         </h2>
-        <p className="mt-3 text-xs font-bold uppercase tracking-[0.18em] text-white/50">
+        <p className="mt-3 text-xs font-bold tracking-[0.18em] text-white/50">
           {subtitle}
         </p>
 
@@ -188,7 +188,7 @@ export function AssessmentRunner({
           <div className="rounded-[18px] border border-white/10 bg-white/[0.03] p-4">
             <div className="flex items-center gap-2 text-cyan-300">
               <ListTodo size={16} />
-              <span className="text-[10px] font-black uppercase tracking-[0.24em]">
+              <span className="text-[10px] font-black tracking-[0.24em]">
                 Progress
               </span>
             </div>
@@ -200,7 +200,7 @@ export function AssessmentRunner({
           <div className="rounded-[18px] border border-white/10 bg-white/[0.03] p-4">
             <div className="flex items-center gap-2 text-amber-200">
               <Flag size={16} />
-              <span className="text-[10px] font-black uppercase tracking-[0.24em]">
+              <span className="text-[10px] font-black tracking-[0.24em]">
                 Review
               </span>
             </div>
@@ -212,7 +212,7 @@ export function AssessmentRunner({
           <div className="rounded-[18px] border border-white/10 bg-white/[0.03] p-4">
             <div className="flex items-center gap-2 text-emerald-200">
               <CheckCheck size={16} />
-              <span className="text-[10px] font-black uppercase tracking-[0.24em]">
+              <span className="text-[10px] font-black tracking-[0.24em]">
                 Time
               </span>
             </div>
@@ -225,7 +225,7 @@ export function AssessmentRunner({
         {meta && <div className="mt-5">{meta}</div>}
 
         <div className="mt-6">
-          <p className="text-[10px] font-black uppercase tracking-[0.28em] text-white/45">
+          <p className="text-[10px] font-black tracking-[0.28em] text-white/45">
             Questions
           </p>
           <div className="mt-3 grid grid-cols-5 gap-2">
@@ -258,7 +258,7 @@ export function AssessmentRunner({
       <div className="space-y-5 rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,20,31,0.96),rgba(4,10,18,0.96))] p-6 md:p-8">
         <div className="flex flex-col gap-4 border-b border-white/10 pb-5 md:flex-row md:items-start md:justify-between">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300/75">
+            <p className="text-[10px] font-black tracking-[0.3em] text-cyan-300/75">
               Question {currentIndex + 1}
             </p>
             <h3 className="mt-3 text-3xl font-black tracking-tight text-white">
@@ -268,7 +268,7 @@ export function AssessmentRunner({
           <button
             type="button"
             onClick={() => onToggleReview(currentQuestion.id)}
-            className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-[0.24em] transition-colors ${
+            className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[10px] font-black tracking-[0.24em] transition-colors ${
               reviewFlags[currentQuestion.id]
                 ? "border-amber-300/50 bg-amber-300/15 text-amber-100"
                 : "border-white/10 text-white/60 hover:border-white/25 hover:text-white"
@@ -285,7 +285,7 @@ export function AssessmentRunner({
           <div className="space-y-4">
             {currentQuestion.guidance && (
               <div className="rounded-[20px] border border-cyan-300/20 bg-cyan-300/10 p-4">
-                <p className="text-[10px] font-black uppercase tracking-[0.26em] text-cyan-100/75">
+                <p className="text-[10px] font-black tracking-[0.26em] text-cyan-100/75">
                   Guidance
                 </p>
                 <p className="mt-2 text-sm text-cyan-50/90">
@@ -305,7 +305,7 @@ export function AssessmentRunner({
                 type="button"
                 onClick={() => onNavigate(Math.max(0, currentIndex - 1))}
                 disabled={currentIndex === 0}
-                className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-3 text-xs font-black uppercase tracking-[0.22em] text-white/70 transition-colors hover:border-white/25 hover:text-white disabled:opacity-40"
+                className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-3 text-xs font-black tracking-[0.22em] text-white/70 transition-colors hover:border-white/25 hover:text-white disabled:opacity-40"
               >
                 <ChevronLeft size={16} />
                 Previous
@@ -316,7 +316,7 @@ export function AssessmentRunner({
                   onNavigate(Math.min(questions.length - 1, currentIndex + 1))
                 }
                 disabled={currentIndex === questions.length - 1}
-                className="inline-flex items-center gap-2 rounded-full border border-cyan-300/35 px-4 py-3 text-xs font-black uppercase tracking-[0.22em] text-cyan-100 transition-colors hover:bg-cyan-300/10 disabled:opacity-40"
+                className="inline-flex items-center gap-2 rounded-full border border-cyan-300/35 px-4 py-3 text-xs font-black tracking-[0.22em] text-cyan-100 transition-colors hover:bg-cyan-300/10 disabled:opacity-40"
               >
                 Next
                 <ChevronRight size={16} />
@@ -329,7 +329,7 @@ export function AssessmentRunner({
               <div className="rounded-[22px] border border-white/10 bg-[#0c1724] p-4">
                 <div className="flex items-center gap-2 text-cyan-300">
                   <Code2 size={16} />
-                  <p className="text-[10px] font-black uppercase tracking-[0.24em]">
+                  <p className="text-[10px] font-black tracking-[0.24em]">
                     {currentQuestion.language || "Code context"}
                   </p>
                 </div>
@@ -339,7 +339,7 @@ export function AssessmentRunner({
                   </pre>
                 )}
                 {currentQuestion.expectedOutcome && (
-                  <p className="mt-3 text-xs uppercase tracking-[0.16em] text-white/50">
+                  <p className="mt-3 text-xs tracking-[0.16em] text-white/50">
                     Expected outcome: {currentQuestion.expectedOutcome}
                   </p>
                 )}
@@ -348,11 +348,11 @@ export function AssessmentRunner({
 
             {currentQuestion.type === "scenario" && (
               <div className="rounded-[22px] border border-white/10 bg-[#0c1724] p-4">
-                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300/75">
+                <p className="text-[10px] font-black tracking-[0.24em] text-cyan-300/75">
                   Scenario brief
                 </p>
                 {currentQuestion.deliverable && (
-                  <p className="mt-3 text-xs uppercase tracking-[0.18em] text-white/55">
+                  <p className="mt-3 text-xs tracking-[0.18em] text-white/55">
                     Deliverable: {currentQuestion.deliverable}
                   </p>
                 )}
@@ -373,7 +373,7 @@ export function AssessmentRunner({
 
             {currentQuestion.rubric && (
               <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
-                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/45">
+                <p className="text-[10px] font-black tracking-[0.24em] text-white/45">
                   Evaluated for
                 </p>
                 <p className="mt-2 text-sm text-white/80">
@@ -386,7 +386,7 @@ export function AssessmentRunner({
               type="button"
               onClick={onSubmit}
               disabled={isSubmitting}
-              className="w-full rounded-[20px] bg-cyan-300 px-4 py-4 text-xs font-black uppercase tracking-[0.26em] text-black transition-colors hover:bg-cyan-200 disabled:opacity-60"
+              className="w-full rounded-[20px] bg-cyan-300 px-4 py-4 text-xs font-black tracking-[0.26em] text-black transition-colors hover:bg-cyan-200 disabled:opacity-60"
             >
               {isSubmitting ? "Submitting..." : submitLabel}
             </button>

@@ -172,7 +172,7 @@ function SummaryCard({
 }) {
   return (
     <div className="rounded-[24px] border border-white/10 bg-[#09131d] p-5">
-      <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/45">
+      <p className="text-[10px] font-black tracking-[0.24em] text-white/45">
         {label}
       </p>
       <p className="mt-3 text-3xl font-black tracking-tight text-white">
@@ -223,7 +223,7 @@ function Field({
 }) {
   return (
     <div className="space-y-2">
-      <span className="text-[10px] font-black uppercase tracking-[0.24em] text-white/45">
+      <span className="text-[10px] font-black tracking-[0.24em] text-white/45">
         {label}
       </span>
       {children}
@@ -243,13 +243,13 @@ function QuestionEditor({
   return (
     <div className="rounded-[24px] border border-white/10 bg-[#0a1520] p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300/70">
+        <p className="text-[10px] font-black tracking-[0.3em] text-cyan-300/70">
           {question.type} question
         </p>
         <button
           type="button"
           onClick={onRemove}
-          className="inline-flex items-center gap-2 rounded-full border border-red-400/30 px-3 py-2 text-[10px] font-black uppercase tracking-[0.22em] text-red-200 transition-colors hover:bg-red-400/10"
+          className="inline-flex items-center gap-2 rounded-full border border-red-400/30 px-3 py-2 text-[10px] font-black tracking-[0.22em] text-red-200 transition-colors hover:bg-red-400/10"
         >
           <Trash2 size={14} />
           Remove
@@ -308,7 +308,7 @@ function QuestionEditor({
 
       {question.type === "mcq" && (
         <div className="mt-5 space-y-4">
-          <label className="inline-flex items-center gap-3 text-xs uppercase tracking-[0.18em] text-white/65">
+          <label className="inline-flex items-center gap-3 text-xs tracking-[0.18em] text-white/65">
             <input
               type="checkbox"
               checked={Boolean(question.allowMultiple)}
@@ -349,7 +349,7 @@ function QuestionEditor({
                     className="rounded-[14px] border border-white/10 bg-[#09131d] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300"
                     placeholder="Option label"
                   />
-                  <label className="inline-flex items-center gap-2 rounded-[14px] border border-white/10 px-4 py-3 text-xs uppercase tracking-[0.16em] text-white/65">
+                  <label className="inline-flex items-center gap-2 rounded-[14px] border border-white/10 px-4 py-3 text-xs tracking-[0.16em] text-white/65">
                     <input
                       type={question.allowMultiple ? "checkbox" : "radio"}
                       checked={isCorrect}
@@ -384,7 +384,7 @@ function QuestionEditor({
                         ).filter((item) => item !== option.id),
                       })
                     }
-                    className="rounded-[14px] border border-red-400/20 px-4 py-3 text-xs uppercase tracking-[0.16em] text-red-200 transition-colors hover:bg-red-400/10"
+                    className="rounded-[14px] border border-red-400/20 px-4 py-3 text-xs tracking-[0.16em] text-red-200 transition-colors hover:bg-red-400/10"
                   >
                     Delete option
                   </button>
@@ -404,7 +404,7 @@ function QuestionEditor({
                 ],
               })
             }
-            className="inline-flex items-center gap-2 rounded-full border border-cyan-300/30 px-4 py-2 text-[10px] font-black uppercase tracking-[0.24em] text-cyan-100 transition-colors hover:bg-cyan-300/10"
+            className="inline-flex items-center gap-2 rounded-full border border-cyan-300/30 px-4 py-2 text-[10px] font-black tracking-[0.24em] text-cyan-100 transition-colors hover:bg-cyan-300/10"
           >
             <Plus size={14} />
             Add option
@@ -547,10 +547,10 @@ function QuestionImportPanel({
     <div className="rounded-[22px] border border-white/10 bg-[#07121b] p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.26em] text-cyan-300/70">
+          <p className="text-[10px] font-black tracking-[0.26em] text-cyan-300/70">
             Document import
           </p>
-          <p className="mt-2 max-w-2xl text-xs uppercase tracking-[0.14em] text-white/50">
+          <p className="mt-2 max-w-2xl text-xs tracking-[0.14em] text-white/50">
             Upload a structured `.docx` or `.txt` file to generate qualifier
             questions, then refine them in the editor below.
           </p>
@@ -559,7 +559,7 @@ function QuestionImportPanel({
           type="button"
           onClick={importQuestions}
           disabled={!file || isImporting}
-          className="inline-flex items-center gap-2 rounded-full border border-cyan-300/30 px-4 py-2 text-[10px] font-black uppercase tracking-[0.24em] text-cyan-100 transition-colors hover:bg-cyan-300/10 disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-full border border-cyan-300/30 px-4 py-2 text-[10px] font-black tracking-[0.24em] text-cyan-100 transition-colors hover:bg-cyan-300/10 disabled:opacity-50"
         >
           <FileUp size={14} />
           {isImporting ? "Importing..." : "Import File"}
@@ -572,10 +572,10 @@ function QuestionImportPanel({
             type="file"
             accept=".docx,.txt,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-            className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white file:mr-4 file:rounded-full file:border-0 file:bg-cyan-300 file:px-4 file:py-2 file:text-xs file:font-black file:uppercase file:tracking-[0.18em] file:text-black"
+            className="w-full rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white file:mr-4 file:rounded-full file:border-0 file:bg-cyan-300 file:px-4 file:py-2 file:text-xs file:font-black file:tracking-[0.18em] file:text-black"
           />
         </Field>
-        <label className="inline-flex items-center gap-3 rounded-[18px] border border-white/10 px-4 py-3 text-xs uppercase tracking-[0.16em] text-white/65">
+        <label className="inline-flex items-center gap-3 rounded-[18px] border border-white/10 px-4 py-3 text-xs tracking-[0.16em] text-white/65">
           <input
             type="checkbox"
             checked={replaceExisting}
@@ -587,13 +587,13 @@ function QuestionImportPanel({
       </div>
 
       {errorMessage && (
-        <p className="mt-4 text-xs font-black uppercase tracking-[0.2em] text-red-200">
+        <p className="mt-4 text-xs font-black tracking-[0.2em] text-red-200">
           {errorMessage}
         </p>
       )}
 
       {successMessage && (
-        <p className="mt-4 text-xs font-black uppercase tracking-[0.2em] text-emerald-100">
+        <p className="mt-4 text-xs font-black tracking-[0.2em] text-emerald-100">
           {successMessage}
         </p>
       )}
@@ -616,7 +616,7 @@ function SortButton({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.2em] ${
+      className={`rounded-full border px-3 py-2 text-[10px] font-black tracking-[0.2em] ${
         active
           ? "border-cyan-300/40 bg-cyan-300/10 text-cyan-100"
           : "border-white/10 text-white/55"
@@ -646,17 +646,17 @@ function ReviewEditor({
     <div className="rounded-[22px] border border-white/10 bg-[#08111a] p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300/75">
+          <p className="text-[10px] font-black tracking-[0.24em] text-cyan-300/75">
             {review.cohort_type} · Day {review.day_number}
           </p>
           <h4 className="mt-2 text-lg font-black uppercase tracking-tight text-white">
             {review.task_title}
           </h4>
-          <p className="mt-2 text-xs font-bold uppercase tracking-[0.16em] text-white/55">
+          <p className="mt-2 text-xs font-bold tracking-[0.16em] text-white/55">
             {review.candidate_name} · {review.candidate_email}
           </p>
         </div>
-        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/45">
+        <p className="text-[10px] font-black tracking-[0.18em] text-white/45">
           Submitted {formatAdminDateTime(review.submitted_at)}
         </p>
       </div>
@@ -698,7 +698,7 @@ function ReviewEditor({
               }
             }}
             disabled={isSaving}
-            className="inline-flex items-center gap-2 rounded-full bg-cyan-300 px-4 py-3 text-xs font-black uppercase tracking-[0.22em] text-black transition-colors hover:bg-cyan-200 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-full bg-cyan-300 px-4 py-3 text-xs font-black tracking-[0.22em] text-black transition-colors hover:bg-cyan-200 disabled:opacity-60"
           >
             <Save size={14} />
             {isSaving ? "Saving..." : "Save"}
@@ -1058,13 +1058,13 @@ function AdminPageContent() {
     <main className="min-h-screen bg-[#071018] px-4 py-10 text-white">
       <div className="mx-auto max-w-7xl space-y-6">
         <header className="rounded-[30px] border border-white/10 bg-[radial-gradient(circle_at_top_right,_rgba(34,211,238,0.22),_transparent_30%),linear-gradient(140deg,#09131d_0%,#04080d_100%)] p-8">
-          <p className="text-[10px] font-black uppercase tracking-[0.35em] text-cyan-300/80">
+          <p className="text-[10px] font-black tracking-[0.35em] text-cyan-300/80">
             Admin Console
           </p>
           <h1 className="mt-3 text-4xl font-black uppercase tracking-tight md:text-5xl">
             Cohort Operations and Content
           </h1>
-          <p className="mt-4 max-w-3xl text-sm font-bold uppercase tracking-[0.16em] text-white/55">
+          <p className="mt-4 max-w-3xl text-sm font-bold tracking-[0.16em] text-white/55">
             Review cross-cohort assessment results, score sprint submissions,
             and manage qualifier plus sprint-day content.
           </p>
@@ -1079,7 +1079,7 @@ function AdminPageContent() {
               <SignInButton mode="modal">
                 <button
                   type="button"
-                  className="bg-cyan-400 px-6 py-3 text-xs font-black uppercase tracking-[0.24em] text-black transition-colors hover:bg-cyan-300"
+                  className="bg-cyan-400 px-6 py-3 text-xs font-black tracking-[0.24em] text-black transition-colors hover:bg-cyan-300"
                 >
                   Sign In
                 </button>
@@ -1087,7 +1087,7 @@ function AdminPageContent() {
               <SignUpButton mode="modal">
                 <button
                   type="button"
-                  className="border border-cyan-400 px-6 py-3 text-xs font-black uppercase tracking-[0.24em] text-cyan-300 transition-colors hover:bg-cyan-400 hover:text-black"
+                  className="border border-cyan-400 px-6 py-3 text-xs font-black tracking-[0.24em] text-cyan-300 transition-colors hover:bg-cyan-400 hover:text-black"
                 >
                   Create Account
                 </button>
@@ -1102,7 +1102,7 @@ function AdminPageContent() {
               <h2 className="text-2xl font-black uppercase tracking-tight">
                 Admin access is restricted
               </h2>
-              <p className="mt-4 text-sm font-bold uppercase tracking-[0.16em] text-white/65">
+              <p className="mt-4 text-sm font-bold tracking-[0.16em] text-white/65">
                 Only admins can manage cohort content.
               </p>
             </section>
@@ -1110,7 +1110,7 @@ function AdminPageContent() {
 
           {(isLoading || isLoadingUsers) && canManageContent && (
             <section className="rounded-[24px] border border-white/10 bg-black/30 p-8">
-              <p className="text-sm font-bold uppercase tracking-[0.22em] text-white/55">
+              <p className="text-sm font-bold tracking-[0.22em] text-white/55">
                 Loading admin console...
               </p>
             </section>
@@ -1118,7 +1118,7 @@ function AdminPageContent() {
 
           {canManageContent && errorMessage && (
             <section className="rounded-[24px] border border-red-500/30 bg-red-500/10 p-6">
-              <p className="text-xs font-black uppercase tracking-[0.22em] text-red-200">
+              <p className="text-xs font-black tracking-[0.22em] text-red-200">
                 {errorMessage}
               </p>
             </section>
@@ -1126,7 +1126,7 @@ function AdminPageContent() {
 
           {canManageContent && userDashboardError && (
             <section className="rounded-[24px] border border-red-500/30 bg-red-500/10 p-6">
-              <p className="text-xs font-black uppercase tracking-[0.22em] text-red-200">
+              <p className="text-xs font-black tracking-[0.22em] text-red-200">
                 {userDashboardError}
               </p>
             </section>
@@ -1134,7 +1134,7 @@ function AdminPageContent() {
 
           {canManageContent && successMessage && (
             <section className="rounded-[24px] border border-emerald-400/30 bg-emerald-400/10 p-6">
-              <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-100">
+              <p className="text-xs font-black tracking-[0.22em] text-emerald-100">
                 {successMessage}
               </p>
             </section>
@@ -1146,7 +1146,7 @@ function AdminPageContent() {
                 <button
                   type="button"
                   onClick={() => setAdminView("operations")}
-                  className={`rounded-full border px-5 py-3 text-xs font-black uppercase tracking-[0.24em] ${
+                  className={`rounded-full border px-5 py-3 text-xs font-black tracking-[0.24em] ${
                     adminView === "operations"
                       ? "border-cyan-300/40 bg-cyan-300/10 text-cyan-100"
                       : "border-white/10 text-white/60"
@@ -1157,7 +1157,7 @@ function AdminPageContent() {
                 <button
                   type="button"
                   onClick={() => setAdminView("content")}
-                  className={`rounded-full border px-5 py-3 text-xs font-black uppercase tracking-[0.24em] ${
+                  className={`rounded-full border px-5 py-3 text-xs font-black tracking-[0.24em] ${
                     adminView === "content"
                       ? "border-cyan-300/40 bg-cyan-300/10 text-cyan-100"
                       : "border-white/10 text-white/60"
@@ -1172,7 +1172,7 @@ function AdminPageContent() {
                   <section className="rounded-[28px] border border-white/10 bg-black/20 p-6">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300/80">
+                        <p className="text-[10px] font-black tracking-[0.3em] text-cyan-300/80">
                           Registrations
                         </p>
                         <h2 className="mt-2 text-3xl font-black uppercase tracking-tight">
@@ -1183,7 +1183,7 @@ function AdminPageContent() {
                         type="button"
                         onClick={loadAdminUsers}
                         disabled={isLoadingUsers}
-                        className="rounded-full border border-cyan-300/30 px-4 py-2 text-[10px] font-black uppercase tracking-[0.22em] text-cyan-100 transition-colors hover:bg-cyan-300/10 disabled:opacity-60"
+                        className="rounded-full border border-cyan-300/30 px-4 py-2 text-[10px] font-black tracking-[0.22em] text-cyan-100 transition-colors hover:bg-cyan-300/10 disabled:opacity-60"
                       >
                         {isLoadingUsers ? "Refreshing..." : "Refresh table"}
                       </button>
@@ -1219,7 +1219,7 @@ function AdminPageContent() {
                     <div className="mt-6 overflow-x-auto rounded-[24px] border border-white/10 bg-[#08111a]">
                       <table className="min-w-full divide-y divide-white/10 text-left">
                         <thead className="bg-white/[0.03]">
-                          <tr className="text-[10px] font-black uppercase tracking-[0.22em] text-white/45">
+                          <tr className="text-[10px] font-black tracking-[0.22em] text-white/45">
                             <th className="px-4 py-4">Candidate</th>
                             <th className="px-4 py-4">Profile</th>
                             <th className="px-4 py-4">Registered Cohorts</th>
@@ -1231,7 +1231,7 @@ function AdminPageContent() {
                           {userDashboard.users.map((dashboardUser) => (
                             <tr key={dashboardUser.id} className="text-sm">
                               <td className="px-4 py-4">
-                                <p className="font-black uppercase tracking-[0.08em] text-white">
+                                <p className="font-black tracking-[0.08em] text-white">
                                   {dashboardUser.name || "Unnamed user"}
                                 </p>
                                 <p className="mt-2 text-xs font-bold text-cyan-100/90">
@@ -1249,14 +1249,14 @@ function AdminPageContent() {
                               <td className="px-4 py-4">
                                 <div className="space-y-2 text-xs text-white/70">
                                   <p>
-                                    <span className="font-black uppercase tracking-[0.14em] text-white/45">
+                                    <span className="font-black tracking-[0.14em] text-white/45">
                                       Stack
                                     </span>
                                     <br />
                                     {dashboardUser.stack || "—"}
                                   </p>
                                   <p>
-                                    <span className="font-black uppercase tracking-[0.14em] text-white/45">
+                                    <span className="font-black tracking-[0.14em] text-white/45">
                                       Github
                                     </span>
                                     <br />
@@ -1274,7 +1274,7 @@ function AdminPageContent() {
                                     )}
                                   </p>
                                   <p>
-                                    <span className="font-black uppercase tracking-[0.14em] text-white/45">
+                                    <span className="font-black tracking-[0.14em] text-white/45">
                                       Availability
                                     </span>
                                     <br />
@@ -1297,13 +1297,13 @@ function AdminPageContent() {
                                           key={`${dashboardUser.id}-${membership.cohort.id}`}
                                           className="rounded-[18px] border border-white/10 bg-white/[0.03] p-3"
                                         >
-                                          <p className="font-black uppercase tracking-[0.12em] text-white">
+                                          <p className="font-black tracking-[0.12em] text-white">
                                             {membership.cohort.type}
                                           </p>
-                                          <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.16em] text-white/45">
+                                          <p className="mt-1 text-[11px] font-bold tracking-[0.16em] text-white/45">
                                             {membership.cohort.slug}
                                           </p>
-                                          <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.16em]">
+                                          <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-black tracking-[0.16em]">
                                             <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-2 py-1 text-cyan-100">
                                               {membership.status.replaceAll(
                                                 "_",
@@ -1332,7 +1332,7 @@ function AdminPageContent() {
                                           key={`${dashboardUser.id}-${membership.cohort.id}-progress`}
                                           className="rounded-[18px] border border-white/10 bg-white/[0.03] p-3 text-xs text-white/70"
                                         >
-                                          <p className="font-black uppercase tracking-[0.14em] text-white/45">
+                                          <p className="font-black tracking-[0.14em] text-white/45">
                                             {membership.cohort.type}
                                           </p>
                                           <p className="mt-2">
@@ -1352,7 +1352,7 @@ function AdminPageContent() {
                                             /{membership.total_sprint_day_count}
                                           </p>
                                           <div className="mt-3 space-y-2">
-                                            <p className="font-black uppercase tracking-[0.14em] text-white/45">
+                                            <p className="font-black tracking-[0.14em] text-white/45">
                                               GitHub uploads
                                             </p>
                                             {membership.sprint_submissions
@@ -1366,7 +1366,7 @@ function AdminPageContent() {
                                                       submission.submission_id
                                                     }
                                                   >
-                                                    <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/45">
+                                                    <p className="text-[10px] font-black tracking-[0.14em] text-white/45">
                                                       Day{" "}
                                                       {submission.day_number}:{" "}
                                                       {submission.task_title}
@@ -1403,7 +1403,7 @@ function AdminPageContent() {
                               <td className="px-4 py-4">
                                 <div className="space-y-2 text-xs text-white/70">
                                   <p>
-                                    <span className="font-black uppercase tracking-[0.14em] text-white/45">
+                                    <span className="font-black tracking-[0.14em] text-white/45">
                                       Latest
                                     </span>
                                     <br />
@@ -1412,7 +1412,7 @@ function AdminPageContent() {
                                     )}
                                   </p>
                                   <p>
-                                    <span className="font-black uppercase tracking-[0.14em] text-white/45">
+                                    <span className="font-black tracking-[0.14em] text-white/45">
                                       Created
                                     </span>
                                     <br />
@@ -1432,7 +1432,7 @@ function AdminPageContent() {
                   <section className="rounded-[28px] border border-white/10 bg-black/20 p-6">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300/80">
+                        <p className="text-[10px] font-black tracking-[0.3em] text-cyan-300/80">
                           Results
                         </p>
                         <h2 className="mt-2 text-3xl font-black uppercase tracking-tight">
@@ -1554,7 +1554,7 @@ function AdminPageContent() {
                     <div className="mt-6 overflow-x-auto rounded-[24px] border border-white/10 bg-[#08111a]">
                       <table className="min-w-full divide-y divide-white/10 text-left">
                         <thead className="bg-white/[0.03]">
-                          <tr className="text-[10px] font-black uppercase tracking-[0.22em] text-white/45">
+                          <tr className="text-[10px] font-black tracking-[0.22em] text-white/45">
                             <th className="px-4 py-4">Candidate</th>
                             <th className="px-4 py-4">Cohort</th>
                             <th className="px-4 py-4">Test</th>
@@ -1568,7 +1568,7 @@ function AdminPageContent() {
                           {filteredResults.map((row) => (
                             <tr key={row.id} className="text-sm">
                               <td className="px-4 py-4">
-                                <p className="font-black uppercase tracking-[0.08em] text-white">
+                                <p className="font-black tracking-[0.08em] text-white">
                                   {row.candidate_name}
                                 </p>
                                 <p className="mt-2 text-xs text-cyan-100/90">
@@ -1579,7 +1579,7 @@ function AdminPageContent() {
                                 </p>
                               </td>
                               <td className="px-4 py-4">
-                                <p className="font-black uppercase tracking-[0.08em] text-white">
+                                <p className="font-black tracking-[0.08em] text-white">
                                   {row.cohort_type}
                                 </p>
                                 <p className="mt-2 text-xs text-white/55">
@@ -1597,7 +1597,7 @@ function AdminPageContent() {
                                 )}
                               </td>
                               <td className="px-4 py-4">
-                                <span className="rounded-full border border-white/10 px-2 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-white/70">
+                                <span className="rounded-full border border-white/10 px-2 py-1 text-[10px] font-black tracking-[0.16em] text-white/70">
                                   {row.status}
                                 </span>
                               </td>
@@ -1617,7 +1617,7 @@ function AdminPageContent() {
                   <section className="rounded-[28px] border border-white/10 bg-black/20 p-6">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300/80">
+                        <p className="text-[10px] font-black tracking-[0.3em] text-cyan-300/80">
                           Sprint Review
                         </p>
                         <h2 className="mt-2 text-3xl font-black uppercase tracking-tight">
@@ -1651,7 +1651,7 @@ function AdminPageContent() {
                 selectedQualifier && (
                   <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
                     <aside className="rounded-[28px] border border-white/10 bg-black/20 p-5">
-                      <p className="text-[10px] font-black uppercase tracking-[0.28em] text-white/45">
+                      <p className="text-[10px] font-black tracking-[0.28em] text-white/45">
                         Cohorts
                       </p>
                       <div className="mt-4 space-y-3">
@@ -1669,10 +1669,10 @@ function AdminPageContent() {
                                 : "border-white/10 bg-white/[0.03] hover:border-white/20"
                             }`}
                           >
-                            <p className="text-sm font-black uppercase tracking-[0.16em] text-white">
+                            <p className="text-sm font-black tracking-[0.16em] text-white">
                               {cohort.type}
                             </p>
-                            <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-white/45">
+                            <p className="mt-2 text-[10px] font-bold tracking-[0.18em] text-white/45">
                               {cohort.slug}
                             </p>
                           </button>
@@ -1684,7 +1684,7 @@ function AdminPageContent() {
                       <section className="rounded-[28px] border border-white/10 bg-black/20 p-6">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300/80">
+                            <p className="text-[10px] font-black tracking-[0.3em] text-cyan-300/80">
                               Selected Cohort
                             </p>
                             <h2 className="mt-2 text-3xl font-black uppercase tracking-tight">
@@ -1695,7 +1695,7 @@ function AdminPageContent() {
                             type="button"
                             onClick={saveContent}
                             disabled={isSaving}
-                            className="inline-flex items-center gap-2 rounded-full bg-cyan-300 px-5 py-3 text-xs font-black uppercase tracking-[0.24em] text-black transition-colors hover:bg-cyan-200 disabled:opacity-60"
+                            className="inline-flex items-center gap-2 rounded-full bg-cyan-300 px-5 py-3 text-xs font-black tracking-[0.24em] text-black transition-colors hover:bg-cyan-200 disabled:opacity-60"
                           >
                             <Save size={16} />
                             {isSaving ? "Saving..." : "Save Content"}
@@ -1707,14 +1707,14 @@ function AdminPageContent() {
                         <section className="rounded-[28px] border border-white/10 bg-black/20 p-6">
                           <div className="flex flex-wrap items-center justify-between gap-3">
                             <div>
-                              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300/80">
+                              <p className="text-[10px] font-black tracking-[0.3em] text-cyan-300/80">
                                 Timeline Control
                               </p>
                               <h3 className="mt-2 text-2xl font-black uppercase tracking-tight">
                                 Cohort Schedule and Unlock Rules
                               </h3>
                             </div>
-                            <div className="rounded-full border border-white/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.22em] text-white/55">
+                            <div className="rounded-full border border-white/10 px-4 py-2 text-[10px] font-black tracking-[0.22em] text-white/55">
                               {selectedBundle?.sprintDays.length ?? 0}{" "}
                               configured day
                               {(selectedBundle?.sprintDays.length ?? 0) === 1
@@ -1825,7 +1825,7 @@ function AdminPageContent() {
                           </div>
 
                           {scheduleValidationErrors.length > 0 && (
-                            <p className="mt-5 text-xs font-black uppercase tracking-[0.18em] text-red-200">
+                            <p className="mt-5 text-xs font-black tracking-[0.18em] text-red-200">
                               {scheduleValidationErrors[0]}
                             </p>
                           )}
@@ -1835,7 +1835,7 @@ function AdminPageContent() {
                       <section className="rounded-[28px] border border-white/10 bg-black/20 p-6">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300/80">
+                            <p className="text-[10px] font-black tracking-[0.3em] text-cyan-300/80">
                               Qualifier
                             </p>
                             <h3 className="mt-2 text-2xl font-black uppercase tracking-tight">
@@ -1863,7 +1863,7 @@ function AdminPageContent() {
                                 };
                               })
                             }
-                            className="inline-flex items-center gap-2 rounded-full border border-cyan-300/30 px-4 py-2 text-[10px] font-black uppercase tracking-[0.24em] text-cyan-100 transition-colors hover:bg-cyan-300/10"
+                            className="inline-flex items-center gap-2 rounded-full border border-cyan-300/30 px-4 py-2 text-[10px] font-black tracking-[0.24em] text-cyan-100 transition-colors hover:bg-cyan-300/10"
                           >
                             <Plus size={14} />
                             Add qualifier question
@@ -1975,7 +1975,7 @@ function AdminPageContent() {
                       <section className="rounded-[28px] border border-white/10 bg-black/20 p-6">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300/80">
+                            <p className="text-[10px] font-black tracking-[0.3em] text-cyan-300/80">
                               Sprint Days
                             </p>
                             <h3 className="mt-2 text-2xl font-black uppercase tracking-tight">
@@ -1997,7 +1997,7 @@ function AdminPageContent() {
                                   ],
                                 }))
                               }
-                              className="inline-flex items-center gap-2 rounded-full border border-cyan-300/30 px-4 py-2 text-[10px] font-black uppercase tracking-[0.24em] text-cyan-100 transition-colors hover:bg-cyan-300/10"
+                              className="inline-flex items-center gap-2 rounded-full border border-cyan-300/30 px-4 py-2 text-[10px] font-black tracking-[0.24em] text-cyan-100 transition-colors hover:bg-cyan-300/10"
                             >
                               <Plus size={14} />
                               Add day
@@ -2013,7 +2013,7 @@ function AdminPageContent() {
                               disabled={
                                 (selectedBundle?.sprintDays.length ?? 0) <= 1
                               }
-                              className="inline-flex items-center gap-2 rounded-full border border-red-400/30 px-4 py-2 text-[10px] font-black uppercase tracking-[0.24em] text-red-200 transition-colors hover:bg-red-400/10 disabled:opacity-50"
+                              className="inline-flex items-center gap-2 rounded-full border border-red-400/30 px-4 py-2 text-[10px] font-black tracking-[0.24em] text-red-200 transition-colors hover:bg-red-400/10 disabled:opacity-50"
                             >
                               <Trash2 size={14} />
                               Remove last day
@@ -2028,7 +2028,7 @@ function AdminPageContent() {
                               className="rounded-[24px] border border-white/10 bg-[#08111a] p-5"
                             >
                               <div className="flex flex-wrap items-center justify-between gap-3">
-                                <p className="text-sm font-black uppercase tracking-[0.18em] text-white">
+                                <p className="text-sm font-black tracking-[0.18em] text-white">
                                   Day {index + 1}
                                 </p>
                                 <button
@@ -2047,7 +2047,7 @@ function AdminPageContent() {
                                       ),
                                     }))
                                   }
-                                  className="inline-flex items-center gap-2 rounded-full border border-red-400/30 px-3 py-2 text-[10px] font-black uppercase tracking-[0.22em] text-red-200 transition-colors hover:bg-red-400/10"
+                                  className="inline-flex items-center gap-2 rounded-full border border-red-400/30 px-3 py-2 text-[10px] font-black tracking-[0.22em] text-red-200 transition-colors hover:bg-red-400/10"
                                 >
                                   <Trash2 size={14} />
                                   Reset day
@@ -2143,7 +2143,7 @@ export default function AdminPage() {
           <h1 className="text-3xl font-black uppercase tracking-tight">
             Admin access is unavailable
           </h1>
-          <p className="mt-4 text-sm font-bold uppercase tracking-[0.16em] text-white/65">
+          <p className="mt-4 text-sm font-bold tracking-[0.16em] text-white/65">
             Add <code>NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY</code> to use the admin
             console.
           </p>

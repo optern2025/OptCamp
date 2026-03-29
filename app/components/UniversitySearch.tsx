@@ -196,7 +196,7 @@ const UniversitySearch = ({
                 {uni.name}
               </div>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-[10px] font-black uppercase tracking-widest text-cyan-500/70">
+                <span className="text-[10px] font-black tracking-widest text-cyan-500/70">
                   {uni.alpha_two_code}
                 </span>
                 <span className="text-[10px] font-bold text-white/30 truncate">

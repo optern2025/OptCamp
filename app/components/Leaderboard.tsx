@@ -215,7 +215,7 @@ export default function Leaderboard({ id = "leaderboard" }: LeaderboardProps) {
             <SectionTitle className="italic mb-4 text-white leading-none">
               Cohort Standings
             </SectionTitle>
-            <p className="text-cyan-500 text-xs font-black uppercase tracking-[0.4em]">
+            <p className="text-cyan-500 text-xs font-black tracking-[0.4em]">
               Arena Rankings • Real-Time Performance
             </p>
           </div>
@@ -229,7 +229,7 @@ export default function Leaderboard({ id = "leaderboard" }: LeaderboardProps) {
                   setActiveCohort(tab.id);
                   setCollegeFilter("All Institutions");
                 }}
-                className={`flex items-center gap-3 px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all rounded-xl ${
+                className={`flex items-center gap-3 px-6 py-4 text-[10px] font-black tracking-[0.2em] transition-all rounded-xl ${
                   activeCohort === tab.id
                     ? "bg-cyan-500 text-black shadow-[0_0_20px_rgba(0,245,255,0.3)]"
                     : "text-white/40 hover:text-white hover:bg-white/5"
@@ -297,7 +297,7 @@ export default function Leaderboard({ id = "leaderboard" }: LeaderboardProps) {
                   <div className="text-[24px] font-black text-cyan-500 leading-none mb-1">
                     {user.score}
                   </div>
-                  <div className="text-[8px] font-black uppercase tracking-[0.2em] text-white/30">
+                  <div className="text-[8px] font-black tracking-[0.2em] text-white/30">
                     Total Score
                   </div>
                 </div>
@@ -318,7 +318,7 @@ export default function Leaderboard({ id = "leaderboard" }: LeaderboardProps) {
                 <button
                   type="button"
                   onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-                  className="w-full flex items-center justify-between px-6 py-4 bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest text-white hover:border-cyan-500 transition-all rounded-xl shadow-lg"
+                  className="w-full flex items-center justify-between px-6 py-4 bg-white/5 border border-white/10 text-[10px] font-black tracking-widest text-white hover:border-cyan-500 transition-all rounded-xl shadow-lg"
                 >
                   <div className="flex items-center gap-3">
                     <Filter size={14} className="text-cyan-500" />
@@ -343,7 +343,7 @@ export default function Leaderboard({ id = "leaderboard" }: LeaderboardProps) {
                           setCollegeFilter(option);
                           setShowFilterDropdown(false);
                         }}
-                        className={`w-full px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-white/60 hover:text-black hover:bg-cyan-500 cursor-pointer transition-colors truncate ${
+                        className={`w-full px-6 py-4 text-left text-[10px] font-black tracking-widest text-white/60 hover:text-black hover:bg-cyan-500 cursor-pointer transition-colors truncate ${
                           idx > 0 ? "border-t border-white/5" : ""
                         }`}
                       >
@@ -358,7 +358,7 @@ export default function Leaderboard({ id = "leaderboard" }: LeaderboardProps) {
             <div className="overflow-x-auto">
               <table className="w-full border-separate border-spacing-y-2">
                 <thead>
-                  <tr className="text-left text-[10px] font-black uppercase tracking-widest text-white/20">
+                  <tr className="text-left text-[10px] font-black tracking-widest text-white/20">
                     <th className="px-6 pb-4">Rank</th>
                     <th className="px-6 pb-4">User</th>
                     <th className="px-6 pb-4">Score</th>
@@ -381,10 +381,10 @@ export default function Leaderboard({ id = "leaderboard" }: LeaderboardProps) {
                             {item.avatar}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-base font-black uppercase text-white tracking-tight truncate">
+                            <p className="text-base font-black text-white tracking-tight truncate">
                               {item.name}
                             </p>
-                            <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest truncate">
+                            <p className="text-[10px] font-bold text-white/20 tracking-widest truncate">
                               {item.college}
                             </p>
                           </div>
@@ -418,7 +418,7 @@ export default function Leaderboard({ id = "leaderboard" }: LeaderboardProps) {
             </div>
 
             {sortedData.length === 0 && (
-              <div className="py-24 text-center text-white/10 font-black uppercase tracking-[0.4em] italic">
+              <div className="py-24 text-center text-white/10 font-black tracking-[0.4em] italic">
                 {isLoading
                   ? "Loading live standings"
                   : "No scored submissions found for this cohort"}

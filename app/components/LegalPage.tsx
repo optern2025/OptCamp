@@ -26,14 +26,14 @@ export default function LegalPage({
           <button
             type="button"
             onClick={onBack}
-            className="mb-8 flex items-center gap-2 text-xs font-black uppercase tracking-[0.24em] text-cyan-400 transition-colors hover:text-white"
+            className="mb-8 flex items-center gap-2 text-xs font-black tracking-[0.24em] text-cyan-400 transition-colors hover:text-white"
           >
             <ArrowLeft size={16} /> {backLabel}
           </button>
         ) : backHref ? (
           <Link
             href={backHref}
-            className="mb-8 inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.24em] text-cyan-400 transition-colors hover:text-white"
+            className="mb-8 inline-flex items-center gap-2 text-xs font-black tracking-[0.24em] text-cyan-400 transition-colors hover:text-white"
           >
             <ArrowLeft size={16} /> {backLabel}
           </Link>
@@ -44,7 +44,7 @@ export default function LegalPage({
           <button
             type="button"
             onClick={() => setActiveTab("tos")}
-            className={`px-6 py-4 text-xs font-black uppercase tracking-[0.24em] transition-colors ${
+            className={`px-6 py-4 text-xs font-black tracking-[0.24em] transition-colors ${
               activeTab === "tos"
                 ? "text-cyan-400 border-b-2 border-cyan-400"
                 : "text-white/40 hover:text-white/70"
@@ -55,7 +55,7 @@ export default function LegalPage({
           <button
             type="button"
             onClick={() => setActiveTab("privacy")}
-            className={`px-6 py-4 text-xs font-black uppercase tracking-[0.24em] transition-colors ${
+            className={`px-6 py-4 text-xs font-black tracking-[0.24em] transition-colors ${
               activeTab === "privacy"
                 ? "text-cyan-400 border-b-2 border-cyan-400"
                 : "text-white/40 hover:text-white/70"
@@ -72,9 +72,9 @@ export default function LegalPage({
               Terms & Conditions
             </h1>
 
-            <div className="space-y-6 text-sm font-bold uppercase tracking-[0.16em] text-white/70">
+            <div className="space-y-6 text-sm font-bold tracking-[0.16em] text-white/70">
               <div>
-                <h3 className="text-cyan-400 text-[11px] uppercase tracking-[0.24em] mb-3">
+                <h3 className="text-cyan-400 text-[11px] font-black tracking-[0.24em] mb-3">
                   1. Acceptance of Terms
                 </h3>
                 <p>
@@ -85,7 +85,7 @@ export default function LegalPage({
               </div>
 
               <div>
-                <h3 className="text-cyan-400 text-[11px] uppercase tracking-[0.24em] mb-3">
+                <h3 className="text-cyan-400 text-[11px] font-black tracking-[0.24em] mb-3">
                   2. Eligibility
                 </h3>
                 <p className="mb-2">Participants must:</p>
@@ -105,7 +105,7 @@ export default function LegalPage({
               </div>
 
               <div>
-                <h3 className="text-cyan-400 text-[11px] uppercase tracking-[0.24em] mb-3">
+                <h3 className="text-cyan-400 text-[11px] font-black tracking-[0.24em] mb-3">
                   3. Program Structure
                 </h3>
                 <p className="mb-2">OptCamp includes:</p>
@@ -121,7 +121,7 @@ export default function LegalPage({
               </div>
 
               <div>
-                <h3 className="text-cyan-400 text-[11px] uppercase tracking-[0.24em] mb-3">
+                <h3 className="text-cyan-400 text-[11px] font-black tracking-[0.24em] mb-3">
                   4. Evaluation & Selection
                 </h3>
                 <ul className="list-disc pl-5 space-y-1 text-white/60">
@@ -141,7 +141,7 @@ export default function LegalPage({
               </div>
 
               <div>
-                <h3 className="text-cyan-400 text-[11px] uppercase tracking-[0.24em] mb-3">
+                <h3 className="text-cyan-400 text-[11px] font-black tracking-[0.24em] mb-3">
                   5. Participant Responsibilities
                 </h3>
                 <p className="mb-2">Participants must:</p>
@@ -157,7 +157,7 @@ export default function LegalPage({
               </div>
 
               <div>
-                <h3 className="text-cyan-400 text-[11px] uppercase tracking-[0.24em] mb-3">
+                <h3 className="text-cyan-400 text-[11px] font-black tracking-[0.24em] mb-3">
                   6. Disqualification
                 </h3>
                 <p className="mb-2">Participants may be disqualified for:</p>
@@ -174,7 +174,7 @@ export default function LegalPage({
               </div>
 
               <div>
-                <h3 className="text-cyan-400 text-[11px] uppercase tracking-[0.24em] mb-3">
+                <h3 className="text-cyan-400 text-[11px] font-black tracking-[0.24em] mb-3">
                   7. Intellectual Property
                 </h3>
                 <ul className="list-disc pl-5 space-y-1 text-white/60">
@@ -188,7 +188,7 @@ export default function LegalPage({
               </div>
 
               <div>
-                <h3 className="text-cyan-400 text-[11px] uppercase tracking-[0.24em] mb-3">
+                <h3 className="text-cyan-400 text-[11px] font-black tracking-[0.24em] mb-3">
                   8. No Guarantee of Employment
                 </h3>
                 <p className="mb-2">Participation does not guarantee:</p>
@@ -203,7 +203,7 @@ export default function LegalPage({
               </div>
 
               <div>
-                <h3 className="text-cyan-400 text-[11px] uppercase tracking-[0.24em] mb-3">
+                <h3 className="text-cyan-400 text-[11px] font-black tracking-[0.24em] mb-3">
                   9. Limitation of Liability
                 </h3>
                 <p className="mb-2">Optern shall not be liable for:</p>
@@ -216,7 +216,7 @@ export default function LegalPage({
               </div>
 
               <div>
-                <h3 className="text-cyan-400 text-[11px] uppercase tracking-[0.24em] mb-3">
+                <h3 className="text-cyan-400 text-[11px] font-black tracking-[0.24em] mb-3">
                   10. Modifications
                 </h3>
                 <p className="mb-2">Optern reserves the right to:</p>
@@ -231,7 +231,7 @@ export default function LegalPage({
               </div>
 
               <div>
-                <h3 className="text-cyan-400 text-[11px] uppercase tracking-[0.24em] mb-3">
+                <h3 className="text-cyan-400 text-[11px] font-black tracking-[0.24em] mb-3">
                   11. Governing Law
                 </h3>
                 <p>These Terms shall be governed by the laws of India.</p>
@@ -247,9 +247,9 @@ export default function LegalPage({
               Privacy Policy
             </h1>
 
-            <div className="space-y-6 text-sm font-bold uppercase tracking-[0.16em] text-white/70">
+            <div className="space-y-6 text-sm font-bold tracking-[0.16em] text-white/70">
               <div>
-                <h3 className="text-cyan-400 text-[11px] uppercase tracking-[0.24em] mb-3">
+                <h3 className="text-cyan-400 text-[11px] font-black tracking-[0.24em] mb-3">
                   1. Information Collected
                 </h3>
                 <p className="mb-2">We may collect:</p>
@@ -261,7 +261,7 @@ export default function LegalPage({
               </div>
 
               <div>
-                <h3 className="text-cyan-400 text-[11px] uppercase tracking-[0.24em] mb-3">
+                <h3 className="text-cyan-400 text-[11px] font-black tracking-[0.24em] mb-3">
                   2. Purpose of Data Collection
                 </h3>
                 <p className="mb-2">Data is collected to:</p>
@@ -274,7 +274,7 @@ export default function LegalPage({
               </div>
 
               <div>
-                <h3 className="text-cyan-400 text-[11px] uppercase tracking-[0.24em] mb-3">
+                <h3 className="text-cyan-400 text-[11px] font-black tracking-[0.24em] mb-3">
                   3. Data Sharing
                 </h3>
                 <p className="mb-2">We may share participant data with:</p>
@@ -289,7 +289,7 @@ export default function LegalPage({
               </div>
 
               <div>
-                <h3 className="text-cyan-400 text-[11px] uppercase tracking-[0.24em] mb-3">
+                <h3 className="text-cyan-400 text-[11px] font-black tracking-[0.24em] mb-3">
                   4. Data Security
                 </h3>
                 <p className="mb-2">We take reasonable measures to:</p>
@@ -301,7 +301,7 @@ export default function LegalPage({
               </div>
 
               <div>
-                <h3 className="text-cyan-400 text-[11px] uppercase tracking-[0.24em] mb-3">
+                <h3 className="text-cyan-400 text-[11px] font-black tracking-[0.24em] mb-3">
                   5. Data Retention
                 </h3>
                 <ul className="list-disc pl-5 space-y-1 text-white/60">
@@ -317,7 +317,7 @@ export default function LegalPage({
               </div>
 
               <div>
-                <h3 className="text-cyan-400 text-[11px] uppercase tracking-[0.24em] mb-3">
+                <h3 className="text-cyan-400 text-[11px] font-black tracking-[0.24em] mb-3">
                   6. Participant Consent
                 </h3>
                 <p className="mb-2">By registering, participants:</p>
@@ -328,7 +328,7 @@ export default function LegalPage({
               </div>
 
               <div>
-                <h3 className="text-cyan-400 text-[11px] uppercase tracking-[0.24em] mb-3">
+                <h3 className="text-cyan-400 text-[11px] font-black tracking-[0.24em] mb-3">
                   7. Updates
                 </h3>
                 <p>This policy may be updated periodically.</p>

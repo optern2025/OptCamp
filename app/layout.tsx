@@ -43,7 +43,7 @@ export default function RootLayout({
               <SignInButton mode="modal">
                 <button
                   type="button"
-                  className="px-3 py-2 bg-cyan-500 text-black font-black uppercase tracking-widest text-[10px] hover:bg-cyan-400 transition-colors"
+                  className="px-3 py-2 bg-cyan-500 text-black font-black tracking-widest text-[10px] hover:bg-cyan-400 transition-colors"
                 >
                   Sign In
                 </button>
@@ -51,7 +51,7 @@ export default function RootLayout({
               <SignUpButton mode="modal">
                 <button
                   type="button"
-                  className="px-3 py-2 border border-cyan-500 text-cyan-500 font-black uppercase tracking-widest text-[10px] hover:bg-cyan-500 hover:text-black transition-colors"
+                  className="px-3 py-2 border border-cyan-500 text-cyan-500 font-black tracking-widest text-[10px] hover:bg-cyan-500 hover:text-black transition-colors"
                 >
                   Sign Up
                 </button>

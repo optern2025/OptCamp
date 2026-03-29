@@ -437,14 +437,14 @@ function QualifierPageWithAuth() {
           <h1 className="text-3xl font-black uppercase tracking-tight">
             Sign in to continue
           </h1>
-          <p className="mb-8 mt-2 text-xs font-bold uppercase tracking-widest text-white/60">
+          <p className="mb-8 mt-2 text-xs font-bold tracking-widest text-white/60">
             Qualifier access requires an authenticated session.
           </p>
           <div className="flex flex-wrap gap-3">
             <SignInButton mode="modal">
               <button
                 type="button"
-                className="bg-cyan-500 px-6 py-3 text-xs font-black uppercase tracking-[0.2em] text-black transition-colors hover:bg-cyan-400"
+                className="bg-cyan-500 px-6 py-3 text-xs font-black tracking-[0.2em] text-black transition-colors hover:bg-cyan-400"
               >
                 Sign In
               </button>
@@ -452,7 +452,7 @@ function QualifierPageWithAuth() {
             <SignUpButton mode="modal">
               <button
                 type="button"
-                className="border border-cyan-500 px-6 py-3 text-xs font-black uppercase tracking-[0.2em] text-cyan-500 transition-colors hover:bg-cyan-500 hover:text-black"
+                className="border border-cyan-500 px-6 py-3 text-xs font-black tracking-[0.2em] text-cyan-500 transition-colors hover:bg-cyan-500 hover:text-black"
               >
                 Create Account
               </button>
@@ -469,28 +469,28 @@ function QualifierPageWithAuth() {
                 Qualifier Test
               </h1>
               {exam && (
-                <p className="mt-2 text-xs font-bold uppercase tracking-widest text-white/60">
+                <p className="mt-2 text-xs font-bold tracking-widest text-white/60">
                   {exam.cohortType} | {exam.subject}
                 </p>
               )}
             </div>
             <Link
               href="/dashboard"
-              className="border border-cyan-500 px-5 py-3 text-xs font-black uppercase tracking-widest text-cyan-500 transition-colors hover:bg-cyan-500 hover:text-black"
+              className="border border-cyan-500 px-5 py-3 text-xs font-black tracking-widest text-cyan-500 transition-colors hover:bg-cyan-500 hover:text-black"
             >
               Back Dashboard
             </Link>
           </div>
 
           {errorMessage && (
-            <div className="mb-4 border border-red-500/30 bg-red-500/10 p-4 text-xs font-bold uppercase tracking-widest text-red-300">
+            <div className="mb-4 border border-red-500/30 bg-red-500/10 p-4 text-xs font-bold tracking-widest text-red-300">
               {errorMessage}
             </div>
           )}
 
           {portal === "loading" && (
             <section className="border border-white/10 bg-black/40 p-8">
-              <p className="text-sm font-bold uppercase tracking-widest text-white/60">
+              <p className="text-sm font-bold tracking-widest text-white/60">
                 Loading your qualifier configuration...
               </p>
             </section>
@@ -501,7 +501,7 @@ function QualifierPageWithAuth() {
               <h2 className="text-3xl font-black uppercase tracking-tight">
                 Ready to begin
               </h2>
-              <p className="max-w-3xl text-sm font-bold uppercase tracking-[0.14em] text-white/60">
+              <p className="max-w-3xl text-sm font-bold tracking-[0.14em] text-white/60">
                 After signup, the qualifier is only available for 48 hours. Once
                 you start, the 3-hour exam timer is final and cannot be
                 restarted.
@@ -511,7 +511,7 @@ function QualifierPageWithAuth() {
                 <div className="border border-white/10 bg-white/5 p-5">
                   <div className="flex items-center gap-3 text-cyan-400">
                     <FileText size={18} />
-                    <span className="text-[10px] font-black uppercase tracking-[0.24em]">
+                    <span className="text-[10px] font-black tracking-[0.24em]">
                       Questions
                     </span>
                   </div>
@@ -522,7 +522,7 @@ function QualifierPageWithAuth() {
                 <div className="border border-white/10 bg-white/5 p-5">
                   <div className="flex items-center gap-3 text-cyan-400">
                     <TimerReset size={18} />
-                    <span className="text-[10px] font-black uppercase tracking-[0.24em]">
+                    <span className="text-[10px] font-black tracking-[0.24em]">
                       Exam Time
                     </span>
                   </div>
@@ -533,7 +533,7 @@ function QualifierPageWithAuth() {
                 <div className="border border-white/10 bg-white/5 p-5">
                   <div className="flex items-center gap-3 text-cyan-400">
                     <TimerReset size={18} />
-                    <span className="text-[10px] font-black uppercase tracking-[0.24em]">
+                    <span className="text-[10px] font-black tracking-[0.24em]">
                       Access Left
                     </span>
                   </div>
@@ -544,7 +544,7 @@ function QualifierPageWithAuth() {
                 <div className="border border-white/10 bg-white/5 p-5">
                   <div className="flex items-center gap-3 text-cyan-400">
                     <ShieldCheck size={18} />
-                    <span className="text-[10px] font-black uppercase tracking-[0.24em]">
+                    <span className="text-[10px] font-black tracking-[0.24em]">
                       Pass Mark
                     </span>
                   </div>
@@ -553,13 +553,13 @@ function QualifierPageWithAuth() {
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="border border-white/10 bg-white/5 p-5 text-xs font-bold uppercase tracking-[0.18em] text-white/65">
+                <div className="border border-white/10 bg-white/5 p-5 text-xs font-bold tracking-[0.18em] text-white/65">
                   <p>Access closes at</p>
                   <p className="mt-2 text-sm text-cyan-300">
                     {formatDateTime(exam.availabilityEndsAt)}
                   </p>
                 </div>
-                <div className="border border-white/10 bg-white/5 p-5 text-xs font-bold uppercase tracking-[0.18em] text-white/65">
+                <div className="border border-white/10 bg-white/5 p-5 text-xs font-bold tracking-[0.18em] text-white/65">
                   <p>Timer starts only after you press start</p>
                   <p className="mt-2 text-sm text-cyan-300">
                     Submission is auto-sent when the 3-hour timer hits zero.
@@ -571,7 +571,7 @@ function QualifierPageWithAuth() {
                 type="button"
                 onClick={openTermsDialog}
                 disabled={isStarting || availabilityTimeLeft === 0}
-                className="bg-cyan-500 px-8 py-4 text-xs font-black uppercase tracking-[0.2em] text-black transition-colors hover:bg-cyan-400 disabled:cursor-not-allowed disabled:bg-white/20 disabled:text-white/45"
+                className="bg-cyan-500 px-8 py-4 text-xs font-black tracking-[0.2em] text-black transition-colors hover:bg-cyan-400 disabled:cursor-not-allowed disabled:bg-white/20 disabled:text-white/45"
               >
                 {isStarting ? "Starting..." : "Start Qualifier"}
               </button>
@@ -582,13 +582,13 @@ function QualifierPageWithAuth() {
             <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 backdrop-blur-md">
               <div className="relative w-full max-w-xl overflow-hidden rounded-[28px] border border-cyan-500/60 bg-[#0B0F14] p-8">
                 <div className="absolute left-0 top-0 h-1 w-full bg-cyan-500" />
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300/80">
+                <p className="text-[10px] font-black tracking-[0.3em] text-cyan-300/80">
                   Mandatory Acceptance
                 </p>
                 <h3 className="mt-4 text-3xl font-black uppercase tracking-tight">
                   Accept Legal Terms Before Starting
                 </h3>
-                <p className="mt-4 text-sm font-bold uppercase tracking-[0.14em] text-white/65">
+                <p className="mt-4 text-sm font-bold tracking-[0.14em] text-white/65">
                   You must review and accept all Terms & Conditions, privacy
                   terms, and rules before the {exam.cohortType} qualifier can
                   begin.
@@ -598,12 +598,12 @@ function QualifierPageWithAuth() {
                   href="/legal"
                   target="_blank"
                   rel="noreferrer"
-                  className="mt-6 inline-flex items-center gap-2 border border-cyan-400 px-5 py-3 text-xs font-black uppercase tracking-[0.24em] text-cyan-300 transition-colors hover:bg-cyan-400 hover:text-black"
+                  className="mt-6 inline-flex items-center gap-2 border border-cyan-400 px-5 py-3 text-xs font-black tracking-[0.24em] text-cyan-300 transition-colors hover:bg-cyan-400 hover:text-black"
                 >
                   Open Legal Page
                 </Link>
 
-                <label className="mt-6 flex cursor-pointer items-start gap-3 rounded-[20px] border border-white/10 bg-white/[0.03] p-4 text-xs font-bold uppercase tracking-[0.16em] text-white/75">
+                <label className="mt-6 flex cursor-pointer items-start gap-3 rounded-[20px] border border-white/10 bg-white/[0.03] p-4 text-xs font-bold tracking-[0.16em] text-white/75">
                   <input
                     type="checkbox"
                     checked={hasAcceptedTerms}
@@ -625,7 +625,7 @@ function QualifierPageWithAuth() {
                       setShowTermsDialog(false);
                       setHasAcceptedTerms(false);
                     }}
-                    className="border border-white/15 px-5 py-3 text-xs font-black uppercase tracking-[0.24em] text-white/70 transition-colors hover:border-white/30 hover:text-white"
+                    className="border border-white/15 px-5 py-3 text-xs font-black tracking-[0.24em] text-white/70 transition-colors hover:border-white/30 hover:text-white"
                   >
                     Cancel
                   </button>
@@ -633,7 +633,7 @@ function QualifierPageWithAuth() {
                     type="button"
                     onClick={confirmTermsAndStart}
                     disabled={isStarting}
-                    className="bg-cyan-500 px-5 py-3 text-xs font-black uppercase tracking-[0.24em] text-black transition-colors hover:bg-cyan-400 disabled:cursor-not-allowed disabled:bg-white/20 disabled:text-white/45"
+                    className="bg-cyan-500 px-5 py-3 text-xs font-black tracking-[0.24em] text-black transition-colors hover:bg-cyan-400 disabled:cursor-not-allowed disabled:bg-white/20 disabled:text-white/45"
                   >
                     {isStarting ? "Starting..." : "Accept and Start"}
                   </button>
@@ -669,7 +669,7 @@ function QualifierPageWithAuth() {
               isSubmitting={isScoring}
               timeDisplay={formatTime(timeLeft)}
               meta={
-                <div className="rounded-[18px] border border-cyan-300/20 bg-cyan-300/10 p-4 text-xs uppercase tracking-[0.18em] text-cyan-50/85">
+                <div className="rounded-[18px] border border-cyan-300/20 bg-cyan-300/10 p-4 text-xs tracking-[0.18em] text-cyan-50/85">
                   Timer is live and server-enforced until{" "}
                   {formatDateTime(exam.attemptEndsAt)}. Copy, paste, and tab
                   switching are disabled. When the clock reaches zero, your
@@ -685,7 +685,7 @@ function QualifierPageWithAuth() {
                 Submission Recorded
               </h2>
               <p
-                className={`text-xs font-black uppercase tracking-[0.3em] ${
+                className={`text-xs font-black tracking-[0.3em] ${
                   result.status === "passed"
                     ? "text-emerald-300"
                     : result.status === "failed"
@@ -699,18 +699,18 @@ function QualifierPageWithAuth() {
                     ? "Qualifier Submitted"
                     : "Submission Received"}
               </p>
-              <p className="border-y border-white/10 py-5 text-sm font-bold uppercase tracking-widest text-white/70">
+              <p className="border-y border-white/10 py-5 text-sm font-bold tracking-widest text-white/70">
                 Your attempt has been saved. Detailed scores stay internal and
                 are not shown in the candidate interface.
               </p>
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/50">
+              <p className="text-xs font-bold tracking-[0.2em] text-white/50">
                 Submitted {formatDateTime(result.submittedAt)}
               </p>
 
               <div className="flex flex-wrap justify-center gap-3">
                 <Link
                   href="/dashboard"
-                  className="border border-cyan-500 px-6 py-3 text-xs font-black uppercase tracking-[0.2em] text-cyan-500 transition-colors hover:bg-cyan-500 hover:text-black"
+                  className="border border-cyan-500 px-6 py-3 text-xs font-black tracking-[0.2em] text-cyan-500 transition-colors hover:bg-cyan-500 hover:text-black"
                 >
                   Back Dashboard
                 </Link>
@@ -727,7 +727,7 @@ function QualifierPageFallback() {
   return (
     <main className="min-h-screen bg-[#050505] px-4 py-8 text-white">
       <section className="mx-auto max-w-2xl border border-white/10 bg-black/40 p-8">
-        <p className="text-sm font-bold uppercase tracking-widest text-white/60">
+        <p className="text-sm font-bold tracking-widest text-white/60">
           Loading qualifier...
         </p>
       </section>
@@ -743,7 +743,7 @@ export default function ProctoredQualifierPage() {
           <h1 className="text-3xl font-black uppercase tracking-tight">
             Missing Clerk Configuration
           </h1>
-          <p className="mt-2 text-xs font-bold uppercase tracking-widest text-white/60">
+          <p className="mt-2 text-xs font-bold tracking-widest text-white/60">
             Add `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` to access the qualifier
             flow.
           </p>

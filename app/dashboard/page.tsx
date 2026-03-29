@@ -200,14 +200,14 @@ function DashboardPageWithAuth() {
         <div className="flex min-h-screen flex-col items-center justify-center p-4">
           <section className="w-full max-w-3xl overflow-hidden rounded-[32px] border border-cyan-500/20 bg-[radial-gradient(circle_at_top_right,_rgba(34,211,238,0.15),_transparent_40%),linear-gradient(135deg,#08131d_0%,#05080c_100%)] p-12 text-center md:p-20">
             <div className="space-y-6">
-              <p className="text-[12px] font-black uppercase tracking-[0.4em] text-cyan-300/80">
+              <p className="text-[12px] font-black tracking-[0.4em] text-cyan-300/80">
                 Authentication Required
               </p>
               <h2 className="text-5xl font-black uppercase italic tracking-tight md:text-7xl">
                 Your Sprint <br />
                 <span className="text-cyan-400">Starts Here.</span>
               </h2>
-              <p className="mx-auto max-w-lg text-sm font-bold uppercase tracking-[0.2em] text-white/55">
+              <p className="mx-auto max-w-lg text-sm font-bold tracking-[0.2em] text-white/55">
                 Sign in to open your dashboard, track applications, and unlock
                 your cohort progression.
               </p>
@@ -217,7 +217,7 @@ function DashboardPageWithAuth() {
               <SignInButton mode="modal">
                 <button
                   type="button"
-                  className="w-full bg-cyan-400 px-10 py-5 text-sm font-black uppercase tracking-[0.24em] text-black transition-all hover:scale-105 hover:bg-cyan-300 sm:w-auto"
+                  className="w-full bg-cyan-400 px-10 py-5 text-sm font-black tracking-[0.24em] text-black transition-all hover:scale-105 hover:bg-cyan-300 sm:w-auto"
                 >
                   Sign In
                 </button>
@@ -225,7 +225,7 @@ function DashboardPageWithAuth() {
               <SignUpButton mode="modal">
                 <button
                   type="button"
-                  className="w-full border border-cyan-400 px-10 py-5 text-sm font-black uppercase tracking-[0.24em] text-cyan-300 transition-all hover:scale-105 hover:bg-cyan-400 hover:text-black sm:w-auto"
+                  className="w-full border border-cyan-400 px-10 py-5 text-sm font-black tracking-[0.24em] text-cyan-300 transition-all hover:scale-105 hover:bg-cyan-400 hover:text-black sm:w-auto"
                 >
                   Create Account
                 </button>
@@ -235,7 +235,7 @@ function DashboardPageWithAuth() {
             <div className="mt-12">
               <Link
                 href="/"
-                className="text-xs font-black uppercase tracking-[0.3em] text-white/30 transition-colors hover:text-white"
+                className="text-xs font-black tracking-[0.3em] text-white/30 transition-colors hover:text-white"
               >
                 ← Back to Home
               </Link>
@@ -258,13 +258,13 @@ function DashboardPageWithAuth() {
             </div>
             <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
               <div className="space-y-4">
-                <p className="text-[11px] font-black uppercase tracking-[0.35em] text-cyan-300/80">
+                <p className="text-[11px] font-black tracking-[0.35em] text-cyan-300/80">
                   Cohort Center
                 </p>
                 <h1 className="text-4xl font-black uppercase italic tracking-tight md:text-6xl">
                   Your Cohorts. Your Progress.
                 </h1>
-                <p className="max-w-2xl text-sm font-bold uppercase tracking-[0.18em] text-white/55">
+                <p className="max-w-2xl text-sm font-bold tracking-[0.18em] text-white/55">
                   Track applications, clear the qualifier, and submit your
                   sprint deliverables one day at a time.
                 </p>
@@ -272,20 +272,20 @@ function DashboardPageWithAuth() {
               <div className="flex flex-wrap gap-3">
                 <Link
                   href="/?apply=1"
-                  className="inline-flex items-center gap-2 border border-cyan-400 px-5 py-3 text-xs font-black uppercase tracking-[0.24em] text-cyan-300 transition-colors hover:bg-cyan-400 hover:text-black"
+                  className="inline-flex items-center gap-2 border border-cyan-400 px-5 py-3 text-xs font-black tracking-[0.24em] text-cyan-300 transition-colors hover:bg-cyan-400 hover:text-black"
                 >
                   Apply to Another Cohort <ArrowRight size={14} />
                 </Link>
                 <Link
                   href="/"
-                  className="inline-flex items-center gap-2 border border-white/10 px-5 py-3 text-xs font-black uppercase tracking-[0.24em] text-white/70 transition-colors hover:border-white/30 hover:text-white"
+                  className="inline-flex items-center gap-2 border border-white/10 px-5 py-3 text-xs font-black tracking-[0.24em] text-white/70 transition-colors hover:border-white/30 hover:text-white"
                 >
                   Back Home
                 </Link>
                 {canViewAdminLink ? (
                   <Link
                     href="/admin"
-                    className="inline-flex items-center gap-2 border border-white/10 px-5 py-3 text-xs font-black uppercase tracking-[0.24em] text-white/70 transition-colors hover:border-white/30 hover:text-white"
+                    className="inline-flex items-center gap-2 border border-white/10 px-5 py-3 text-xs font-black tracking-[0.24em] text-white/70 transition-colors hover:border-white/30 hover:text-white"
                   >
                     Content Admin
                   </Link>
@@ -296,7 +296,7 @@ function DashboardPageWithAuth() {
 
           {isLoading && (
             <section className="rounded-[24px] border border-white/10 bg-black/30 p-8">
-              <p className="text-sm font-bold uppercase tracking-[0.24em] text-white/55">
+              <p className="text-sm font-bold tracking-[0.24em] text-white/55">
                 Loading dashboard telemetry...
               </p>
             </section>
@@ -304,7 +304,7 @@ function DashboardPageWithAuth() {
 
           {!isLoading && errorMessage && (
             <section className="rounded-[24px] border border-red-500/30 bg-red-500/10 p-8">
-              <p className="text-xs font-black uppercase tracking-[0.24em] text-red-200">
+              <p className="text-xs font-black tracking-[0.24em] text-red-200">
                 {errorMessage}
               </p>
             </section>
@@ -314,18 +314,18 @@ function DashboardPageWithAuth() {
             <div className="space-y-8">
               <section className="grid gap-4 md:grid-cols-4">
                 <div className="rounded-[24px] border border-white/10 bg-white/[0.03] p-6">
-                  <p className="text-[10px] font-black uppercase tracking-[0.28em] text-white/45">
+                  <p className="text-[10px] font-black tracking-[0.28em] text-white/45">
                     Candidate
                   </p>
                   <p className="mt-3 text-xl font-black uppercase tracking-tight">
                     {payload.user.name}
                   </p>
-                  <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-cyan-300/80">
+                  <p className="mt-1 text-xs font-bold tracking-[0.18em] text-cyan-300/80">
                     {payload.user.email}
                   </p>
                 </div>
                 <div className="rounded-[24px] border border-white/10 bg-white/[0.03] p-6">
-                  <p className="text-[10px] font-black uppercase tracking-[0.28em] text-white/45">
+                  <p className="text-[10px] font-black tracking-[0.28em] text-white/45">
                     Applied Cohorts
                   </p>
                   <p className="mt-3 text-4xl font-black tracking-tight">
@@ -333,7 +333,7 @@ function DashboardPageWithAuth() {
                   </p>
                 </div>
                 <div className="rounded-[24px] border border-white/10 bg-white/[0.03] p-6">
-                  <p className="text-[10px] font-black uppercase tracking-[0.28em] text-white/45">
+                  <p className="text-[10px] font-black tracking-[0.28em] text-white/45">
                     Enrolled
                   </p>
                   <p className="mt-3 text-4xl font-black tracking-tight">
@@ -341,7 +341,7 @@ function DashboardPageWithAuth() {
                   </p>
                 </div>
                 <div className="rounded-[24px] border border-white/10 bg-white/[0.03] p-6">
-                  <p className="text-[10px] font-black uppercase tracking-[0.28em] text-white/45">
+                  <p className="text-[10px] font-black tracking-[0.28em] text-white/45">
                     Sprint Days Submitted
                   </p>
                   <p className="mt-3 text-4xl font-black tracking-tight">
@@ -356,7 +356,7 @@ function DashboardPageWithAuth() {
                     <h2 className="text-3xl font-black uppercase tracking-tight">
                       Joined Cohorts
                     </h2>
-                    <p className="mt-2 text-xs font-bold uppercase tracking-[0.2em] text-white/50">
+                    <p className="mt-2 text-xs font-bold tracking-[0.2em] text-white/50">
                       Each card shows your current gateway into that sprint.
                     </p>
                   </div>
@@ -364,12 +364,12 @@ function DashboardPageWithAuth() {
 
                 {memberships.length === 0 && (
                   <div className="rounded-[24px] border border-dashed border-white/10 bg-black/20 p-10 text-center">
-                    <p className="text-sm font-black uppercase tracking-[0.24em] text-white/60">
+                    <p className="text-sm font-black tracking-[0.24em] text-white/60">
                       No cohorts joined yet.
                     </p>
                     <Link
                       href="/?apply=1"
-                      className="mt-6 inline-flex items-center gap-2 border border-cyan-400 px-5 py-3 text-xs font-black uppercase tracking-[0.24em] text-cyan-300 transition-colors hover:bg-cyan-400 hover:text-black"
+                      className="mt-6 inline-flex items-center gap-2 border border-cyan-400 px-5 py-3 text-xs font-black tracking-[0.24em] text-cyan-300 transition-colors hover:bg-cyan-400 hover:text-black"
                     >
                       Apply Now <ArrowRight size={14} />
                     </Link>
@@ -390,7 +390,7 @@ function DashboardPageWithAuth() {
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <h4 className="text-sm font-black uppercase tracking-[0.22em]">
+                          <h4 className="text-sm font-black tracking-[0.22em]">
                             Sprint Progression
                           </h4>
                         </div>
@@ -410,24 +410,24 @@ function DashboardPageWithAuth() {
                             >
                               <div className="flex flex-wrap items-center justify-between gap-3">
                                 <div>
-                                  <p className="text-[10px] font-black uppercase tracking-[0.28em] text-white/45">
+                                  <p className="text-[10px] font-black tracking-[0.28em] text-white/45">
                                     Day {sprintDay.day_number}
                                   </p>
                                   <p className="mt-2 text-lg font-black uppercase tracking-tight">
                                     {sprintDay.title}
                                   </p>
                                 </div>
-                                <span className="text-[10px] font-black uppercase tracking-[0.24em] text-white/60">
+                                <span className="text-[10px] font-black tracking-[0.24em] text-white/60">
                                   {sprintDay.status}
                                 </span>
                               </div>
-                              <p className="mt-3 text-xs font-bold uppercase tracking-[0.16em] text-white/55">
+                              <p className="mt-3 text-xs font-bold tracking-[0.16em] text-white/55">
                                 {sprintDay.description}
                               </p>
                               {sprintDay.status !== "locked" && (
                                 <Link
                                   href={`/dashboard/sprint-day?cohortId=${membership.cohort.id}&sprintDayId=${sprintDay.id}`}
-                                  className="mt-4 inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.24em] text-cyan-300 transition-colors hover:text-cyan-200"
+                                  className="mt-4 inline-flex items-center gap-2 text-xs font-black tracking-[0.24em] text-cyan-300 transition-colors hover:text-cyan-200"
                                 >
                                   {sprintDay.submission
                                     ? "View Submission"
@@ -447,7 +447,7 @@ function DashboardPageWithAuth() {
                       >
                         <div className="flex flex-wrap items-start justify-between gap-4">
                           <div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-300/80">
+                            <p className="text-[10px] font-black tracking-[0.3em] text-cyan-300/80">
                               {membership.cohort.slug}
                             </p>
                             <h3 className="mt-2 text-3xl font-black uppercase tracking-tight">
@@ -455,7 +455,7 @@ function DashboardPageWithAuth() {
                             </h3>
                           </div>
                           <span
-                            className={`rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.24em] ${getMembershipTone(
+                            className={`rounded-full border px-3 py-2 text-[10px] font-black tracking-[0.24em] ${getMembershipTone(
                               membership.status,
                             )}`}
                           >
@@ -465,26 +465,26 @@ function DashboardPageWithAuth() {
 
                         <div className="mt-6 grid gap-3 md:grid-cols-3">
                           <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/40">
+                            <p className="text-[10px] font-black tracking-[0.24em] text-white/40">
                               Application
                             </p>
-                            <p className="mt-3 text-sm font-black uppercase tracking-[0.16em] text-white/80">
+                            <p className="mt-3 text-sm font-black tracking-[0.16em] text-white/80">
                               {membership.cohort.apply_window}
                             </p>
                           </div>
                           <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/40">
+                            <p className="text-[10px] font-black tracking-[0.24em] text-white/40">
                               Sprint
                             </p>
-                            <p className="mt-3 text-sm font-black uppercase tracking-[0.16em] text-white/80">
+                            <p className="mt-3 text-sm font-black tracking-[0.16em] text-white/80">
                               {membership.cohort.sprint_window}
                             </p>
                           </div>
                           <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/40">
+                            <p className="text-[10px] font-black tracking-[0.24em] text-white/40">
                               Qualifier
                             </p>
-                            <p className="mt-3 text-sm font-black uppercase tracking-[0.16em] text-white/80">
+                            <p className="mt-3 text-sm font-black tracking-[0.16em] text-white/80">
                               {membership.qualifier_submitted_at
                                 ? membership.status === "enrolled" ||
                                   membership.status === "completed"
@@ -500,17 +500,17 @@ function DashboardPageWithAuth() {
                         <div className="mt-6 rounded-[24px] border border-white/10 bg-black/20 p-5">
                           <div className="flex items-center gap-3">
                             <ShieldCheck className="text-cyan-300" size={18} />
-                            <h4 className="text-sm font-black uppercase tracking-[0.22em]">
+                            <h4 className="text-sm font-black tracking-[0.22em]">
                               Qualifier Gate
                             </h4>
                           </div>
-                          <p className="mt-3 text-sm font-bold uppercase tracking-[0.16em] text-white/65">
+                          <p className="mt-3 text-sm font-bold tracking-[0.16em] text-white/65">
                             {getQualifierGateMessage(membership)}
                           </p>
                           {action && (
                             <Link
                               href={action.href}
-                              className="mt-5 inline-flex items-center gap-2 bg-cyan-400 px-5 py-3 text-xs font-black uppercase tracking-[0.24em] text-black transition-colors hover:bg-cyan-300"
+                              className="mt-5 inline-flex items-center gap-2 bg-cyan-400 px-5 py-3 text-xs font-black tracking-[0.24em] text-black transition-colors hover:bg-cyan-300"
                             >
                               {action.label} <ArrowRight size={14} />
                             </Link>
@@ -561,7 +561,7 @@ function DashboardPageWithAuth() {
                       <p className="text-xl font-black uppercase tracking-tight">
                         {cohort.type}
                       </p>
-                      <div className="mt-4 space-y-2 text-[10px] font-black uppercase tracking-[0.2em] text-white/55">
+                      <div className="mt-4 space-y-2 text-[10px] font-black tracking-[0.2em] text-white/55">
                         <p>Apps {cohort.apply_window}</p>
                         <p>Sprint {cohort.sprint_window}</p>
                         <p>Apply By {cohort.apply_by}</p>
@@ -586,7 +586,7 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-black uppercase tracking-tight">
             Dashboard auth is not configured
           </h1>
-          <p className="mt-4 text-sm font-bold uppercase tracking-[0.16em] text-white/65">
+          <p className="mt-4 text-sm font-bold tracking-[0.16em] text-white/65">
             Set <code>NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY</code> in the deployment
             environment to enable the protected dashboard.
           </p>
