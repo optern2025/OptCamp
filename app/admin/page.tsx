@@ -21,6 +21,7 @@ import {
   filterAndSortAssessmentResults,
 } from "@/lib/sprintDays";
 import type {
+  AdminSettings,
   AdminContentPayload,
   AdminSprintSubmissionReview,
   AdminUserDashboardPayload,
@@ -717,6 +718,8 @@ function AdminPageContent() {
   const [selectedCohortId, setSelectedCohortId] = useState("");
   const [drafts, setDrafts] = useState<Record<string, CohortContentBundle>>({});
   const [cohortDrafts, setCohortDrafts] = useState<Record<string, Cohort>>({});
+  const [adminSettingsDraft, setAdminSettingsDraft] =
+    useState<AdminSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -771,6 +774,7 @@ function AdminPageContent() {
           data.cohorts.map((cohort) => [cohort.id, cloneCohort(cohort)]),
         ),
       );
+      setAdminSettingsDraft(data.adminSettings);
       setSelectedCohortId((current) => current || data.cohorts[0]?.id || "");
     } catch (error) {
       setErrorMessage(
@@ -965,6 +969,7 @@ function AdminPageContent() {
         },
         body: JSON.stringify({
           cohortId: selectedCohortId,
+          adminSettings: adminSettingsDraft,
           cohort: {
             application_open_date: selectedCohortDraft.application_open_date,
             application_close_date: selectedCohortDraft.application_close_date,
@@ -1004,7 +1009,8 @@ function AdminPageContent() {
           data.cohorts.map((cohort) => [cohort.id, cloneCohort(cohort)]),
         ),
       );
-      setSuccessMessage("Cohort content saved.");
+      setAdminSettingsDraft(data.adminSettings);
+      setSuccessMessage("Admin settings and cohort content saved.");
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -1706,6 +1712,51 @@ function AdminPageContent() {
                           </button>
                         </div>
                       </section>
+
+                      {adminSettingsDraft && (
+                        <section className="rounded-[28px] border border-white/10 bg-black/20 p-6">
+                          <div className="flex flex-wrap items-center justify-between gap-4">
+                            <div className="max-w-3xl">
+                              <p className="text-[10px] font-black tracking-[0.3em] text-cyan-300/80">
+                                Testing Override
+                              </p>
+                              <h3 className="mt-2 text-2xl font-black uppercase tracking-tight">
+                                Time Limits
+                              </h3>
+                              <p className="mt-3 text-sm font-bold tracking-[0.12em] text-white/60">
+                                Turn this off to bypass qualifier timers,
+                                qualifier access windows, and sprint-day date
+                                gates for testing. Save Content applies the
+                                change.
+                              </p>
+                            </div>
+
+                            <label className="flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.04] px-5 py-3">
+                              <input
+                                type="checkbox"
+                                checked={adminSettingsDraft.time_limits_enabled}
+                                onChange={(event) =>
+                                  setAdminSettingsDraft((current) =>
+                                    current
+                                      ? {
+                                          ...current,
+                                          time_limits_enabled:
+                                            event.target.checked,
+                                        }
+                                      : current,
+                                  )
+                                }
+                                className="h-4 w-4 accent-cyan-300"
+                              />
+                              <span className="text-xs font-black tracking-[0.22em] text-white">
+                                {adminSettingsDraft.time_limits_enabled
+                                  ? "Time limits enabled"
+                                  : "Testing mode active"}
+                              </span>
+                            </label>
+                          </div>
+                        </section>
+                      )}
 
                       {selectedCohortDraft && (
                         <section className="rounded-[28px] border border-white/10 bg-black/20 p-6">

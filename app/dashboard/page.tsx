@@ -70,12 +70,16 @@ function getQualifierState(membership: CohortMembership) {
   });
 }
 
-function nextAction(membership: CohortMembership) {
+function nextAction(
+  membership: CohortMembership,
+  timeLimitsEnabled: boolean,
+) {
   const qualifierState = getQualifierState(membership);
   const timeline = getCohortTimelineState(membership.cohort);
 
   if (
-    (timeline.isQualifierOpen && qualifierState.canStart) ||
+    ((!timeLimitsEnabled || timeline.isQualifierOpen) &&
+      qualifierState.canStart) ||
     (qualifierState.canResume && membership.status === "qualifier_in_progress")
   ) {
     return {
@@ -101,9 +105,24 @@ function nextAction(membership: CohortMembership) {
   return null;
 }
 
-function getQualifierGateMessage(membership: CohortMembership) {
+function getQualifierGateMessage(
+  membership: CohortMembership,
+  timeLimitsEnabled: boolean,
+) {
   const qualifierState = getQualifierState(membership);
   const timeline = getCohortTimelineState(membership.cohort);
+
+  if (!timeLimitsEnabled) {
+    if (membership.status === "qualifier_in_progress") {
+      return "Testing override is active. Resume the qualifier without timer enforcement.";
+    }
+
+    if (membership.status === "enrolled" || membership.status === "completed") {
+      return "Testing override is active. Qualifier and sprint time gates are bypassed.";
+    }
+
+    return "Testing override is active. Qualifier windows and sprint-day date locks are bypassed.";
+  }
 
   if (qualifierState.canResume) {
     return `Qualifier in progress. ${formatDuration(
@@ -193,6 +212,7 @@ function DashboardPageWithAuth() {
   const availableCohorts = useMemo(() => payload?.cohorts ?? [], [payload]);
   const memberships = useMemo(() => payload?.memberships ?? [], [payload]);
   const isSingleMembership = memberships.length === 1;
+  const timeLimitsEnabled = payload?.adminSettings.time_limits_enabled ?? true;
 
   return (
     <main className="min-h-screen bg-[#061018] text-white">
@@ -382,7 +402,7 @@ function DashboardPageWithAuth() {
                   }`}
                 >
                   {memberships.map((membership) => {
-                    const action = nextAction(membership);
+                    const action = nextAction(membership, timeLimitsEnabled);
                     const sprintProgressionBlock = (
                       <div
                         className={`rounded-[24px] border border-white/10 bg-black/20 p-5 ${
@@ -505,7 +525,10 @@ function DashboardPageWithAuth() {
                             </h4>
                           </div>
                           <p className="mt-3 text-sm font-bold tracking-[0.16em] text-white/65">
-                            {getQualifierGateMessage(membership)}
+                            {getQualifierGateMessage(
+                              membership,
+                              timeLimitsEnabled,
+                            )}
                           </p>
                           {action && (
                             <Link

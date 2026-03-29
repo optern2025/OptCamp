@@ -23,6 +23,7 @@ describe("buildSprintDayProgress", () => {
       new Map(),
       "enrolled",
       cohort,
+      true,
       Date.parse("2026-04-01T06:00:00.000Z"),
     );
 
@@ -55,6 +56,7 @@ describe("buildSprintDayProgress", () => {
       ]),
       "enrolled",
       cohort,
+      true,
       Date.parse("2026-04-02T06:00:00.000Z"),
     );
 
@@ -87,11 +89,31 @@ describe("buildSprintDayProgress", () => {
       ]),
       "enrolled",
       cohort,
+      true,
       Date.parse("2026-04-01T12:30:00.000Z"),
     );
 
     expect(progress[1]?.status).toBe("locked");
     expect(progress[1]?.availability).toBe("upcoming");
+  });
+
+  it("bypasses sprint-day date and qualifier gates when time limits are disabled", () => {
+    const sprintDays = buildDefaultSprintDays("cohort-1").map((day, index) => ({
+      ...day,
+      id: `day-${index + 1}`,
+    }));
+
+    const progress = buildSprintDayProgress(
+      sprintDays,
+      new Map(),
+      "applied",
+      cohort,
+      false,
+      Date.parse("2026-03-28T06:00:00.000Z"),
+    );
+
+    expect(progress.every((day) => day.availability === "open")).toBe(true);
+    expect(progress.every((day) => day.status === "unlocked")).toBe(true);
   });
 });
 

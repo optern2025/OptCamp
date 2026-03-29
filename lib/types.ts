@@ -20,6 +20,10 @@ export interface Cohort {
   created_at: string;
 }
 
+export interface AdminSettings {
+  time_limits_enabled: boolean;
+}
+
 export type UserCohortStatus =
   | "applied"
   | "qualifier_in_progress"
@@ -190,12 +194,14 @@ export interface DashboardPayload {
   user: UserProfile;
   memberships: CohortMembership[];
   cohorts: Cohort[];
+  adminSettings: AdminSettings;
   summary: DashboardSummary;
 }
 
 export interface AdminContentPayload {
   cohorts: Cohort[];
   contentByCohort: Record<string, CohortContentBundle>;
+  adminSettings: AdminSettings;
 }
 
 export interface AdminUserCohortMembership {

@@ -69,15 +69,19 @@ export function buildSprintDayProgress(
   submissionsBySprintDayId: Map<string, SprintDaySubmission>,
   membershipStatus: UserCohortStatus,
   cohort: Pick<Cohort, "sprint_start_date" | "schedule_timezone">,
+  timeLimitsEnabled = true,
   nowMs = Date.now(),
 ): SprintDayProgress[] {
+  const bypassTimeLimits = !timeLimitsEnabled;
   const hasSprintAccess =
-    membershipStatus === "enrolled" || membershipStatus === "completed";
+    bypassTimeLimits ||
+    membershipStatus === "enrolled" ||
+    membershipStatus === "completed";
   const currentDate = getCurrentDateInTimeZone(
     cohort.schedule_timezone || DEFAULT_COHORT_TIMEZONE,
     nowMs,
   );
-  let previousDaySatisfied = hasSprintAccess;
+  let previousDaySatisfied = hasSprintAccess || bypassTimeLimits;
 
   return sprintDays
     .slice()
@@ -92,16 +96,22 @@ export function buildSprintDayProgress(
         sprintDay.day_number - 1,
       );
       const availability =
-        currentDate < scheduledDate
+        bypassTimeLimits
+          ? "open"
+          : currentDate < scheduledDate
           ? "upcoming"
           : currentDate > scheduledDate
             ? "closed"
             : "open";
-      const isUnlocked = previousDaySatisfied && availability === "open";
+      const isUnlocked =
+        bypassTimeLimits || (previousDaySatisfied && availability === "open");
       let accessMessage: string | null = null;
 
       if (!hasSprintAccess) {
         accessMessage = "Clear the qualifier before sprint submissions open.";
+      } else if (bypassTimeLimits) {
+        accessMessage =
+          "Testing override is active. Time-based sprint limits are bypassed.";
       } else if (!previousDaySatisfied) {
         accessMessage =
           "Submit the previous sprint day before this one unlocks.";
@@ -128,7 +138,8 @@ export function buildSprintDayProgress(
         access_message: accessMessage,
       };
 
-      previousDaySatisfied = previousDaySatisfied && submission !== null;
+      previousDaySatisfied =
+        bypassTimeLimits || (previousDaySatisfied && submission !== null);
       return progress;
     });
 }

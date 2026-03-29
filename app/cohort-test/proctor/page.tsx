@@ -31,6 +31,7 @@ interface ProctorExamPayload {
   availabilityEndsAt: string | null;
   attemptEndsAt: string | null;
   hasStarted: boolean;
+  timeLimitsEnabled: boolean;
 }
 
 interface GradeResponse {
@@ -109,6 +110,11 @@ function QualifierPageWithAuth() {
       clearTimer();
 
       if (nextPortal === "exam") {
+        if (!payload.timeLimitsEnabled || !payload.attemptEndsAt) {
+          setTimeLeft(payload.remainingSeconds);
+          return;
+        }
+
         const update = () => {
           setTimeLeft(secondsUntil(payload.attemptEndsAt));
         };
@@ -119,6 +125,11 @@ function QualifierPageWithAuth() {
       }
 
       if (nextPortal === "ready") {
+        if (!payload.timeLimitsEnabled || !payload.availabilityEndsAt) {
+          setAvailabilityTimeLeft(payload.remainingSeconds);
+          return;
+        }
+
         const update = () => {
           setAvailabilityTimeLeft(secondsUntil(payload.availabilityEndsAt));
         };
@@ -151,7 +162,7 @@ function QualifierPageWithAuth() {
       setErrorMessage(null);
       securityStopRef.current = false;
 
-      if (payload.hasStarted && payload.attemptEndsAt) {
+      if (payload.hasStarted) {
         setHasStarted(true);
         setTimeLeft(payload.remainingSeconds);
         setPortal("exam");
@@ -338,17 +349,23 @@ function QualifierPageWithAuth() {
   );
 
   useEffect(() => {
-    if (portal === "exam" && timeLeft === 0 && !isScoring && !result) {
+    if (
+      portal === "exam" &&
+      exam?.timeLimitsEnabled &&
+      timeLeft === 0 &&
+      !isScoring &&
+      !result
+    ) {
       void handleFinish();
     }
-  }, [handleFinish, isScoring, portal, result, timeLeft]);
+  }, [exam?.timeLimitsEnabled, handleFinish, isScoring, portal, result, timeLeft]);
 
   useEffect(() => {
     if (portal !== "ready" || !exam) {
       return;
     }
 
-    if (availabilityTimeLeft === 0) {
+    if (exam.timeLimitsEnabled && availabilityTimeLeft === 0) {
       void loadExam();
     }
   }, [availabilityTimeLeft, exam, loadExam, portal]);
@@ -502,9 +519,9 @@ function QualifierPageWithAuth() {
                 Ready to begin
               </h2>
               <p className="max-w-3xl text-sm font-bold tracking-[0.14em] text-white/60">
-                After signup, the qualifier is only available for 48 hours. Once
-                you start, the 3-hour exam timer is final and cannot be
-                restarted.
+                {exam.timeLimitsEnabled
+                  ? "After signup, the qualifier is only available for 48 hours. Once you start, the 3-hour exam timer is final and cannot be restarted."
+                  : "Testing override is active. The qualifier can be opened without time-based limits, and no countdown will force submission."}
               </p>
 
               <div className="grid gap-4 md:grid-cols-4">
@@ -534,11 +551,13 @@ function QualifierPageWithAuth() {
                   <div className="flex items-center gap-3 text-cyan-400">
                     <TimerReset size={18} />
                     <span className="text-[10px] font-black tracking-[0.24em]">
-                      Access Left
+                      {exam.timeLimitsEnabled ? "Access Left" : "Access Mode"}
                     </span>
                   </div>
                   <p className="mt-4 text-3xl font-black">
-                    {formatTime(availabilityTimeLeft)}
+                    {exam.timeLimitsEnabled
+                      ? formatTime(availabilityTimeLeft)
+                      : "OPEN"}
                   </p>
                 </div>
                 <div className="border border-white/10 bg-white/5 p-5">
@@ -554,15 +573,23 @@ function QualifierPageWithAuth() {
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="border border-white/10 bg-white/5 p-5 text-xs font-bold tracking-[0.18em] text-white/65">
-                  <p>Access closes at</p>
+                  <p>
+                    {exam.timeLimitsEnabled
+                      ? "Access closes at"
+                      : "Testing override"}
+                  </p>
                   <p className="mt-2 text-sm text-cyan-300">
-                    {formatDateTime(exam.availabilityEndsAt)}
+                    {exam.timeLimitsEnabled
+                      ? formatDateTime(exam.availabilityEndsAt)
+                      : "Time-based qualifier limits are bypassed."}
                   </p>
                 </div>
                 <div className="border border-white/10 bg-white/5 p-5 text-xs font-bold tracking-[0.18em] text-white/65">
                   <p>Timer starts only after you press start</p>
                   <p className="mt-2 text-sm text-cyan-300">
-                    Submission is auto-sent when the 3-hour timer hits zero.
+                    {exam.timeLimitsEnabled
+                      ? "Submission is auto-sent when the 3-hour timer hits zero."
+                      : "No automatic submission timer is running in testing mode."}
                   </p>
                 </div>
               </div>
@@ -570,7 +597,10 @@ function QualifierPageWithAuth() {
               <button
                 type="button"
                 onClick={openTermsDialog}
-                disabled={isStarting || availabilityTimeLeft === 0}
+                disabled={
+                  isStarting ||
+                  (exam.timeLimitsEnabled && availabilityTimeLeft === 0)
+                }
                 className="bg-cyan-500 px-8 py-4 text-xs font-black tracking-[0.2em] text-black transition-colors hover:bg-cyan-400 disabled:cursor-not-allowed disabled:bg-white/20 disabled:text-white/45"
               >
                 {isStarting ? "Starting..." : "Start Qualifier"}
@@ -646,7 +676,11 @@ function QualifierPageWithAuth() {
             <AssessmentRunner
               eyebrow={`${exam.cohortType} / ${exam.examId}`}
               title={exam.subject}
-              subtitle="Move through the test with the question palette, mark uncertain items for review, and submit before the timer expires."
+              subtitle={
+                exam.timeLimitsEnabled
+                  ? "Move through the test with the question palette, mark uncertain items for review, and submit before the timer expires."
+                  : "Testing override is active. Move through the test and submit when you are ready."
+              }
               questions={exam.questions}
               answers={answers}
               reviewFlags={reviewFlags}
@@ -667,13 +701,16 @@ function QualifierPageWithAuth() {
               onSubmit={handleFinish}
               submitLabel="Submit Qualifier"
               isSubmitting={isScoring}
-              timeDisplay={formatTime(timeLeft)}
+              timeDisplay={
+                exam.timeLimitsEnabled ? formatTime(timeLeft) : "No limit"
+              }
               meta={
                 <div className="rounded-[18px] border border-cyan-300/20 bg-cyan-300/10 p-4 text-xs tracking-[0.18em] text-cyan-50/85">
-                  Timer is live and server-enforced until{" "}
-                  {formatDateTime(exam.attemptEndsAt)}. Copy, paste, and tab
-                  switching are disabled. When the clock reaches zero, your
-                  submission is sent automatically.
+                  {exam.timeLimitsEnabled
+                    ? `Timer is live and server-enforced until ${formatDateTime(
+                        exam.attemptEndsAt,
+                      )}. Copy, paste, and tab switching are disabled. When the clock reaches zero, your submission is sent automatically.`
+                    : "Testing override is active. Copy, paste, and tab switching are still disabled, but the attempt is not time-limited."}
                 </div>
               }
             />

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { loadAdminSettings } from "@/lib/adminSettings";
 import { getAuthenticatedClerkUser } from "@/lib/clerkServer";
 import { getProfileByClerkUserId } from "@/lib/dashboard";
 import {
@@ -78,6 +79,7 @@ export async function POST(request: Request) {
       typeof body.cohortType === "string" ? body.cohortType : "General";
 
     const supabase = getSupabaseAdminClient();
+    const adminSettings = await loadAdminSettings(supabase);
     const profile = await getProfileByClerkUserId(supabase, authUser.userId);
 
     if (!profile) {
@@ -140,7 +142,10 @@ export async function POST(request: Request) {
       );
     }
 
-    if (timing.attemptExpired || !timing.canResume) {
+    if (
+      adminSettings.time_limits_enabled &&
+      (timing.attemptExpired || !timing.canResume)
+    ) {
       const submittedAt = new Date().toISOString();
 
       await supabase
@@ -184,6 +189,7 @@ export async function POST(request: Request) {
         : submittedAt;
 
     if (
+      adminSettings.time_limits_enabled &&
       Date.parse(submittedAt) - Date.parse(startedAt) >
       QUALIFIER_DURATION_SECONDS * 1000
     ) {

@@ -3,6 +3,7 @@ import {
   buildDefaultQualifierTemplate,
   normalizeAssessmentQuestions,
 } from "@/lib/assessment";
+import { loadAdminSettings } from "@/lib/adminSettings";
 import { getAuthenticatedClerkUser } from "@/lib/clerkServer";
 import {
   formatDateRangeLabel,
@@ -47,6 +48,7 @@ interface ProctorRequestContext {
   profileId: string;
   membership: MembershipRecord;
   cohort: CohortRecord;
+  timeLimitsEnabled: boolean;
 }
 
 function resolveQualifierQuestions(
@@ -134,6 +136,7 @@ async function resolveContext(
     profileId: profile.id,
     membership,
     cohort,
+    timeLimitsEnabled: (await loadAdminSettings(supabase)).time_limits_enabled,
   };
 }
 
@@ -196,9 +199,12 @@ async function buildExamPayload(
     remainingSeconds: timing.canResume
       ? timing.remainingAttemptSeconds
       : qualifier.durationSeconds,
-    availabilityEndsAt: timing.availabilityEndsAt,
-    attemptEndsAt: timing.attemptEndsAt,
+    availabilityEndsAt: context.timeLimitsEnabled
+      ? timing.availabilityEndsAt
+      : null,
+    attemptEndsAt: context.timeLimitsEnabled ? timing.attemptEndsAt : null,
     hasStarted: timing.hasStarted,
+    timeLimitsEnabled: context.timeLimitsEnabled,
   });
 }
 
@@ -246,7 +252,7 @@ export async function GET(request: NextRequest) {
       sprint_end_date: context.cohort.qualifier_close_date,
     });
 
-    if (timing.attemptExpired) {
+    if (context.timeLimitsEnabled && timing.attemptExpired) {
       await finalizeExpiredQualifier(
         context,
         "Your qualifier attempt expired after the 3-hour time limit.",
@@ -257,7 +263,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (timing.availabilityExpired) {
+    if (context.timeLimitsEnabled && timing.availabilityExpired) {
       await finalizeExpiredQualifier(
         context,
         "Your qualifier access expired 48 hours after signup.",
@@ -271,7 +277,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (!timeline.isQualifierOpen) {
+    if (context.timeLimitsEnabled && !timeline.isQualifierOpen) {
       return NextResponse.json(
         {
           error: `Qualifier access is only open from ${formatDateRangeLabel(
@@ -341,7 +347,7 @@ export async function POST(request: NextRequest) {
       sprint_end_date: context.cohort.qualifier_close_date,
     });
 
-    if (timing.attemptExpired) {
+    if (context.timeLimitsEnabled && timing.attemptExpired) {
       await finalizeExpiredQualifier(
         context,
         "Your qualifier attempt expired after the 3-hour time limit.",
@@ -352,7 +358,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (timing.availabilityExpired) {
+    if (context.timeLimitsEnabled && timing.availabilityExpired) {
       await finalizeExpiredQualifier(
         context,
         "Your qualifier access expired 48 hours after signup.",
@@ -366,7 +372,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!timeline.isQualifierOpen) {
+    if (context.timeLimitsEnabled && !timeline.isQualifierOpen) {
       return NextResponse.json(
         {
           error: `Qualifier access is only open from ${formatDateRangeLabel(

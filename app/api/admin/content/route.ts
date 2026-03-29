@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdminUser } from "@/lib/admin";
+import { loadAdminSettings, saveAdminSettings } from "@/lib/adminSettings";
 import {
   buildDefaultQualifierTemplate,
   normalizeAssessmentQuestions,
@@ -40,6 +41,9 @@ interface SprintDayTaskRow {
 
 interface SaveContentBody {
   cohortId?: string;
+  adminSettings?: {
+    time_limits_enabled?: boolean;
+  };
   cohort?: {
     application_open_date?: string;
     application_close_date?: string;
@@ -100,6 +104,7 @@ function buildQualifier(
 
 async function loadAdminContent(): Promise<AdminContentPayload> {
   const supabase = getSupabaseAdminClient();
+  const adminSettings = await loadAdminSettings(supabase);
   const [
     { data: cohortsData, error: cohortsError },
     { data: qualifierRows, error: qualifierError },
@@ -159,6 +164,7 @@ async function loadAdminContent(): Promise<AdminContentPayload> {
   return {
     cohorts,
     contentByCohort,
+    adminSettings,
   };
 }
 
@@ -196,6 +202,10 @@ export async function PUT(request: Request) {
     const qualifierQuestions = sanitizeQuestions(body.qualifier?.questions);
     const sprintDays = Array.isArray(body.sprintDays) ? body.sprintDays : [];
     const supabase = getSupabaseAdminClient();
+    await saveAdminSettings(supabase, {
+      time_limits_enabled:
+        body.adminSettings?.time_limits_enabled !== false,
+    });
     const { data: existingCohort, error: existingCohortError } = await supabase
       .from("cohorts")
       .select(

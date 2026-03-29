@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { loadAdminSettings } from "@/lib/adminSettings";
 import { buildSprintDayProgress } from "@/lib/sprintDays";
 import type {
   Cohort,
@@ -177,6 +178,7 @@ export async function loadDashboardData(
   supabase: SupabaseClient,
   authUser: AuthenticatedUserIdentity,
 ): Promise<DashboardPayload> {
+  const adminSettings = await loadAdminSettings(supabase);
   const profile = await getProfileByClerkUserId(supabase, authUser.userId);
   const user = buildUserProfile(profile, authUser);
 
@@ -199,6 +201,7 @@ export async function loadDashboardData(
       user,
       memberships: [],
       cohorts,
+      adminSettings,
       summary: {
         appliedCount: 0,
         enrolledCount: 0,
@@ -304,6 +307,7 @@ export async function loadDashboardData(
           sprintSubmissions,
           row.status,
           cohort,
+          adminSettings.time_limits_enabled,
         ),
       };
 
@@ -317,6 +321,7 @@ export async function loadDashboardData(
     user,
     memberships,
     cohorts,
+    adminSettings,
     summary: {
       appliedCount: memberships.length,
       enrolledCount: memberships.filter((item) => item.status === "enrolled")

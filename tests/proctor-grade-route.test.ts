@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockGetAuthenticatedClerkUser = vi.fn();
+const mockLoadAdminSettings = vi.fn();
 const mockGetProfileByClerkUserId = vi.fn();
 const mockGetQualifierTiming = vi.fn();
 const mockBuildFallbackGrade = vi.fn();
@@ -12,6 +13,10 @@ const updateEq2 = vi.fn();
 
 vi.mock("@/lib/clerkServer", () => ({
   getAuthenticatedClerkUser: mockGetAuthenticatedClerkUser,
+}));
+
+vi.mock("@/lib/adminSettings", () => ({
+  loadAdminSettings: mockLoadAdminSettings,
 }));
 
 vi.mock("@/lib/dashboard", () => ({
@@ -73,6 +78,9 @@ describe("POST /api/proctor/grade", () => {
       userId: "clerk-user-1",
       email: "candidate@example.com",
       name: "Candidate",
+    });
+    mockLoadAdminSettings.mockResolvedValue({
+      time_limits_enabled: true,
     });
     mockGetProfileByClerkUserId.mockResolvedValue({ id: "user-1" });
     const startedAt = new Date(Date.now() - 60 * 60 * 1000).toISOString();
