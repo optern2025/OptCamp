@@ -737,8 +737,8 @@ function QualifierPageWithAuth() {
                     : "Submission Received"}
               </p>
               <p className="border-y border-white/10 py-5 text-sm font-bold tracking-widest text-white/70">
-                Your attempt has been saved. Detailed scores stay internal and
-                are not shown in the candidate interface.
+                Thank you for attempting. Your attempt has been saved and will
+                be reviewed. Stay tuned.
               </p>
               <p className="text-xs font-bold tracking-[0.2em] text-white/50">
                 Submitted {formatDateTime(result.submittedAt)}
