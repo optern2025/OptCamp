@@ -32,3 +32,8 @@
     fade-in 0.7s ease-out,
     slide-in-from-bottom 0.7s ease-out;
 }
+
+.registration-cohort-select option {
+  color: #000;
+  background-color: #fff;
+}

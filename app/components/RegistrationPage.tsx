@@ -303,7 +303,8 @@ function RegistrationPageWithAuth({
                   required
                   value={formData.cohortId}
                   disabled={isLoadingCohorts || cohorts.length === 0}
-                  className="w-full rounded-[18px] border border-white/10 bg-white/5 px-4 py-4 font-bold text-white transition-colors focus:border-cyan-500 focus:outline-none"
+                  className="registration-cohort-select w-full rounded-[18px] border border-white/10 bg-white/5 px-4 py-4 font-bold text-white transition-colors focus:border-cyan-500 focus:outline-none"
+                  style={{ colorScheme: "dark" }}
                   onChange={(event) =>
                     setFormData((prev) => ({
                       ...prev,
@@ -312,14 +313,18 @@ function RegistrationPageWithAuth({
                   }
                 >
                   {cohorts.length === 0 && (
-                    <option value="">
+                    <option value="" className="bg-white text-black">
                       {isLoadingCohorts
                         ? "Loading cohorts..."
                         : "No cohorts available"}
                     </option>
                   )}
                   {cohorts.map((cohort) => (
-                    <option key={cohort.id} value={cohort.id}>
+                    <option
+                      key={cohort.id}
+                      value={cohort.id}
+                      className="bg-white text-black"
+                    >
                       {cohort.type} {cohort.is_active ? "(Active)" : ""}
                     </option>
                   ))}

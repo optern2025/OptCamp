@@ -15,11 +15,11 @@ import SectionTitle from "./SectionTitle";
 type CohortId = "ai-ml" | "fullstack" | "cyber-security";
 
 interface LeaderboardEntry {
-  id: number;
+  id: string;
   name: string;
   score: number;
   progress: number;
-  lastActive: string;
+  lastActive: string | null;
   college: string;
   avatar: string;
   cohort: CohortId;
@@ -35,122 +35,70 @@ interface LeaderboardProps {
   id?: string;
 }
 
+interface LeaderboardApiEntry {
+  id: string;
+  cohortId: string;
+  cohortSlug: string;
+  cohortType: string;
+  name: string;
+  college: string;
+  avatar: string;
+  score: number;
+  progress: number;
+  lastActive: string | null;
+}
+
 const COHORTS: CohortTab[] = [
   { id: "ai-ml", label: "AI / ML", icon: BrainCircuit },
   { id: "fullstack", label: "Full Stack", icon: Layers },
   { id: "cyber-security", label: "Cyber Security", icon: Shield },
 ];
 
-const LEADERBOARD_DATA: LeaderboardEntry[] = [
-  {
-    id: 1,
-    name: "Prem sai",
-    score: 2840,
-    progress: 98,
-    lastActive: "16 Oct • 12:37 am",
-    college: "Indian Institute of Technology (IIT) Hyderabad",
-    avatar: "P",
-    cohort: "cyber-security",
-  },
-  {
-    id: 2,
-    name: "Himani Kandhuk",
-    score: 2650,
-    progress: 85,
-    lastActive: "17 Oct • 07:16 pm",
-    college: "BITS Pilani - Hyderabad Campus",
-    avatar: "H",
-    cohort: "cyber-security",
-  },
-  {
-    id: 3,
-    name: "Purna",
-    score: 2420,
-    progress: 82,
-    lastActive: "14 Oct • 10:23 am",
-    college:
-      "International Institute of Information Technology (IIIT) Hyderabad",
-    avatar: "PU",
-    cohort: "cyber-security",
-  },
-  {
-    id: 4,
-    name: "Ananya",
-    score: 2100,
-    progress: 69,
-    lastActive: "16 Oct • 12:37 am",
-    college: "Chaitanya Bharathi Institute of Technology (CBIT)",
-    avatar: "A",
-    cohort: "cyber-security",
-  },
-  {
-    id: 5,
-    name: "SHARATH CHANDRA",
-    score: 1980,
-    progress: 63,
-    lastActive: "17 Oct • 07:16 pm",
-    college: "Jawaharlal Nehru Technological University (JNTU) Hyderabad",
-    avatar: "S",
-    cohort: "cyber-security",
-  },
-  {
-    id: 6,
-    name: "D.V. SATHVIK",
-    score: 2910,
-    progress: 99,
-    lastActive: "14 Oct • 10:23 am",
-    college: "Vasavi College of Engineering",
-    avatar: "D",
-    cohort: "ai-ml",
-  },
-  {
-    id: 7,
-    name: "amikula pavani",
-    score: 2750,
-    progress: 92,
-    lastActive: "15 Oct • 09:23 pm",
-    college:
-      "VNR Vignana Jyothi Institute of Engineering and Technology (VNRVJIET)",
-    avatar: "A",
-    cohort: "ai-ml",
-  },
-  {
-    id: 8,
-    name: "Karthik P",
-    score: 2500,
-    progress: 88,
-    lastActive: "13 Jan • 08:01 pm",
-    college:
-      "Gokaraju Rangaraju Institute of Engineering and Technology (GRIET)",
-    avatar: "K",
-    cohort: "ai-ml",
-  },
-  {
-    id: 9,
-    name: "Rohit Kuttumu",
-    score: 2780,
-    progress: 95,
-    lastActive: "14 Oct • 04:08 pm",
-    college: "Sreenidhi Institute of Science and Technology (SNIST)",
-    avatar: "R",
-    cohort: "fullstack",
-  },
-  {
-    id: 10,
-    name: "siddu",
-    score: 2590,
-    progress: 90,
-    lastActive: "30 Dec • 09:08 pm",
-    college: "CVR College of Engineering",
-    avatar: "SI",
-    cohort: "fullstack",
-  },
-];
+function mapCohortTypeToId(type: string): CohortId | null {
+  const normalized = type.trim().toLowerCase();
+
+  if (
+    normalized === "ai / ml" ||
+    normalized === "ai/ml" ||
+    normalized === "ai-ml"
+  ) {
+    return "ai-ml";
+  }
+
+  if (normalized === "full stack" || normalized === "fullstack") {
+    return "fullstack";
+  }
+
+  if (
+    normalized === "cyber security" ||
+    normalized === "cyber-security" ||
+    normalized === "cybersecurity"
+  ) {
+    return "cyber-security";
+  }
+
+  return null;
+}
+
+function formatLastActive(value: string | null): string {
+  if (!value) {
+    return "No recent activity";
+  }
+
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
 
 export default function Leaderboard({ id = "leaderboard" }: LeaderboardProps) {
   const [activeCohort, setActiveCohort] = useState<CohortId>("cyber-security");
   const [collegeFilter, setCollegeFilter] = useState("All Institutions");
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const filterRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -166,9 +114,66 @@ export default function Leaderboard({ id = "leaderboard" }: LeaderboardProps) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadLeaderboard = async () => {
+      setIsLoading(true);
+
+      try {
+        const response = await fetch("/api/leaderboard");
+        const payload = (await response.json()) as {
+          entries?: LeaderboardApiEntry[];
+        };
+
+        if (!response.ok) {
+          throw new Error("Failed to load leaderboard.");
+        }
+
+        const nextEntries = (payload.entries ?? [])
+          .map((entry) => {
+            const cohort = mapCohortTypeToId(entry.cohortType);
+            if (!cohort) {
+              return null;
+            }
+
+            return {
+              id: entry.id,
+              name: entry.name,
+              score: entry.score,
+              progress: entry.progress,
+              lastActive: entry.lastActive,
+              college: entry.college,
+              avatar: entry.avatar,
+              cohort,
+            } satisfies LeaderboardEntry;
+          })
+          .filter((entry): entry is LeaderboardEntry => entry !== null);
+
+        if (isMounted) {
+          setEntries(nextEntries);
+        }
+      } catch (_error) {
+        if (isMounted) {
+          setEntries([]);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadLeaderboard();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const cohortData = useMemo(
-    () => LEADERBOARD_DATA.filter((item) => item.cohort === activeCohort),
-    [activeCohort],
+    () => entries.filter((item) => item.cohort === activeCohort),
+    [activeCohort, entries],
   );
 
   const collegeOptions = useMemo(
@@ -404,7 +409,7 @@ export default function Leaderboard({ id = "leaderboard" }: LeaderboardProps) {
                         </div>
                       </td>
                       <td className="px-6 py-6 text-right last:rounded-r-2xl font-mono text-[10px] text-white/30 whitespace-nowrap">
-                        {item.lastActive}
+                        {formatLastActive(item.lastActive)}
                       </td>
                     </tr>
                   ))}
@@ -414,7 +419,9 @@ export default function Leaderboard({ id = "leaderboard" }: LeaderboardProps) {
 
             {sortedData.length === 0 && (
               <div className="py-24 text-center text-white/10 font-black uppercase tracking-[0.4em] italic">
-                Access Denied • No data found for filter in this Arena
+                {isLoading
+                  ? "Loading live standings"
+                  : "No scored submissions found for this cohort"}
               </div>
             )}
           </div>
