@@ -30,8 +30,15 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files
+.env
+.env.local
+.env.preview
+.env.production
+.env*.local
+.env*.preview
+.env*.production
+!.env.example
 
 # vercel
 .vercel
@@ -42,4 +49,3 @@ next-env.d.ts
 
 # clerk configuration (can include secrets)
 /.clerk/
-.env*.local
