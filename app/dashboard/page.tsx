@@ -474,13 +474,6 @@ function DashboardPageWithAuth() {
                               {membership.cohort.type}
                             </h3>
                           </div>
-                           <span
-                            className={`rounded-full border px-3 py-2 text-[10px] font-black tracking-[0.24em] ${getMembershipTone(
-                              membership.status,
-                            )}`}
-                          >
-                            {formatStatus(membership.status)}
-                          </span>
                         </div>
 
                         <div className="mt-6 grid gap-3 md:grid-cols-3">
@@ -508,9 +501,9 @@ function DashboardPageWithAuth() {
                               {membership.qualifier_submitted_at
                                 ? membership.status === "enrolled" ||
                                   membership.status === "completed"
-                                  ? "Passed"
+                                  ? "Attempted"
                                   : membership.status === "qualifier_failed"
-                                    ? "Failed"
+                                    ? "Need to improve"
                                     : "Submitted"
                                 : "Pending"}
                             </p>
