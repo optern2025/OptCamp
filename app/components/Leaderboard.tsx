@@ -47,7 +47,7 @@ interface LeaderboardApiEntry {
   progress: number;
   lastActive: string | null;
 }
-
+/*
 const COHORTS: CohortTab[] = [
   { id: "ai-ml", label: "AI / ML", icon: BrainCircuit },
   { id: "fullstack", label: "Full Stack", icon: Layers },
@@ -429,4 +429,4 @@ export default function Leaderboard({ id = "leaderboard" }: LeaderboardProps) {
       </div>
     </section>
   );
-}
+}*/
