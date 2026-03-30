@@ -1,4 +1,4 @@
-"use client";
+/*"use client";
 
 import type { LucideIcon } from "lucide-react";
 import {
@@ -430,3 +430,4 @@ export default function Leaderboard({ id = "leaderboard" }: LeaderboardProps) {
     </section>
   );
 }
+*/
