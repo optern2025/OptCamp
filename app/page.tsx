@@ -659,7 +659,7 @@ function HomePage() {
             </div>
           </section>
 
-          <Leaderboard id="leaderboard" />
+          {/* <Leaderboard id="leaderboard" /> */}
 
           {/* SECTION 9: FINAL CTA */}
           <section className="py-24 md:py-60 relative z-10 text-center">
@@ -697,13 +697,13 @@ function HomePage() {
                   >
                     Infrastructure
                   </button>
-                  <button
+                  {/* <button
                     type="button"
                     onClick={() => handleLandingAnchorClick("leaderboard")}
                     className="hover:text-cyan-500 transition-colors shrink-0"
                   >
                     Leaderboard
-                  </button>
+                  </button> */}
                   <button
                     type="button"
                     onClick={() => setCurrentPage("legal")}
