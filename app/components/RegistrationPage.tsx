@@ -416,7 +416,7 @@ function RegistrationPageWithAuth({
                     )}
                   </div>
                   <span className="text-[11px] font-black tracking-widest leading-relaxed text-white/60">
-                    I can commit at least 2 hours/day during the sprint cycle
+                    I can commit at least 5 hours/day during the sprint cycle
                     for {activeCohortLabel}.
                   </span>
                 </label>
