@@ -120,12 +120,12 @@ describe("POST /api/register/profile", () => {
     cohortsMaybeSingle.mockResolvedValue({
       data: {
         id: "cohort-1",
-        application_open_date: "2026-03-26",
-        application_close_date: "2026-03-29",
-        qualifier_open_date: "2026-03-30",
-        qualifier_close_date: "2026-03-31",
-        sprint_start_date: "2026-04-01",
-        sprint_end_date: "2026-04-04",
+        application_open_date: "2026-04-01",
+        application_close_date: "2026-04-10",
+        qualifier_open_date: "2026-04-11",
+        qualifier_close_date: "2026-04-12",
+        sprint_start_date: "2026-04-13",
+        sprint_end_date: "2026-04-16",
         schedule_timezone: "Asia/Kolkata",
       },
       error: null,
@@ -192,6 +192,7 @@ describe("POST /api/register/profile", () => {
         },
         body: JSON.stringify({
           university: "IIT Delhi",
+          phone: "+91 9999999999",
           cohortId: "cohort-1",
           stack: "Full Stack",
           github: "https://github.com/example",
@@ -214,6 +215,7 @@ describe("POST /api/register/profile", () => {
       email: "old@example.com",
       name: "Candidate",
       university: "IIT Delhi",
+      phone: null,
       stack: "Full Stack",
       github: null,
       availability: true,
@@ -239,6 +241,7 @@ describe("POST /api/register/profile", () => {
         },
         body: JSON.stringify({
           university: "IIT Delhi",
+          phone: "+91 9999999999",
           cohortId: "cohort-1",
           stack: "Full Stack",
           github: "https://github.com/example",

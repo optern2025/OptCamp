@@ -7,6 +7,7 @@ create table if not exists public.users (
     email text not null unique,
     name text not null default '',
     university text not null default '',
+    phone text,
     stack text not null default '',
     github text,
     availability boolean not null default false,

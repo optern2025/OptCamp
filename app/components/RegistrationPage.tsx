@@ -27,6 +27,7 @@ interface RegistrationPageProps {
 
 interface FormData {
   university: string;
+  phone: string;
   cohortId: string;
   stack: string;
   github: string;
@@ -36,6 +37,7 @@ interface FormData {
 
 const blankForm: FormData = {
   university: "",
+  phone: "",
   cohortId: "",
   stack: "",
   github: "",
@@ -114,6 +116,7 @@ function RegistrationPageWithAuth({
 
         setFormData({
           university: payload.user.university ?? "",
+          phone: payload.user.phone ?? "",
           cohortId: preferredCohortId,
           stack: payload.user.stack ?? "",
           github: payload.user.github ?? "",
@@ -151,6 +154,7 @@ function RegistrationPageWithAuth({
       },
       body: JSON.stringify({
         university: formData.university,
+        phone: formData.phone,
         cohortId: formData.cohortId,
         stack: formData.stack,
         github: formData.github,
@@ -336,6 +340,33 @@ function RegistrationPageWithAuth({
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div className="space-y-2">
+                <label
+                  htmlFor="registration-phone"
+                  className="block text-[10px] font-black tracking-widest text-white/60"
+                >
+                  <span className="flex justify-between">
+                    <span>Phone Number</span>
+                    <span>(Optional)</span>
+                  </span>
+                </label>
+                <input
+                  id="registration-phone"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  placeholder="+91 98765 43210"
+                  className="w-full rounded-[18px] border border-white/10 bg-white/5 px-4 py-4 font-bold text-white placeholder:text-white/15 focus:border-cyan-500 focus:outline-none"
+                  value={formData.phone}
+                  onChange={(event) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      phone: event.target.value,
+                    }))
+                  }
+                />
               </div>
 
               <div className="space-y-2">

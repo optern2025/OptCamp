@@ -104,7 +104,7 @@ export async function loadAdminUserDashboard(
     supabase
       .from("users")
       .select(
-        "id, clerk_user_id, email, name, university, stack, github, availability, intent, created_at, updated_at",
+        "id, clerk_user_id, email, name, university, phone, stack, github, availability, intent, created_at, updated_at",
       )
       .order("created_at", { ascending: false }),
     supabase

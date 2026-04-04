@@ -23,6 +23,7 @@ interface DbProfileRow {
   email: string;
   name: string;
   university: string;
+  phone: string | null;
   stack: string;
   github: string | null;
   availability: boolean;
@@ -95,6 +96,7 @@ function buildUserProfile(
     name:
       profile?.name || authUser.name || fallbackNameFromEmail(authUser.email),
     university: profile?.university ?? "",
+    phone: profile?.phone ?? null,
     stack: profile?.stack ?? "",
     github: profile?.github ?? null,
     availability: profile?.availability ?? false,
@@ -111,7 +113,7 @@ export async function getProfileByClerkUserId(
   const { data, error } = await supabase
     .from("users")
     .select(
-      "id, email, name, university, stack, github, availability, intent, created_at, updated_at",
+      "id, email, name, university, phone, stack, github, availability, intent, created_at, updated_at",
     )
     .eq("clerk_user_id", clerkUserId)
     .maybeSingle();

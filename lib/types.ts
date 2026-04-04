@@ -37,6 +37,7 @@ export interface UserProfile {
   email: string;
   name: string;
   university: string;
+  phone: string | null;
   stack: string;
   github: string | null;
   availability: boolean;

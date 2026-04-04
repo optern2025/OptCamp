@@ -74,6 +74,7 @@ describe("POST /api/register/profile schedule enforcement", () => {
         },
         body: JSON.stringify({
           university: "IIT Delhi",
+          phone: "+91 9999999999",
           cohortId: "cohort-1",
           stack: "Full Stack",
           github: "https://github.com/example",

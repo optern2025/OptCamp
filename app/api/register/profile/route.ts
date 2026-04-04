@@ -10,6 +10,7 @@ import type { UserCohortStatus } from "@/lib/types";
 
 interface RegisterProfileBody {
   university?: string;
+  phone?: string;
   cohortId?: string;
   stack?: string;
   github?: string;
@@ -70,6 +71,7 @@ async function insertUserProfile(
   authUser: { userId: string; email: string; name: string },
   profile: {
     university: string;
+    phone: string | null;
     stack: string;
     github: string | null;
     availability: boolean;
@@ -83,6 +85,7 @@ async function insertUserProfile(
       email: authUser.email,
       name: authUser.name,
       university: profile.university,
+      phone: profile.phone,
       stack: profile.stack,
       github: profile.github,
       availability: profile.availability,
@@ -248,6 +251,7 @@ export async function POST(request: NextRequest) {
     const intent = requireNonEmptyString(body.intent, "Intent");
     const cohortId = requireNonEmptyString(body.cohortId, "Cohort");
 
+    const phone = typeof body.phone === "string" ? body.phone.trim() : "";
     const github = typeof body.github === "string" ? body.github.trim() : "";
 
     if (body.availability !== true) {
@@ -326,6 +330,7 @@ export async function POST(request: NextRequest) {
           email: authUser.email,
           name: authUser.name,
           university,
+          phone: phone.length > 0 ? phone : null,
           stack,
           github: github.length > 0 ? github : null,
           availability: true,
@@ -412,6 +417,7 @@ export async function POST(request: NextRequest) {
             email: authUser.email,
             name: authUser.name,
             university,
+            phone: phone.length > 0 ? phone : null,
             stack,
             github: github.length > 0 ? github : null,
             availability: true,
@@ -447,6 +453,7 @@ export async function POST(request: NextRequest) {
         const { data: insertedProfile, error: insertError } =
           await insertUserProfile(supabase, authUser, {
             university,
+            phone: phone.length > 0 ? phone : null,
             stack,
             github: github.length > 0 ? github : null,
             availability: true,
