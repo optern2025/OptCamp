@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { loadAdminSettings } from "@/lib/adminSettings";
-import { getAuthenticatedClerkUser } from "@/lib/clerkServer";
-import { getProfileByClerkUserId } from "@/lib/dashboard";
+import { cookies } from "next/headers";
 import {
   buildFallbackGrade,
   type GradeResult,
@@ -30,8 +29,9 @@ interface CandidateSubmissionStatus {
 
 export async function POST(request: Request) {
   try {
-    const authUser = await getAuthenticatedClerkUser();
-    if (!authUser) {
+    const cookieStore = await cookies();
+    const sessionToken = cookieStore.get("optcamp_session")?.value;
+    if (!sessionToken) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
 
@@ -80,21 +80,25 @@ export async function POST(request: Request) {
 
     const supabase = getSupabaseAdminClient();
     const adminSettings = await loadAdminSettings(supabase);
-    const profile = await getProfileByClerkUserId(supabase, authUser.userId);
 
-    if (!profile) {
-      return NextResponse.json(
-        { error: "Unable to load your profile." },
-        { status: 500 },
-      );
+    const { data: sessionData } = await supabase
+      .from("sessions")
+      .select("user_id")
+      .eq("id", sessionToken)
+      .single();
+
+    if (!sessionData) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
+
+    const profileId = sessionData.user_id;
 
     const { data: membership, error: membershipError } = await supabase
       .from("user_cohorts")
       .select(
         "status, applied_at, qualifier_started_at, qualifier_submitted_at",
       )
-      .eq("user_id", profile.id)
+      .eq("user_id", profileId)
       .eq("cohort_id", cohortId)
       .maybeSingle();
 
@@ -155,7 +159,7 @@ export async function POST(request: Request) {
           qualifier_feedback: "Your qualifier attempt expired after 3 hours.",
           qualifier_submitted_at: submittedAt,
         })
-        .eq("user_id", profile.id)
+        .eq("user_id", profileId)
         .eq("cohort_id", cohortId)
         .is("qualifier_submitted_at", null);
 
@@ -202,7 +206,7 @@ export async function POST(request: Request) {
     const { error: insertAttemptError } = await supabase
       .from("qualifier_attempts")
       .insert({
-        user_id: profile.id,
+        user_id: profileId,
         cohort_id: cohortId,
         exam_id:
           typeof body.examId === "string" && body.examId.trim().length > 0
@@ -235,7 +239,7 @@ export async function POST(request: Request) {
         qualified_at: grade.passed ? submittedAt : null,
         enrolled_at: grade.passed ? submittedAt : null,
       })
-      .eq("user_id", profile.id)
+      .eq("user_id", profileId)
       .eq("cohort_id", cohortId);
 
     if (updateMembershipError) {

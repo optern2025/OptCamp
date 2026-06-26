@@ -4,12 +4,11 @@ import {
   normalizeAssessmentQuestions,
 } from "@/lib/assessment";
 import { loadAdminSettings } from "@/lib/adminSettings";
-import { getAuthenticatedClerkUser } from "@/lib/clerkServer";
+import { cookies } from "next/headers";
 import {
   formatDateRangeLabel,
   getCohortTimelineState,
 } from "@/lib/cohortSchedule";
-import { getProfileByClerkUserId } from "@/lib/dashboard";
 import {
   getQualifierTiming,
   QUALIFIER_DURATION_SECONDS,
@@ -90,27 +89,31 @@ function getCohortFromMembership(
 async function resolveContext(
   cohortId: string,
 ): Promise<ProctorRequestContext | NextResponse> {
-  const authUser = await getAuthenticatedClerkUser();
-  if (!authUser) {
+  const cookieStore = await cookies();
+  const sessionToken = cookieStore.get("optcamp_session")?.value;
+  if (!sessionToken) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
   const supabase = getSupabaseAdminClient();
-  const profile = await getProfileByClerkUserId(supabase, authUser.userId);
+  const { data: sessionData } = await supabase
+    .from("sessions")
+    .select("user_id")
+    .eq("id", sessionToken)
+    .single();
 
-  if (!profile) {
-    return NextResponse.json(
-      { error: "Unable to load your profile." },
-      { status: 500 },
-    );
+  if (!sessionData) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
+
+  const profileId = sessionData.user_id;
 
   const { data: activeCohortLink, error: activeCohortError } = await supabase
     .from("user_cohorts")
     .select(
       "status, applied_at, qualifier_started_at, qualifier_submitted_at, cohorts (id, slug, type, qualifier_open_date, qualifier_close_date, schedule_timezone, is_active)",
     )
-    .eq("user_id", profile.id)
+    .eq("user_id", profileId)
     .eq("cohort_id", cohortId)
     .maybeSingle();
 
@@ -133,7 +136,7 @@ async function resolveContext(
 
   return {
     supabase,
-    profileId: profile.id,
+    profileId,
     membership,
     cohort,
     timeLimitsEnabled: (await loadAdminSettings(supabase)).time_limits_enabled,

@@ -20,8 +20,33 @@ export interface Cohort {
   created_at: string;
 }
 
+export interface Cycle {
+  id: string;
+  title: string;
+  slug: string;
+  cohort_type: "inclusive" | "exclusive" | null;
+  status: "draft" | "active" | "upcoming" | "closed";
+  application_start_at: string | null;
+  application_end_at: string | null;
+  screening_start_at: string | null;
+  screening_end_at: string | null;
+  cohort_start_at: string | null;
+  cohort_end_at: string | null;
+  created_at: string;
+}
+
 export interface AdminSettings {
   time_limits_enabled: boolean;
+  ai_screening_enabled: boolean;
+  ai_model: string;
+  ai_fallback_model: string;
+  ai_pass_percentage: number;
+  ai_max_difficulty: number;
+  // Centralized grading configuration
+  pass_threshold: number;      // Final score >= this to PASS (default: 70)
+  confidence_threshold: number; // AI confidence below this triggers admin review (default: 60)
+  practical_weight: number;    // Reserved for future weighted scoring (default: 1)
+  mcq_weight: number;          // Reserved for future weighted scoring (default: 1)
 }
 
 export type UserCohortStatus =

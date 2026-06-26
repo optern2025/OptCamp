@@ -1,15 +1,8 @@
-import {
-  ClerkProvider,
-  SignedIn,
-  SignedOut,
-  SignInButton,
-  SignUpButton,
-  UserButton,
-} from "@clerk/nextjs";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { hasClerkPublishableKey } from "@/lib/clerkEnv";
 import "./globals.css";
+import { ToastProvider } from "@/app/components/ui/design-system/Toast";
+import GlobalLoginButton from "@/app/components/GlobalLoginButton";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,9 +15,18 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "OPTCAMP – Performance Sprint",
+  title: {
+    default: "OptCamp – Cohort Operating System",
+    template: "%s | OptCamp",
+  },
   description:
-    "4-Day Real Startup Simulation built to identify the top 10%. Prove your execution under pressure.",
+    "OptCamp is a production-grade cohort operating system for structured learning, sprint-based projects, and career acceleration. Apply to active cohorts and earn verified certificates.",
+  keywords: ["cohort", "learning", "sprints", "certification", "tech", "career"],
+  openGraph: {
+    title: "OptCamp – Cohort Operating System",
+    description: "Join structured cohorts, complete sprint-based projects, and earn verified certifications.",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
@@ -32,44 +34,14 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const body = (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {hasClerkPublishableKey && (
-          <div className="fixed right-4 top-4 z-[200] flex items-center gap-2">
-            <SignedOut>
-              <SignInButton mode="modal">
-                <button
-                  type="button"
-                  className="px-3 py-2 bg-cyan-500 text-black font-black tracking-widest text-[10px] hover:bg-cyan-400 transition-colors"
-                >
-                  Sign In
-                </button>
-              </SignInButton>
-              <SignUpButton mode="modal">
-                <button
-                  type="button"
-                  className="px-3 py-2 border border-cyan-500 text-cyan-500 font-black tracking-widest text-[10px] hover:bg-cyan-500 hover:text-black transition-colors"
-                >
-                  Sign Up
-                </button>
-              </SignUpButton>
-            </SignedOut>
-            <SignedIn>
-              <UserButton />
-            </SignedIn>
-          </div>
-        )}
-        {children}
+  return (
+    <html lang="en" className="dark">
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <GlobalLoginButton />
+        <ToastProvider>
+          {children}
+        </ToastProvider>
       </body>
     </html>
   );
-
-  if (!hasClerkPublishableKey) {
-    return body;
-  }
-
-  return <ClerkProvider>{body}</ClerkProvider>;
 }

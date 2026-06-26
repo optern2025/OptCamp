@@ -1,20 +1,20 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { requireAdminUser } from "@/lib/admin";
-import { loadAdminUserDashboard } from "@/lib/adminDashboard";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
 export async function GET() {
   try {
     await requireAdminUser();
-    const payload = await loadAdminUserDashboard(getSupabaseAdminClient());
-    return NextResponse.json(payload);
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unexpected server error.";
+    const supabase = getSupabaseAdminClient();
 
-    return NextResponse.json(
-      { error: message },
-      { status: message === "Unauthorized." ? 401 : 403 },
-    );
+    const { data: users, error } = await supabase
+      .from("new_users")
+      .select("id, email, full_name, mobile_number, user_type, role, created_at, admin_approval_status, disabled_at")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    return NextResponse.json({ users: users ?? [] });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: error.message === "Unauthorized." ? 401 : 500 });
   }
 }

@@ -14,7 +14,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type React from "react";
 import { Suspense, useEffect, useState } from "react";
-import type { Cohort as LandingCohort } from "@/lib/types";
+import type { Cycle as LandingCycle } from "@/lib/types";
 import GlowButton from "./components/GlowButton";
 import Leaderboard from "./components/Leaderboard";
 import LegalPage from "./components/LegalPage";
@@ -42,128 +42,72 @@ interface NoItem {
 }
 
 const gauntletDays: GauntletDay[] = [
-  { day: "01", title: "Application", desc: "Cohort screening window." },
-  { day: "02", title: "Qualifier Day 1", desc: "Timed pressure test." },
-  {
-    day: "03",
-    title: "Qualifier Day 2",
-    desc: "Second timed qualifier slot.",
-  },
-  {
-    day: "04",
-    title: "Sprint Window",
-    desc: "Cohort-specific build days.",
-  },
-  {
-    day: "05",
-    title: "Results",
-    desc: "Final decisions published.",
-  },
+  { day: "01", title: "APPLICATION", desc: "Submit your cohort application." },
+  { day: "02", title: "SCREENING", desc: "Complete the cohort screening assessment." },
+  { day: "03", title: "REVIEW", desc: "Application and screening evaluation." },
+  { day: "04", title: "SELECTION", desc: "Final candidate shortlisting." },
+  { day: "05", title: "COHORT ACCESS", desc: "Selected candidates receive cohort onboarding and access." },
 ];
 
 const selectionSteps: SelectionStep[] = [
-  { step: "Step 1", title: "Application", desc: "Max 40 per cohort" },
-  { step: "Step 2", title: "Qualifier", desc: "3-Hour Pressure Test" },
-  { step: "Step 3", title: "Sprint", desc: "Enter Simulation" },
-  { step: "Step 4", title: "Exposure", desc: "Ranked Top 10%" },
+  { step: "STEP 1", title: "APPLICATION", desc: "Apply to an active cohort." },
+  { step: "STEP 2", title: "SCREENING", desc: "Complete the cohort-specific screening assessment." },
+  { step: "STEP 3", title: "REVIEW", desc: "Applications and screening results are evaluated." },
+  { step: "STEP 4", title: "SELECTION", desc: "Final candidates receive cohort access." },
 ];
 
-function normalizeCohortType(type: string) {
-  return type.trim().toLowerCase();
+function normalizeCohortType(type: string | null) {
+  return (type || "").trim().toLowerCase();
 }
 
-function sortCohorts(items: LandingCohort[]) {
+function sortCycles(items: LandingCycle[]) {
   return [...items].sort((left, right) => {
-    const leftRank = normalizeCohortType(left.type) === "full stack" ? 0 : 1;
-    const rightRank = normalizeCohortType(right.type) === "full stack" ? 0 : 1;
+    const leftRank = normalizeCohortType(left.cohort_type) === "full stack" ? 0 : 1;
+    const rightRank = normalizeCohortType(right.cohort_type) === "full stack" ? 0 : 1;
 
     if (leftRank !== rightRank) {
       return leftRank - rightRank;
     }
 
-    if (left.is_active !== right.is_active) {
-      return Number(right.is_active) - Number(left.is_active);
+    const leftActive = left.status === "active";
+    const rightActive = right.status === "active";
+
+    if (leftActive !== rightActive) {
+      return Number(rightActive) - Number(leftActive);
     }
 
     return left.created_at.localeCompare(right.created_at);
   });
 }
 
-function getCohortDisplay(cohort: LandingCohort) {
+import { toISTDisplay } from "@/lib/dateTime";
+
+function formatDate(dateStr: string | null) {
+  if (!dateStr) return "TBD";
+  return toISTDisplay(dateStr);
+}
+
+function formatWindow(start: string | null, end: string | null) {
+  if (!start || !end) return "TBD";
+  return `${toISTDisplay(start)} - ${toISTDisplay(end)}`;
+}
+
+function getCycleDisplay(cycle: LandingCycle) {
   return {
-    ...cohort,
-    applicationLabel: "Application Starts",
-    qualifierLabel: "Qualifier Round",
+    ...cycle,
+    displayType: cycle.title,
+    apply_window: formatWindow(cycle.application_start_at, cycle.application_end_at),
+    qualifier_window: formatWindow(cycle.screening_start_at, cycle.screening_end_at),
+    sprint_window: formatWindow(cycle.cohort_start_at, cycle.cohort_end_at),
+    apply_by: formatDate(cycle.application_end_at),
+    results_on: "TBD", // Or derive from screening_end
+    is_active: cycle.status === "active",
+    applicationLabel: "Application Window",
+    qualifierLabel: "Screening Round",
     sprintLabel: "Cohort Sprint",
     resultsLabel: "Results",
   };
 }
-
-const fallbackCohorts: LandingCohort[] = [
-  {
-    id: "fallback-fullstack",
-    slug: "fullstack-apr-2026",
-    type: "Full Stack",
-    apply_window: "26th - 30th March",
-    qualifier_window: "30 & 31st March",
-    sprint_window: "1st & 2nd April",
-    apply_by: "30th March",
-    results_on: "10th April",
-    application_open_date: "2026-03-26",
-    application_close_date: "2026-03-30",
-    qualifier_open_date: "2026-03-30",
-    qualifier_close_date: "2026-03-31",
-    sprint_start_date: "2026-04-01",
-    sprint_end_date: "2026-04-02",
-    results_announcement_date: "2026-04-10",
-    schedule_timezone: "Asia/Kolkata",
-    qualifier_test_url: null,
-    is_active: true,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "fallback-aiml",
-    slug: "aiml-mar-2026",
-    type: "AI / ML",
-    apply_window: "26th - 30th March",
-    qualifier_window: "30 & 31st March",
-    sprint_window: "6th & 7th April",
-    apply_by: "30th March",
-    results_on: "10th April",
-    application_open_date: "2026-03-26",
-    application_close_date: "2026-03-30",
-    qualifier_open_date: "2026-03-30",
-    qualifier_close_date: "2026-03-31",
-    sprint_start_date: "2026-04-06",
-    sprint_end_date: "2026-04-07",
-    results_announcement_date: "2026-04-10",
-    schedule_timezone: "Asia/Kolkata",
-    qualifier_test_url: null,
-    is_active: true,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "fallback-cyber-security",
-    slug: "cyber-security-may-2026",
-    type: "Cyber Security",
-    apply_window: "26th - 30th March",
-    qualifier_window: "30 & 31st March",
-    sprint_window: "6th & 7th April",
-    apply_by: "30th March",
-    results_on: "10th April",
-    application_open_date: "2026-03-26",
-    application_close_date: "2026-03-30",
-    qualifier_open_date: "2026-03-30",
-    qualifier_close_date: "2026-03-31",
-    sprint_start_date: "2026-04-06",
-    sprint_end_date: "2026-04-07",
-    results_announcement_date: "2026-04-10",
-    schedule_timezone: "Asia/Kolkata",
-    qualifier_test_url: null,
-    is_active: true,
-    created_at: new Date().toISOString(),
-  },
-];
 
 const noItems: NoItem[] = [
   { icon: Terminal, label: "NO LECTURES" },
@@ -178,9 +122,7 @@ function HomePage() {
   const [scrolled, setScrolled] = useState(false);
   const [currentPage, setCurrentPage] = useState<PageType>("landing");
   const [selectedCohortId, setSelectedCohortId] = useState<string>("");
-  const [cohorts, setCohorts] = useState<LandingCohort[]>(
-    sortCohorts(fallbackCohorts),
-  );
+  const [cycles, setCycles] = useState<LandingCycle[]>([]);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -189,22 +131,22 @@ function HomePage() {
   }, []);
 
   useEffect(() => {
-    const loadCohorts = async () => {
+    const loadCycles = async () => {
       try {
-        const response = await fetch("/api/cohorts");
+        const response = await fetch("/api/cycles");
         if (!response.ok) return;
         const payload = (await response.json()) as {
-          cohorts?: LandingCohort[];
+          cycles?: LandingCycle[];
         };
-        if (payload.cohorts && payload.cohorts.length > 0) {
-          setCohorts(sortCohorts(payload.cohorts));
+        if (payload.cycles && payload.cycles.length > 0) {
+          setCycles(sortCycles(payload.cycles));
         }
       } catch (_error) {
-        // Keep fallback cohort cards if API fails.
+        // Silent fail
       }
     };
 
-    loadCohorts();
+    loadCycles();
   }, []);
 
   // Reset scroll on page change
@@ -365,15 +307,6 @@ function HomePage() {
                 >
                   Apply Now
                 </GlowButton>
-                <a
-                  href="https://chat.whatsapp.com/ISCBcw1PFTIFqjD0zOTjk4"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-sm font-bold text-cyan-500/70 hover:text-cyan-400 transition-colors"
-                >
-                  <MessageCircle size={16} />
-                  Join WhatsApp Community
-                </a>
               </div>
             </div>
           </header>
@@ -517,66 +450,71 @@ function HomePage() {
                 Active Cycles
               </SectionTitle>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 max-w-7xl mx-auto">
-                {cohorts.map((cohort) => {
-                  const displayCohort = getCohortDisplay(cohort);
+                {cycles.length === 0 && (
+                  <div className="col-span-1 md:col-span-2 lg:col-span-3 text-center py-20 text-white/40 italic text-sm font-bold tracking-widest uppercase">
+                    No active cycles available at the moment.
+                  </div>
+                )}
+                {cycles.map((cycle) => {
+                  const displayCycle = getCycleDisplay(cycle);
 
                   return (
                     <div
-                      key={displayCohort.id}
+                      key={displayCycle.id}
                       className={`p-7 md:p-10 border transition-all duration-500 flex flex-col justify-between h-full ${
-                        displayCohort.is_active
+                        displayCycle.is_active
                           ? "border-cyan-500 bg-cyan-500/5 shadow-[0_0_30px_rgba(0,245,255,0.1)]"
                           : "border-white/10 opacity-40 hover:opacity-100"
                       }`}
                     >
                       <div>
                         <h3 className="text-xl sm:text-2xl font-black uppercase mb-6 md:mb-10 tracking-tighter leading-none">
-                          {displayCohort.type}
+                          {displayCycle.displayType}
                         </h3>
                         <div className="space-y-4 md:space-y-6 mb-8 md:mb-10">
                           <div className="flex justify-between text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-white/40">
-                            <span>{displayCohort.applicationLabel}:</span>
+                            <span>{displayCycle.applicationLabel}:</span>
                             <span className="text-white">
-                              {displayCohort.apply_window}
+                              {displayCycle.apply_window}
                             </span>
                           </div>
-                          {displayCohort.qualifier_window && (
+                          {displayCycle.qualifier_window && (
                             <div className="flex justify-between text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-white/40">
-                              <span>{displayCohort.qualifierLabel}:</span>
+                              <span>{displayCycle.qualifierLabel}:</span>
                               <span className="text-white">
-                                {displayCohort.qualifier_window}
+                                {displayCycle.qualifier_window}
                               </span>
                             </div>
                           )}
                           <div className="flex justify-between text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-white/40">
-                            <span>{displayCohort.sprintLabel}:</span>
+                            <span>{displayCycle.sprintLabel}:</span>
                             <span className="text-white">
-                              {displayCohort.sprint_window}
+                              {displayCycle.sprint_window}
                             </span>
                           </div>
                           <div className="flex justify-between text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-white/40">
-                            <span>{displayCohort.resultsLabel}:</span>
+                            <span>{displayCycle.resultsLabel}:</span>
                             <span className="text-white">
-                              {displayCohort.results_on}
+                              {displayCycle.results_on}
                             </span>
                           </div>
                           <div className="pt-4 md:pt-6 border-t border-white/10 flex justify-between text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-cyan-500">
                             <span>Apply By:</span>
-                            <span>{displayCohort.apply_by}</span>
+                            <span>{displayCycle.apply_by}</span>
                           </div>
                         </div>
                       </div>
                       <button
                         type="button"
-                        onClick={() => handleApplyClick(displayCohort.id)}
-                        disabled={!displayCohort.is_active}
+                        onClick={() => handleApplyClick(displayCycle.id)}
+                        disabled={!displayCycle.is_active}
                         className={`w-full py-3 md:py-4 text-[8px] sm:text-[10px] font-black uppercase tracking-widest border transition-all ${
-                          displayCohort.is_active
+                          displayCycle.is_active
                             ? "bg-cyan-500 text-black border-cyan-500 hover:bg-cyan-400"
                             : "border-white/20 text-white/20"
                         }`}
                       >
-                        {displayCohort.is_active
+                        {displayCycle.is_active
                           ? "Apply to Batch"
                           : "Waitlist"}
                       </button>
@@ -665,7 +603,7 @@ function HomePage() {
           <section className="py-24 md:py-60 relative z-10 text-center">
             <div className="container mx-auto px-4 sm:px-6">
               <h2 className="text-4xl xs:text-5xl sm:text-7xl md:text-[7rem] lg:text-[8.5rem] font-black mb-8 md:mb-12 uppercase italic tracking-[-0.03em] md:tracking-[-0.05em] leading-[1.1] sm:leading-none break-words">
-                ONLY 60 <br className="hidden sm:block" /> APPLICATIONS.
+                ONLY 40 <br className="hidden sm:block" /> APPLICATIONS.
               </h2>
               <p className="text-base xs:text-xl sm:text-2xl md:text-3xl text-white/40 mb-10 md:mb-16 max-w-2xl mx-auto font-medium uppercase tracking-tighter italic px-4 leading-snug">
                 If you believe you can execute in an Organisation —

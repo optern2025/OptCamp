@@ -1,6 +1,5 @@
 "use client";
 
-import { SignedIn, SignedOut, SignInButton, SignUpButton } from "@clerk/nextjs";
 import { FileText, ShieldCheck, TimerReset } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -16,7 +15,6 @@ import {
   type AssessmentAnswerValue,
   AssessmentRunner,
 } from "@/app/components/AssessmentRunner";
-import { hasClerkPublishableKey } from "@/lib/clerkEnv";
 import type { AssessmentQuestion } from "@/lib/types";
 
 interface ProctorExamPayload {
@@ -449,36 +447,8 @@ function QualifierPageWithAuth() {
         backgroundSize: "40px 40px",
       }}
     >
-      <SignedOut>
-        <section className="mx-auto max-w-2xl border border-white/10 bg-black/40 p-8">
-          <h1 className="text-3xl font-black uppercase tracking-tight">
-            Sign in to continue
-          </h1>
-          <p className="mb-8 mt-2 text-xs font-bold tracking-widest text-white/60">
-            Qualifier access requires an authenticated session.
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <SignInButton mode="modal">
-              <button
-                type="button"
-                className="bg-cyan-500 px-6 py-3 text-xs font-black tracking-[0.2em] text-black transition-colors hover:bg-cyan-400"
-              >
-                Sign In
-              </button>
-            </SignInButton>
-            <SignUpButton mode="modal">
-              <button
-                type="button"
-                className="border border-cyan-500 px-6 py-3 text-xs font-black tracking-[0.2em] text-cyan-500 transition-colors hover:bg-cyan-500 hover:text-black"
-              >
-                Create Account
-              </button>
-            </SignUpButton>
-          </div>
-        </section>
-      </SignedOut>
 
-      <SignedIn>
+      <>
         <div className="mx-auto max-w-7xl">
           <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -755,7 +725,7 @@ function QualifierPageWithAuth() {
             </section>
           )}
         </div>
-      </SignedIn>
+      </>
     </main>
   );
 }
@@ -773,22 +743,6 @@ function QualifierPageFallback() {
 }
 
 export default function ProctoredQualifierPage() {
-  if (!hasClerkPublishableKey) {
-    return (
-      <main className="min-h-screen bg-[#050505] px-4 py-8 text-white">
-        <section className="mx-auto max-w-2xl border border-white/10 bg-black/40 p-8">
-          <h1 className="text-3xl font-black uppercase tracking-tight">
-            Missing Clerk Configuration
-          </h1>
-          <p className="mt-2 text-xs font-bold tracking-widest text-white/60">
-            Add `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` to access the qualifier
-            flow.
-          </p>
-        </section>
-      </main>
-    );
-  }
-
   return (
     <Suspense fallback={<QualifierPageFallback />}>
       <QualifierPageWithAuth />

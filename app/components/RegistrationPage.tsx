@@ -1,24 +1,21 @@
 "use client";
 
 import {
-  SignedIn,
-  SignedOut,
-  SignInButton,
-  SignUpButton,
-  useUser,
-} from "@clerk/nextjs";
-import {
   ArrowLeft,
   CheckCircle2,
   Github,
   MessageCircle,
   ShieldCheck,
+  Linkedin,
+  Link as LinkIcon,
+  FileText,
+  AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
-import { hasClerkPublishableKey } from "@/lib/clerkEnv";
-import type { Cohort, DashboardPayload } from "@/lib/types";
+import type { Cycle } from "@/lib/types";
 import UniversitySearch from "./UniversitySearch";
+import { useRouter } from "next/navigation";
 
 interface RegistrationPageProps {
   onBack: () => void;
@@ -26,179 +23,163 @@ interface RegistrationPageProps {
 }
 
 interface FormData {
-  university: string;
-  phone: string;
-  cohortId: string;
-  stack: string;
-  github: string;
-  availability: boolean;
-  intent: string;
+  cycle_id: string;
+  full_name: string;
+  email: string;
+  mobile_number: string;
+  user_type: "student" | "graduate" | "";
+  college: string;
+  graduation_year: string;
+  skills: string;
+  github_url: string;
+  linkedin_url: string;
+  portfolio_url: string;
+  resume_url: string;
+  motivation: string;
 }
 
 const blankForm: FormData = {
-  university: "",
-  phone: "",
-  cohortId: "",
-  stack: "",
-  github: "",
-  availability: false,
-  intent: "",
+  cycle_id: "",
+  full_name: "",
+  email: "",
+  mobile_number: "",
+  user_type: "",
+  college: "",
+  graduation_year: "",
+  skills: "",
+  github_url: "",
+  linkedin_url: "",
+  portfolio_url: "",
+  resume_url: "",
+  motivation: "",
 };
 
 const whatsappLinks: Record<string, string> = {
-  "Full Stack": "https://chat.whatsapp.com/BhOe3bzAxnmGbI0jTJzBGX?mode=gi_t",
+  "Full Stack Development": "https://chat.whatsapp.com/BhOe3bzAxnmGbI0jTJzBGX?mode=gi_t",
   "AI / ML": "https://chat.whatsapp.com/BhOe3bzAxnmGbI0jTJzBGX?mode=gi_t",
-  "Cyber Security":
-    "https://chat.whatsapp.com/IpQpt6mVNdwEFsrhiT3ygm?mode=gi_t",
+  "Cyber Security": "https://chat.whatsapp.com/IpQpt6mVNdwEFsrhiT3ygm?mode=gi_t",
 };
 
-function RegistrationPageWithAuth({
+export default function RegistrationPage({
   onBack,
   initialCohortId,
 }: RegistrationPageProps) {
-  const { user, isLoaded } = useUser();
+  const router = useRouter();
+  const [user, setUser] = useState<any>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
   const [formData, setFormData] = useState<FormData>(blankForm);
-  const [cohorts, setCohorts] = useState<Cohort[]>([]);
-  const [isLoadingCohorts, setIsLoadingCohorts] = useState(true);
+  const [cycles, setCycles] = useState<Cycle[]>([]);
+  const [isLoadingCycles, setIsLoadingCycles] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [alreadyApplied, setAlreadyApplied] = useState(false);
 
   useEffect(() => {
-    const loadContext = async () => {
-      if (!isLoaded) {
-        return;
-      }
-
-      if (!user) {
-        setCohorts([]);
-        setIsLoadingCohorts(false);
-        return;
-      }
-
-      setIsLoadingCohorts(true);
-      setErrorMessage(null);
-
+    const fetchUserAndCycles = async () => {
       try {
-        const response = await fetch("/api/me/dashboard");
-        const payload = (await response.json()) as DashboardPayload & {
-          error?: string;
-        };
-
-        if (response.status === 401) {
-          setCohorts([]);
-          return;
+        // 1. Fetch current session user
+        const meRes = await fetch("/api/me");
+        if (meRes.ok) {
+          const { user: me } = await meRes.json();
+          setUser(me);
+          setFormData((prev) => ({
+            ...prev,
+            full_name: me.full_name || "",
+            email: me.email || "",
+            mobile_number: me.mobile_number || "",
+            user_type: me.user_type || "",
+          }));
         }
 
-        if (!response.ok) {
-          throw new Error(payload.error ?? "Failed to load cohorts.");
+        // 2. Fetch active cycles and user applications
+        const [cyclesRes, myAppsRes] = await Promise.all([
+          fetch("/api/cycles"),
+          fetch("/api/applications/my")
+        ]);
+
+        let myApps: any[] = [];
+        if (myAppsRes.ok) {
+          const { applications } = await myAppsRes.json();
+          myApps = applications || [];
         }
 
-        const nextCohorts = payload.cohorts ?? [];
-        setCohorts(nextCohorts);
+        if (cyclesRes.ok) {
+          const { cycles: activeCycles } = await cyclesRes.json();
+          
+          if (activeCycles && activeCycles.length > 0) {
+            const preferredId = initialCohortId || activeCycles[0].id;
+            
+            // Direct URL protection check
+            const hasAppliedToPreferred = myApps.some(app => app.cycle_id === preferredId);
+            if (hasAppliedToPreferred && initialCohortId) {
+              setAlreadyApplied(true);
+            }
 
-        const active = nextCohorts.find((cohort) => cohort.is_active);
-        const aiMlCohort = nextCohorts.find(
-          (cohort) => cohort.type.toLowerCase() === "ai / ml",
-        );
-
-        // If initialCohortId is explicitly provided, use it
-        // Otherwise, fall back to applied membership, active cohort, AI/ML cohort, or first cohort
-        const preferredCohortId =
-          initialCohortId ||
-          payload.memberships.find(
-            (membership) => membership.status === "applied",
-          )?.cohort.id ||
-          active?.id ||
-          aiMlCohort?.id ||
-          nextCohorts[0]?.id ||
-          "";
-
-        setFormData({
-          university: payload.user.university ?? "",
-          phone: payload.user.phone ?? "",
-          cohortId: preferredCohortId,
-          stack: payload.user.stack ?? "",
-          github: payload.user.github ?? "",
-          availability: payload.user.availability ?? false,
-          intent: payload.user.intent ?? "",
-        });
-      } catch (error) {
-        setErrorMessage(
-          error instanceof Error ? error.message : "Failed to load cohorts.",
-        );
+            // Filter out already applied cohorts from the dropdown options
+            const appliedIds = new Set(myApps.map(a => a.cycle_id));
+            const availableCycles = activeCycles.filter((c: any) => !appliedIds.has(c.id));
+            
+            setCycles(availableCycles);
+            setFormData((prev) => ({ ...prev, cycle_id: preferredId }));
+          }
+        }
+      } catch (err) {
+        setErrorMessage("Failed to load application data.");
       } finally {
-        setIsLoadingCohorts(false);
+        setIsLoaded(true);
+        setIsLoadingCycles(false);
       }
     };
 
-    loadContext();
-  }, [initialCohortId, isLoaded, user]);
+    fetchUserAndCycles();
+  }, [initialCohortId]);
 
-  const activeCohortLabel = useMemo(() => {
-    const cohort = cohorts.find((item) => item.id === formData.cohortId);
-    return cohort?.type ?? "your selected cohort";
-  }, [cohorts, formData.cohortId]);
+  const activeCycleLabel = useMemo(() => {
+    const cycle = cycles.find((item) => item.id === formData.cycle_id);
+    return cycle?.title ?? "your selected cycle";
+  }, [cycles, formData.cycle_id]);
 
-  const selectedCohortWhatsappLink = useMemo(() => {
-    const cohort = cohorts.find((item) => item.id === formData.cohortId);
-    if (!cohort) return null;
-    return whatsappLinks[cohort.type] ?? null;
-  }, [cohorts, formData.cohortId]);
-
-  const persistProfile = async () => {
-    const profileResponse = await fetch("/api/register/profile?debug=1", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        university: formData.university,
-        phone: formData.phone,
-        cohortId: formData.cohortId,
-        stack: formData.stack,
-        github: formData.github,
-        availability: formData.availability,
-        intent: formData.intent,
-      }),
-    });
-
-    const profilePayload = (await profileResponse.json()) as {
-      error?: string;
-      debug?: unknown;
-    };
-
-    if (!profileResponse.ok) {
-      if (profilePayload.debug) {
-        console.error("[register/profile][debug]", profilePayload.debug);
-      }
-      throw new Error(profilePayload.error ?? "Failed to save your profile.");
-    }
-  };
+  const selectedCycleWhatsappLink = useMemo(() => {
+    const cycle = cycles.find((item) => item.id === formData.cycle_id);
+    if (!cycle) return null;
+    return whatsappLinks[cycle.title] ?? null;
+  }, [cycles, formData.cycle_id]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setErrorMessage(null);
 
-    if (!isLoaded || !user) {
+    if (!user) {
       setErrorMessage("Please sign in before applying.");
       return;
     }
 
-    if (!formData.availability) {
-      setErrorMessage("Please confirm your sprint availability.");
-      return;
-    }
-
-    if (!formData.cohortId) {
-      setErrorMessage("Please select a cohort.");
+    if (!formData.cycle_id) {
+      setErrorMessage("Please select a cycle.");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      await persistProfile();
+      const res = await fetch("/api/applications", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (res.status === 409 && data.redirect) {
+          router.push(data.redirect);
+          return;
+        }
+        throw new Error(data.error || "Application failed.");
+      }
+
       setIsSubmitted(true);
     } catch (error) {
       setErrorMessage(
@@ -208,6 +189,21 @@ function RegistrationPageWithAuth({
       setIsSubmitting(false);
     }
   };
+
+  if (alreadyApplied) {
+    return (
+      <div className="min-h-screen px-4 pb-20 pt-32 flex items-center justify-center">
+        <div className="max-w-md w-full text-center p-8 rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))]">
+          <AlertCircle className="w-12 h-12 text-cyan-400 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-white mb-2">Already Applied</h2>
+          <p className="text-white/50 mb-6 text-sm">You've already applied to this cohort. Track your status from your dashboard.</p>
+          <button onClick={() => router.push("/dashboard")} className="w-full py-3 bg-white text-black hover:bg-white/90 font-bold rounded-xl transition-colors">
+            Go to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen px-4 pb-20 pt-32">
@@ -223,274 +219,289 @@ function RegistrationPageWithAuth({
         <div className="overflow-hidden rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] p-8 md:p-12">
           <div className="space-y-4">
             <p className="text-[11px] font-black tracking-[0.32em] text-cyan-300/75">
-              Authenticated Application
+              Secure Application
             </p>
             <h2 className="text-4xl font-black uppercase italic tracking-tight">
-              Apply to a Cohort
+              Apply to a Cycle
             </h2>
             <p className="max-w-2xl text-xs font-bold tracking-[0.18em] text-white/50">
-              Identity comes from your signed-in account. Add the sprint details
-              we need and we&apos;ll wire the cohort into your dashboard.
+              Submit your profile details below to enter the selection gauntlet.
             </p>
           </div>
 
-          <SignedOut>
+          {!isLoaded ? (
+            <div className="mt-10 py-10 text-center">
+              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-cyan-500 border-r-transparent"></div>
+            </div>
+          ) : !user ? (
             <div className="mt-10 rounded-[24px] border border-white/10 bg-black/30 p-8">
               <h3 className="text-2xl font-black uppercase tracking-tight">
                 Sign in first
               </h3>
               <p className="mt-3 text-xs font-bold tracking-[0.18em] text-white/50">
-                Your name and email come from Clerk, so the application opens
-                only after authentication.
+                You must verify your identity via OTP to submit an application.
               </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <SignInButton mode="modal">
-                  <button
-                    type="button"
-                    className="bg-cyan-400 px-6 py-3 text-xs font-black tracking-[0.24em] text-black transition-colors hover:bg-cyan-300"
-                  >
-                    Sign In
-                  </button>
-                </SignInButton>
-                <SignUpButton mode="modal">
-                  <button
-                    type="button"
-                    className="border border-cyan-400 px-6 py-3 text-xs font-black tracking-[0.24em] text-cyan-300 transition-colors hover:bg-cyan-400 hover:text-black"
-                  >
-                    Create Account
-                  </button>
-                </SignUpButton>
+              <div className="mt-6">
+                <Link
+                  href={`/auth?redirect=/`}
+                  className="inline-block bg-cyan-400 px-6 py-3 text-xs font-black tracking-[0.24em] text-black transition-colors hover:bg-cyan-300"
+                >
+                  Verify Email
+                </Link>
               </div>
             </div>
-          </SignedOut>
-
-          <SignedIn>
-            <div className="mt-10 rounded-[24px] border border-cyan-500/20 bg-cyan-500/10 p-6">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <p className="text-[10px] font-black tracking-[0.28em] text-white/45">
-                    Signed in as
-                  </p>
-                  <p className="mt-2 text-2xl font-black uppercase tracking-tight">
-                    {user?.fullName || user?.username || "Candidate"}
-                  </p>
-                  <p className="mt-1 text-xs font-bold tracking-[0.16em] text-cyan-200/80">
-                    {user?.primaryEmailAddress?.emailAddress}
-                  </p>
-                </div>
-                <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/30 px-4 py-2 text-[10px] font-black tracking-[0.24em] text-cyan-100">
-                  <ShieldCheck size={14} />
-                  No duplicate identity fields
-                </div>
-              </div>
-            </div>
-
-            <form onSubmit={handleSubmit} className="mt-8 space-y-8">
-              <div className="space-y-2">
-                <label
-                  htmlFor="registration-university"
-                  className="block text-[10px] font-black tracking-widest text-white/60"
-                >
-                  University
-                </label>
-                <UniversitySearch
-                  value={formData.university}
-                  onChange={(value) =>
-                    setFormData((prev) => ({ ...prev, university: value }))
-                  }
-                  inputId="registration-university"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label
-                  htmlFor="registration-cohort"
-                  className="block text-[10px] font-black tracking-widest text-white/60"
-                >
-                  Cohort
-                </label>
-                <select
-                  id="registration-cohort"
-                  required
-                  value={formData.cohortId}
-                  disabled={isLoadingCohorts || cohorts.length === 0}
-                  className="registration-cohort-select w-full rounded-[18px] border border-white/10 bg-white/5 px-4 py-4 font-bold text-white transition-colors focus:border-cyan-500 focus:outline-none"
-                  style={{ colorScheme: "dark" }}
-                  onChange={(event) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      cohortId: event.target.value,
-                    }))
-                  }
-                >
-                  {cohorts.length === 0 && (
-                    <option value="" className="bg-white text-black">
-                      {isLoadingCohorts
-                        ? "Loading cohorts..."
-                        : "No cohorts available"}
-                    </option>
-                  )}
-                  {cohorts.map((cohort) => (
-                    <option
-                      key={cohort.id}
-                      value={cohort.id}
-                      className="bg-white text-black"
-                    >
-                      {cohort.type} {cohort.is_active ? "(Active)" : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <label
-                  htmlFor="registration-phone"
-                  className="block text-[10px] font-black tracking-widest text-white/60"
-                >
-                  <span className="flex justify-between">
-                    <span>Phone Number</span>
-                    <span>(Optional)</span>
-                  </span>
-                </label>
-                <input
-                  id="registration-phone"
-                  type="tel"
-                  inputMode="tel"
-                  autoComplete="tel"
-                  placeholder="+91 98765 43210"
-                  className="w-full rounded-[18px] border border-white/10 bg-white/5 px-4 py-4 font-bold text-white placeholder:text-white/15 focus:border-cyan-500 focus:outline-none"
-                  value={formData.phone}
-                  onChange={(event) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      phone: event.target.value,
-                    }))
-                  }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label
-                  htmlFor="registration-stack"
-                  className="block text-[10px] font-black tracking-widest text-white/60"
-                >
-                  Primary Tech Stack
-                </label>
-                <input
-                  id="registration-stack"
-                  required
-                  type="text"
-                  placeholder="e.g. Node.js / React / Postgres"
-                  className="w-full rounded-[18px] border border-white/10 bg-white/5 px-4 py-4 font-bold text-white placeholder:text-white/15 focus:border-cyan-500 focus:outline-none"
-                  value={formData.stack}
-                  onChange={(event) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      stack: event.target.value,
-                    }))
-                  }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label
-                  htmlFor="registration-github"
-                  className="block text-[10px] font-black tracking-widest text-white/60"
-                >
-                  <span className="flex justify-between">
-                    <span>GitHub Profile</span>
-                    <span>(Optional)</span>
-                  </span>
-                </label>
-                <div className="relative">
-                  <Github
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20"
-                    size={18}
-                  />
-                  <input
-                    id="registration-github"
-                    type="text"
-                    placeholder="github.com/username"
-                    className="w-full rounded-[18px] border border-white/10 bg-white/5 py-4 pl-12 pr-4 font-bold text-white placeholder:text-white/15 focus:border-cyan-500 focus:outline-none"
-                    value={formData.github}
-                    onChange={(event) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        github: event.target.value,
-                      }))
-                    }
-                  />
+          ) : (
+            <>
+              <div className="mt-10 rounded-[24px] border border-cyan-500/20 bg-cyan-500/10 p-6">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[10px] font-black tracking-[0.28em] text-white/45">
+                      Verified Identity
+                    </p>
+                    <p className="mt-2 text-2xl font-black uppercase tracking-tight">
+                      {user.full_name}
+                    </p>
+                    <p className="mt-1 text-xs font-bold tracking-[0.16em] text-cyan-200/80">
+                      {user.email}
+                    </p>
+                  </div>
+                  <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/30 px-4 py-2 text-[10px] font-black tracking-[0.24em] text-cyan-100">
+                    <ShieldCheck size={14} />
+                    OTP Secured
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-4 border-t border-white/5 pt-4">
-                <label className="flex cursor-pointer items-start gap-4">
-                  <div className="relative pt-1">
+              <form onSubmit={handleSubmit} className="mt-8 space-y-8">
+                <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-black tracking-widest text-white/60">
+                      Full Name
+                    </label>
                     <input
                       required
-                      type="checkbox"
-                      className="peer hidden"
-                      checked={formData.availability}
-                      onChange={(event) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          availability: event.target.checked,
-                        }))
-                      }
+                      type="text"
+                      className="w-full rounded-[18px] border border-white/10 bg-white/5 px-4 py-4 font-bold text-white placeholder:text-white/15 focus:border-cyan-500 focus:outline-none"
+                      value={formData.full_name}
+                      onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
                     />
-                    <div className="h-5 w-5 border-2 border-white/20 transition-all peer-checked:border-cyan-500 peer-checked:bg-cyan-500" />
-                    {formData.availability && (
-                      <CheckCircle2
-                        className="absolute left-0 top-1 text-black"
-                        size={18}
-                      />
-                    )}
                   </div>
-                  <span className="text-[11px] font-black tracking-widest leading-relaxed text-white/60">
-                    I can commit at least 5 hours/day during the sprint cycle
-                    for {activeCohortLabel}.
-                  </span>
-                </label>
-              </div>
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-black tracking-widest text-white/60">
+                      Email Address
+                    </label>
+                    <input
+                      required
+                      readOnly
+                      type="email"
+                      className="w-full rounded-[18px] border border-white/10 bg-white/5 px-4 py-4 font-bold text-white/50 cursor-not-allowed focus:outline-none"
+                      value={formData.email}
+                    />
+                  </div>
+                </div>
 
-              <div className="space-y-2">
-                <label
-                  htmlFor="registration-intent"
-                  className="block text-[10px] font-black tracking-widest text-white/60"
+                <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-black tracking-widest text-white/60">
+                      Mobile Number
+                    </label>
+                    <input
+                      required
+                      type="tel"
+                      placeholder="+91 98765 43210"
+                      className="w-full rounded-[18px] border border-white/10 bg-white/5 px-4 py-4 font-bold text-white placeholder:text-white/15 focus:border-cyan-500 focus:outline-none"
+                      value={formData.mobile_number}
+                      onChange={(e) => setFormData({ ...formData, mobile_number: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-black tracking-widest text-white/60">
+                      Current Status
+                    </label>
+                    <select
+                      required
+                      className="w-full rounded-[18px] border border-white/10 bg-white/5 px-4 py-4 font-bold text-white transition-colors focus:border-cyan-500 focus:outline-none"
+                      style={{ colorScheme: "dark" }}
+                      value={formData.user_type}
+                      onChange={(e) => setFormData({ ...formData, user_type: e.target.value as any })}
+                    >
+                      <option value="" disabled className="bg-black">Select Status</option>
+                      <option value="student" className="bg-black">College Student</option>
+                      <option value="graduate" className="bg-black">Graduate / Professional</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-black tracking-widest text-white/60">
+                    College / University
+                  </label>
+                  <UniversitySearch
+                    value={formData.college}
+                    onChange={(val) => setFormData({ ...formData, college: val })}
+                    inputId="registration-university"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-black tracking-widest text-white/60">
+                      Graduation Year
+                    </label>
+                    <input
+                      required
+                      type="text"
+                      placeholder="e.g. 2024"
+                      className="w-full rounded-[18px] border border-white/10 bg-white/5 px-4 py-4 font-bold text-white placeholder:text-white/15 focus:border-cyan-500 focus:outline-none"
+                      value={formData.graduation_year}
+                      onChange={(e) => setFormData({ ...formData, graduation_year: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-black tracking-widest text-white/60">
+                      Primary Skills
+                    </label>
+                    <input
+                      required
+                      type="text"
+                      placeholder="e.g. React, Node.js, Postgres"
+                      className="w-full rounded-[18px] border border-white/10 bg-white/5 px-4 py-4 font-bold text-white placeholder:text-white/15 focus:border-cyan-500 focus:outline-none"
+                      value={formData.skills}
+                      onChange={(e) => setFormData({ ...formData, skills: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-black tracking-widest text-white/60">
+                    Target Cycle
+                  </label>
+                  <select
+                    required
+                    disabled={isLoadingCycles || cycles.length === 0}
+                    className="w-full rounded-[18px] border border-white/10 bg-white/5 px-4 py-4 font-bold text-white transition-colors focus:border-cyan-500 focus:outline-none"
+                    style={{ colorScheme: "dark" }}
+                    value={formData.cycle_id}
+                    onChange={(e) => setFormData({ ...formData, cycle_id: e.target.value })}
+                  >
+                    {cycles.length === 0 && (
+                      <option value="" className="bg-black text-white">
+                        {isLoadingCycles ? "Loading cycles..." : "No cohorts are open for applications right now."}
+                      </option>
+                    )}
+                    {cycles.map((cycle) => (
+                      <option key={cycle.id} value={cycle.id} className="bg-black text-white">
+                        {cycle.title} ({cycle.status})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-black tracking-widest text-white/60">
+                      <span className="flex justify-between">
+                        <span>GitHub Profile</span>
+                        <span>(Optional)</span>
+                      </span>
+                    </label>
+                    <div className="relative">
+                      <Github className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
+                      <input
+                        type="url"
+                        placeholder="https://github.com/..."
+                        className="w-full rounded-[18px] border border-white/10 bg-white/5 py-4 pl-12 pr-4 font-bold text-white placeholder:text-white/15 focus:border-cyan-500 focus:outline-none"
+                        value={formData.github_url}
+                        onChange={(e) => setFormData({ ...formData, github_url: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-black tracking-widest text-white/60">
+                      <span className="flex justify-between">
+                        <span>LinkedIn Profile</span>
+                        <span>(Optional)</span>
+                      </span>
+                    </label>
+                    <div className="relative">
+                      <Linkedin className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
+                      <input
+                        type="url"
+                        placeholder="https://linkedin.com/in/..."
+                        className="w-full rounded-[18px] border border-white/10 bg-white/5 py-4 pl-12 pr-4 font-bold text-white placeholder:text-white/15 focus:border-cyan-500 focus:outline-none"
+                        value={formData.linkedin_url}
+                        onChange={(e) => setFormData({ ...formData, linkedin_url: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-black tracking-widest text-white/60">
+                      <span className="flex justify-between">
+                        <span>Portfolio URL</span>
+                        <span>(Optional)</span>
+                      </span>
+                    </label>
+                    <div className="relative">
+                      <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
+                      <input
+                        type="url"
+                        placeholder="https://yourwebsite.com"
+                        className="w-full rounded-[18px] border border-white/10 bg-white/5 py-4 pl-12 pr-4 font-bold text-white placeholder:text-white/15 focus:border-cyan-500 focus:outline-none"
+                        value={formData.portfolio_url}
+                        onChange={(e) => setFormData({ ...formData, portfolio_url: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-black tracking-widest text-white/60">
+                      <span className="flex justify-between">
+                        <span>Resume URL</span>
+                        <span>(Optional)</span>
+                      </span>
+                    </label>
+                    <div className="relative">
+                      <FileText className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
+                      <input
+                        type="url"
+                        placeholder="Google Drive / Dropbox link"
+                        className="w-full rounded-[18px] border border-white/10 bg-white/5 py-4 pl-12 pr-4 font-bold text-white placeholder:text-white/15 focus:border-cyan-500 focus:outline-none"
+                        value={formData.resume_url}
+                        onChange={(e) => setFormData({ ...formData, resume_url: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2 border-t border-white/5 pt-6">
+                  <label className="block text-[10px] font-black tracking-widest text-white/60">
+                    Why are you applying? (Motivation)
+                  </label>
+                  <textarea
+                    required
+                    rows={5}
+                    placeholder="Briefly explain your goals and why you are a strong candidate..."
+                    className="w-full resize-none rounded-[18px] border border-white/10 bg-white/5 px-4 py-4 font-bold text-white placeholder:text-white/15 focus:border-cyan-500 focus:outline-none"
+                    value={formData.motivation}
+                    onChange={(e) => setFormData({ ...formData, motivation: e.target.value })}
+                  />
+                </div>
+
+                {errorMessage && (
+                  <p className="text-xs font-black tracking-widest text-red-300">
+                    {errorMessage}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting || isLoadingCycles}
+                  className="w-full rounded-[22px] bg-cyan-400 py-5 text-sm font-black tracking-[0.24em] text-black transition-all hover:bg-cyan-300 hover:shadow-[0_0_30px_rgba(34,211,238,0.35)] disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  Short Written Intent
-                </label>
-                <textarea
-                  id="registration-intent"
-                  required
-                  rows={5}
-                  placeholder="Explain why you should be selected for this cohort..."
-                  className="w-full resize-none rounded-[18px] border border-white/10 bg-white/5 px-4 py-4 font-bold text-white placeholder:text-white/15 focus:border-cyan-500 focus:outline-none"
-                  value={formData.intent}
-                  onChange={(event) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      intent: event.target.value,
-                    }))
-                  }
-                />
-              </div>
-
-              {errorMessage && (
-                <p className="text-xs font-black tracking-widest text-red-300">
-                  {errorMessage}
-                </p>
-              )}
-
-              <button
-                type="submit"
-                disabled={isSubmitting || isLoadingCohorts || !isLoaded}
-                className="w-full rounded-[22px] bg-cyan-400 py-5 text-sm font-black tracking-[0.24em] text-black transition-all hover:bg-cyan-300 hover:shadow-[0_0_30px_rgba(34,211,238,0.35)] disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                {isSubmitting ? "Submitting Application" : "Submit Application"}
-              </button>
-            </form>
-          </SignedIn>
+                  {isSubmitting ? "Submitting Application" : "Submit Application"}
+                </button>
+              </form>
+            </>
+          )}
         </div>
       </div>
 
@@ -507,18 +518,17 @@ function RegistrationPageWithAuth({
               Application Received
             </h3>
             <p className="mt-4 text-xs font-bold tracking-[0.18em] text-white/65">
-              Your cohort application is now live in the dashboard. From there
-              you can launch the qualifier and track progressive unlocks.
+              Your application is under review. Visit your dashboard to track your status and screening tests.
             </p>
-            {selectedCohortWhatsappLink && (
+            {selectedCycleWhatsappLink && (
               <a
-                href={selectedCohortWhatsappLink}
+                href={selectedCycleWhatsappLink}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-cyan-500 hover:text-cyan-400 transition-colors"
               >
                 <MessageCircle size={18} />
-                Join Your Cohort WhatsApp Group
+                Join WhatsApp Group
               </a>
             )}
             <div className="mt-8 flex flex-wrap justify-center gap-3">
@@ -533,7 +543,7 @@ function RegistrationPageWithAuth({
                 onClick={onBack}
                 className="border border-cyan-400 px-6 py-3 text-xs font-black tracking-[0.24em] text-cyan-300 transition-colors hover:bg-cyan-400 hover:text-black"
               >
-                Back to Arena
+                Back to Home
               </button>
             </div>
           </div>
@@ -542,39 +552,3 @@ function RegistrationPageWithAuth({
     </div>
   );
 }
-
-const RegistrationPage = (props: RegistrationPageProps) => {
-  if (!hasClerkPublishableKey) {
-    return (
-      <div className="min-h-screen px-4 pb-20 pt-32">
-        <div className="mx-auto max-w-3xl">
-          <button
-            type="button"
-            onClick={props.onBack}
-            className="mb-8 flex items-center gap-2 text-xs font-black tracking-[0.24em] text-cyan-400 transition-colors hover:text-white"
-          >
-            <ArrowLeft size={16} /> Back to Simulation Specs
-          </button>
-
-          <div className="rounded-[32px] border border-amber-400/20 bg-amber-400/10 p-8 md:p-12">
-            <p className="text-[11px] font-black tracking-[0.32em] text-amber-200/75">
-              Authentication Unavailable
-            </p>
-            <h2 className="mt-4 text-3xl font-black uppercase tracking-tight">
-              Add Clerk keys to enable applications
-            </h2>
-            <p className="mt-4 max-w-2xl text-sm font-bold tracking-[0.16em] text-white/65">
-              This deployment is missing{" "}
-              <code>NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY</code>, so the
-              authenticated application flow is hidden during build and preview.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return <RegistrationPageWithAuth {...props} />;
-};
-
-export default RegistrationPage;

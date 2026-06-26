@@ -19,7 +19,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@clerk/nextjs": ["./lib/clerk-stubs.tsx"],
+      "@clerk/nextjs/server": ["./lib/clerk-stubs.tsx"]
     }
   },
   "include": [

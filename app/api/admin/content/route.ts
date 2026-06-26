@@ -300,13 +300,11 @@ export async function PUT(request: Request) {
 
     const { error: qualifierError } = await supabase
       .from("cohort_qualifier_templates")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .upsert(
-        body.qualifier?.id
-          ? {
-              id: body.qualifier.id,
-              ...qualifierPayload,
-            }
-          : qualifierPayload,
+        (body.qualifier?.id
+          ? { id: body.qualifier.id, ...qualifierPayload }
+          : qualifierPayload) as any,
         { onConflict: "cohort_id" },
       );
 
@@ -362,13 +360,11 @@ export async function PUT(request: Request) {
 
       const { error: sprintDaySaveError } = await supabase
         .from("sprint_day_tasks")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .upsert(
-          sprintDay.id
-            ? {
-                id: sprintDay.id,
-                ...payload,
-              }
-            : payload,
+          (sprintDay.id
+            ? { id: sprintDay.id, ...payload }
+            : payload) as any,
           { onConflict: "id" },
         );
 
